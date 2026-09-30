@@ -1,0 +1,209 @@
+import React, { useState, useEffect } from 'react';
+import { AppProvider, useApp } from './context/AppContext';
+import { Header } from './components/Header';
+import { POSModule } from './components/POSModule';
+import { SalesModule } from './components/SalesModule';
+import { InventoryModule } from './components/InventoryModule';
+import { SupplyChainModule } from './components/SupplyChainModule';
+import { AccountingModule } from './components/AccountingModule';
+import { ReportModule } from './components/ReportModule';
+import { CompanyProfileModule } from './components/CompanyProfileModule';
+import { SettingsModule } from './components/SettingsModule';
+import { InvoicePrintModal } from './components/InvoicePrintModal';
+import { Login } from './components/Login';
+import { SlidersHorizontal } from 'lucide-react';
+
+const VALID_TABS = ['pos', 'sales', 'inventory', 'supply', 'accounting', 'reports', 'settings', 'profile'];
+const TAB_STORAGE_KEY = 'DOT_COLOR_ERP_ACTIVE_TAB';
+
+const getInitialTab = (): string => {
+  try {
+    // 1. Check URL query param: ?tab=supply
+    const searchTab = new URLSearchParams(window.location.search).get('tab');
+    if (searchTab && VALID_TABS.includes(searchTab)) {
+      return searchTab;
+    }
+
+    // 2. Check URL hash: #supply
+    const hashTab = window.location.hash.replace(/^#\/?/, '').trim();
+    if (hashTab && VALID_TABS.includes(hashTab)) {
+      return hashTab;
+    }
+
+    // 3. Check LocalStorage
+    const storedTab = localStorage.getItem(TAB_STORAGE_KEY);
+    if (storedTab && VALID_TABS.includes(storedTab)) {
+      return storedTab;
+    }
+  } catch {}
+  return 'pos';
+};
+
+const MainLayout: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<string>(getInitialTab);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [modalMode, setModalMode] = useState<'invoice' | 'challan' | 'pos'>('invoice');
+
+  const { profile, isAuthenticated, activeStaff, language } = useApp();
+
+  // Sync activeTab with URL & localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(TAB_STORAGE_KEY, activeTab);
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('tab') !== activeTab) {
+        url.searchParams.set('tab', activeTab);
+        window.history.replaceState({ tab: activeTab }, '', url.toString());
+      }
+    } catch {}
+  }, [activeTab]);
+
+  // Handle browser Back / Forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      try {
+        const searchTab = new URLSearchParams(window.location.search).get('tab');
+        if (searchTab && VALID_TABS.includes(searchTab)) {
+          setActiveTab(searchTab);
+          return;
+        }
+        const hashTab = window.location.hash.replace(/^#\/?/, '').trim();
+        if (hashTab && VALID_TABS.includes(hashTab)) {
+          setActiveTab(hashTab);
+        }
+      } catch {}
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
+  }, []);
+
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
+  const handleOpenInvoice = (id: string, mode: 'invoice' | 'challan' | 'pos' = 'invoice') => {
+    setSelectedInvoiceId(id);
+    setModalMode(mode);
+  };
+
+  const handleOpenChallan = (id: string) => {
+    setSelectedInvoiceId(id);
+    setModalMode('challan');
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans antialiased selection:bg-amber-100 selection:text-amber-900">
+      {/* Top Header & Navigation */}
+      <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      {/* Main View Area */}
+      <main className="flex-1 pb-12">
+        {activeTab === 'pos' && (
+          <POSModule onOpenInvoiceModal={handleOpenInvoice} />
+        )}
+        {activeTab === 'sales' && (
+          <SalesModule
+            onOpenInvoiceModal={handleOpenInvoice}
+            onOpenChallanModal={handleOpenChallan}
+          />
+        )}
+        {activeTab === 'inventory' && <InventoryModule />}
+        {activeTab === 'supply' && <SupplyChainModule />}
+        {activeTab === 'accounting' && <AccountingModule />}
+        {activeTab === 'reports' && <ReportModule />}
+        {activeTab === 'settings' && <SettingsModule />}
+        {activeTab === 'profile' && <CompanyProfileModule />}
+      </main>
+
+      {/* Invoice & Challan Modal */}
+      {selectedInvoiceId && (
+        <InvoicePrintModal
+          invoiceId={selectedInvoiceId}
+          mode={modalMode}
+          onClose={() => setSelectedInvoiceId(null)}
+        />
+      )}
+
+      {/* Professional 1-Line Footer */}
+      <footer className="bg-white border-t border-slate-200 mt-auto print:hidden py-2 px-4 text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-800">
+              {profile.footerBrandText || profile.name || 'DotColorCommunication Sales, POS & ERP'}
+            </span>
+            <span className="text-slate-400">•</span>
+            <span>{profile.footerCopyrightText || `© ${new Date().getFullYear()}`}</span>
+
+            {/* Admin-only discreet footer edit button */}
+            {activeStaff?.role === 'admin' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('profile');
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('open-footer-settings'));
+                  }, 60);
+                }}
+                className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-blue-700 hover:bg-blue-50 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-transparent hover:border-blue-200"
+                title={language === 'bn' ? 'ফুটার ও সফটওয়্যার ক্রেডিট এডিট করুন (অ্যাডমিন)' : 'Edit Footer & Credits (Admin)'}
+              >
+                <SlidersHorizontal className="w-3 h-3 text-blue-600" />
+                <span className="font-semibold text-[10px]">{language === 'bn' ? 'ফুটার এডিট' : 'Edit Footer'}</span>
+              </button>
+            )}
+          </div>
+
+          {(profile.footerShowPoweredBy ?? true) && (
+            <div className="flex items-center gap-2 text-xs">
+              <span>
+                Powered by{' '}
+                <a
+                  href={profile.footerPoweredByUrl || 'https://www.bdhost.com'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  {profile.footerPoweredByText || 'BD HOSTT'}
+                </a>
+              </span>
+              {profile.footerHotline && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <a href={`tel:${profile.footerHotline.replace(/\s+/g, '')}`} className="text-slate-500 hover:text-slate-700">
+                    Hotline: {profile.footerHotline}
+                  </a>
+                </>
+              )}
+              {profile.footerPoweredByUrl && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <a
+                    href={profile.footerPoweredByUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {profile.footerPoweredByUrl.replace(/^https?:\/\//, '')}
+                  </a>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default function App() {
+  return (
+    <AppProvider>
+      <MainLayout />
+    </AppProvider>
+  );
+}

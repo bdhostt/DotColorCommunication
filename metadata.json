@@ -1,0 +1,6 @@
+{
+  "name": "DotColorCommunication Sales, POS & ERP",
+  "description": "Comprehensive Sales, POS, Inventory, Supply Chain, and Accounting ERP System tailored for DotColorCommunication Sales, POS & ERP.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

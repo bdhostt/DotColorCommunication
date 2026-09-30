@@ -1,0 +1,478 @@
+export type Language = 'en' | 'bn';
+
+export type ServiceCategory =
+  | 'GRAPHIC DESIGN'
+  | 'PRINTING & PACKAGING'
+  | 'DIGITAL PRINTING'
+  | 'SIGN MAKING & LETTERING'
+  | 'BRANDED PROMOTIONAL GIFTS'
+  | 'EXHIBITION'
+  | 'EVENTS MANAGEMENT'
+  | 'VENUE SOURCING'
+  | string;
+
+export interface ProductCategory {
+  id: string;
+  code: string;
+  name: string;
+  nameBn: string;
+  description?: string;
+  isRawMaterial?: boolean;
+  isRawMaterialGroup?: boolean;
+}
+
+export type LocationType = 'Factory' | 'Office' | 'Both';
+
+export type UnitType = 'pcs' | 'sqft' | 'ream' | 'roll' | 'ltr' | 'box' | 'set' | 'job' | 'pack';
+
+export interface CompanyServiceCapability {
+  id: string;
+  titleEn: string;
+  titleBn: string;
+  descEn: string;
+  descBn: string;
+  iconName?: string;
+  color?: string;
+  badge?: string;
+}
+
+export interface CompanyPremise {
+  id: string;
+  unitBadge: string;
+  name: string;
+  nameBn?: string;
+  address: string;
+  description: string;
+  phone?: string;
+  unitType?: 'Factory' | 'Office' | 'Warehouse' | 'Branch' | string;
+}
+
+export interface CompanyProfile {
+  name: string;
+  nameBn: string;
+  tagline: string;
+  taglineBn: string;
+  category: string;
+  experienceYears: number;
+  phone: string;
+  emails: string[];
+  facebook: string;
+  factoryAddress: string;
+  officeAddress: string;
+  currency: string;
+  currencySymbol: string;
+  vatTaxNumber?: string;
+  tradeLicense?: string;
+  website?: string;
+  logoUrl?: string;
+  qrCodeValue?: string;
+  bankName?: string;
+  bankAccount?: string;
+  bankBranch?: string;
+  routingNumber?: string;
+  bkashNagadNumber?: string;
+  bankingNotes?: string;
+  
+  // Dynamic Factory Details
+  factoryUnitBadge?: string;
+  factoryName?: string;
+  factoryNameBn?: string;
+  factoryDescription?: string;
+  factoryPhone?: string;
+
+  // Dynamic Corporate Office Details
+  officeUnitBadge?: string;
+  officeName?: string;
+  officeNameBn?: string;
+  officeDescription?: string;
+  officePhone?: string;
+
+  // Dynamic Specialized Services Section
+  servicesSectionTitle?: string;
+  servicesSectionTitleBn?: string;
+  servicesSectionSubtitle?: string;
+  servicesSectionSubtitleBn?: string;
+  servicesCapabilities?: CompanyServiceCapability[];
+
+  // Dynamic Additional Branches / Premises
+  customPremises?: CompanyPremise[];
+
+  // Dynamic Footer & Copyright Customization
+  footerBrandText?: string;
+  footerCopyrightText?: string;
+  footerPoweredByText?: string;
+  footerPoweredByUrl?: string;
+  footerHotline?: string;
+  footerShowPoweredBy?: boolean;
+}
+
+export interface ProductItem {
+  id: string;
+  code: string;
+  name: string;
+  nameBn?: string;
+  category: ServiceCategory | 'RAW MATERIAL';
+  isRawMaterial: boolean;
+  unit: UnitType;
+  unitPrice: number; // Selling price
+  costPrice: number; // Purchase / Production cost
+  stockFactory: number;
+  stockOffice: number;
+  minStockAlert: number;
+  description?: string;
+}
+
+export type Product = ProductItem;
+
+export interface Customer {
+  id: string;
+  name: string;
+  code?: string;
+  company?: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  totalPurchased: number;
+  dueAmount: number;
+  advanceBalance?: number;
+  createdAt: string;
+}
+
+export interface VendorBankAccount {
+  bankName: string;
+  accountNumber: string;
+  accountName?: string;
+  branchName?: string;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  company?: string;
+  contactPerson?: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  category?: string;
+  suppliedItems?: string[];
+  totalPurchased: number;
+  dueAmount: number;
+  balancePayable?: number;
+  bankAccountNumber?: string;
+  bankName?: string;
+  bankAccounts?: VendorBankAccount[];
+}
+
+export interface InvoiceItem {
+  productId: string;
+  name: string;
+  category: string;
+  unit: UnitType;
+  unitPrice: number;
+  costPrice: number;
+  qty: number;
+  width?: number; // for sqft calculations
+  height?: number; // for sqft calculations
+  totalSqft?: number;
+  totalPrice: number;
+  notes?: string;
+}
+
+export type ProductionStatus =
+  | 'Queued'
+  | 'Designing'
+  | 'In Print / Fabrication'
+  | 'Finishing'
+  | 'Ready'
+  | 'Delivered';
+
+export type PaymentMethod = 'Cash' | 'bKash / Nagad' | 'Bank Transfer' | 'Cheque' | 'Credit Card' | 'bKash' | 'Nagad';
+
+export type PaymentStatus = 'Paid' | 'Partial' | 'Due';
+
+export interface SalesInvoice {
+  id: string;
+  invoiceNo: string;
+  referenceNo?: string;
+  date: string;
+  deliveryDate?: string;
+  customerId: string;
+  customerName: string;
+  customerCompany?: string;
+  customerPhone: string;
+  customerAddress?: string;
+  items: InvoiceItem[];
+  subtotal: number;
+  discount: number;
+  vatRate: number; // percentage (e.g. 5% or 7.5%)
+  vatAmount: number;
+  vatType?: 'amount' | 'percent';
+  vatValue?: number;
+  grandTotal: number;
+  paidAmount: number;
+  dueAmount: number;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  productionStatus: ProductionStatus;
+  warehouseLocation: 'Factory' | 'Office';
+  notes?: string;
+  jobSpecs?: string;
+  salesPerson?: string;
+  staffId?: string;
+  staffName?: string;
+  discountType?: 'amount' | 'percent';
+  discountValue?: number;
+  splitPayments?: {
+    cash: number;
+    card: number;
+    bkash: number;
+    nagad: number;
+    due: number;
+  };
+  isQuote?: boolean;
+}
+
+export interface Quotation {
+  id: string;
+  quoteNo: string;
+  referenceNo?: string;
+  date: string;
+  validUntil: string;
+  customerName: string;
+  customerPhone: string;
+  customerCompany?: string;
+  items: InvoiceItem[];
+  subtotal: number;
+  discount: number;
+  discountType?: 'amount' | 'percent';
+  discountValue?: number;
+  vatRate: number;
+  vatAmount?: number;
+  vatType?: 'amount' | 'percent';
+  vatValue?: number;
+  grandTotal: number;
+  status: 'Draft' | 'Sent' | 'Approved' | 'Declined';
+  notes?: string;
+  quoteType?: 'Sales' | 'Custom';
+  isConverted?: boolean;
+}
+
+export interface PurchaseOrderItem {
+  productId: string;
+  name: string;
+  unit: UnitType;
+  unitCost: number;
+  qty: number;
+  receivedQty?: number;
+  totalCost: number;
+}
+
+export type PurchaseItem = PurchaseOrderItem;
+
+export interface PurchaseOrder {
+  id: string;
+  poNo: string;
+  poNumber?: string;
+  date: string;
+  supplierId: string;
+  supplierName: string;
+  supplierPhone?: string;
+  destination: 'Factory' | 'Office';
+  destinationLocation?: 'Factory' | 'Office';
+  items: PurchaseOrderItem[];
+  subtotal?: number;
+  totalAmount: number;
+  grandTotal?: number;
+  paidAmount: number;
+  dueAmount: number;
+  status: 'Pending' | 'Ordered' | 'Received' | 'Cancelled';
+  paymentMethod?: PaymentMethod;
+  paymentStatus?: 'Paid' | 'Partial' | 'Due' | 'Pending';
+  invoiceRef?: string;
+  notes?: string;
+}
+
+export interface StockMovement {
+  id: string;
+  date: string;
+  productId: string;
+  productName: string;
+  type: 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT';
+  qty: number;
+  unit: UnitType;
+  sourceLocation?: 'Factory' | 'Office';
+  targetLocation?: 'Factory' | 'Office';
+  refNo: string;
+  reason: string;
+}
+
+export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER' | 'DEBIT' | 'CREDIT';
+
+export type AccountType =
+  | 'Cash in Hand'
+  | 'BRAC Bank A/C'
+  | 'bKash / Nagad'
+  | 'Factory Cash'
+  | 'Office Cash'
+  | 'BRAC Bank';
+
+export interface AccountBalances {
+  cash: number;
+  bank: number;
+  mobile: number;
+}
+
+export interface AccountingTransaction {
+  id: string;
+  date: string;
+  type: TransactionType;
+  category: string;
+  amount: number;
+  account?: AccountType;
+  accountHead?: string;
+  voucherNo?: string;
+  reference?: string;
+  location?: 'Office' | 'Factory' | 'Both' | string;
+  paymentMethod?: string;
+  paymentAccount?: string;
+  refNo?: string;
+  customerOrSupplier?: string;
+  description: string;
+}
+
+export interface ChartOfAccount {
+  id: string;
+  code: string;
+  name: string;
+  nameBn: string;
+  classification: 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense';
+  accountGroup: string;
+  normalBalance: 'Debit' | 'Credit';
+  openingBalance: number;
+  currentBalance: number;
+  description?: string;
+  isSystem?: boolean;
+  isActive: boolean;
+}
+
+export interface ExpenseHead {
+  id: string;
+  code: string;
+  name: string;
+  nameBn: string;
+  category: string;
+  linkedAccountId?: string;
+  budgetMonthly?: number;
+  monthlyBudgetLimit?: number;
+  description?: string;
+  isActive: boolean;
+}
+
+export interface JournalEntry {
+  id: string;
+  date: string;
+  entryNo: string;
+  refNo?: string;
+  debitAccountId: string;
+  debitAccountName: string;
+  creditAccountId: string;
+  creditAccountName: string;
+  amount: number;
+  narration: string;
+  source: 'SALES' | 'PURCHASE' | 'EXPENSE' | 'RECEIPT' | 'MANUAL';
+  createdBy?: string;
+}
+
+export type StaffRole =
+  | 'Managing Director'
+  | 'Senior Accountant'
+  | 'Cashier'
+  | 'Sales Executive'
+  | 'Production In-Charge'
+  | 'Store Supervisor'
+  | string;
+
+export interface RolePermission {
+  id: string;
+  code: string;
+  name: string;
+  nameBn: string;
+  category: 'POS' | 'Sales' | 'Inventory' | 'Supply Chain' | 'Accounting' | 'Settings';
+}
+
+export interface UserRole {
+  id: string;
+  name: string;
+  nameBn: string;
+  description: string;
+  isSystem?: boolean;
+  permissions: string[];
+}
+
+export interface StaffMember {
+  id: string;
+  name: string;
+  nameBn: string;
+  role: StaffRole;
+  roleBn: string;
+  location: 'Office' | 'Factory' | 'Both';
+  phone?: string;
+  email?: string;
+  avatarColor: string;
+  isActive?: boolean;
+  customRoleId?: string;
+  password?: string;
+}
+
+export type AuditActionType =
+  | 'EXPENSE_RECORDED'
+  | 'PAYMENT_COLLECTED'
+  | 'INVOICE_CREATED'
+  | 'INVOICE_UPDATED'
+  | 'PO_CREATED'
+  | 'PO_RECEIVED'
+  | 'SUPPLIER_PAID'
+  | 'STOCK_ADJUSTED'
+  | 'STOCK_TRANSFERRED'
+  | 'BULK_PRODUCTS_IMPORTED'
+  | 'AUDIT_NOTE_ADDED'
+  | 'PROFILE_UPDATED'
+  | 'BACKUP_EXPORTED'
+  | 'BACKUP_RESTORED'
+  | 'CUSTOMER_CREATED'
+  | 'CUSTOMER_UPDATED'
+  | 'CUSTOMER_DELETED'
+  | 'SUPPLIER_CREATED'
+  | 'SUPPLIER_UPDATED'
+  | 'SUPPLIER_DELETED'
+  | 'USER_CREATED'
+  | 'USER_UPDATED'
+  | 'USER_DELETED'
+  | 'ROLE_UPDATED'
+  | 'DATA_CLEANED'
+  | 'COA_CREATED'
+  | 'COA_UPDATED'
+  | 'COA_DELETED'
+  | 'EXPENSE_HEAD_CREATED'
+  | 'EXPENSE_HEAD_UPDATED'
+  | 'EXPENSE_HEAD_DELETED'
+  | 'CATEGORY_CREATED'
+  | 'CATEGORY_UPDATED'
+  | 'CATEGORY_DELETED'
+  | 'JOURNAL_ENTRY_CREATED';
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  staffId: string;
+  staffName: string;
+  staffRole: StaffRole;
+  location: 'Office' | 'Factory' | 'Both' | 'All';
+  actionType: AuditActionType;
+  entityType: 'Accounting' | 'Sales' | 'POS' | 'Inventory' | 'Supply Chain' | 'System' | 'Configuration';
+  refNo?: string;
+  details: string;
+  detailsBn?: string;
+  amount?: number;
+  severity?: 'info' | 'success' | 'warning' | 'critical';
+}
