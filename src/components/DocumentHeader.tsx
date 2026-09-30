@@ -73,40 +73,33 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
   // Compact layout for 80mm POS thermal slips
   if (compact) {
     return (
-      <div className={`pb-3 border-b border-dashed border-slate-400 text-slate-900 ${className}`}>
-        {/* Top Header Row: Logo on Left, QR on Right */}
-        <div className="flex items-center justify-between gap-2">
-          {/* 1. Logo */}
-          <div className="shrink-0">
-            <BrandLogo size="sm" showTagline={false} />
-            <div className="text-[8px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
-              Printing & Packaging
-            </div>
-          </div>
-
-          {/* 2. QR Code */}
-          <div className="shrink-0 flex items-center gap-1.5 bg-white p-1 rounded border border-slate-300">
-            {qrDataUrl ? (
-              <img
-                src={qrDataUrl}
-                alt="Document & Contact QR"
-                className="w-11 h-11 object-contain"
-              />
-            ) : (
-              <div className="w-11 h-11 bg-slate-100 flex items-center justify-center text-[7px] text-slate-400">
-                QR
-              </div>
-            )}
-          </div>
+      <div className={`pb-2 border-b-2 border-dashed border-black text-black text-center ${className}`}>
+        {/* Top: Logo & Company Name */}
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <BrandLogo size="sm" showTagline={false} />
         </div>
-
-        {/* Centered Document Title */}
-        <div className="text-center mt-2 pt-1 border-t border-dotted border-slate-300">
-          <div className="font-black text-xs uppercase tracking-widest text-slate-950">
-            {documentTitle}
+        <div className="font-black text-sm tracking-wide text-black uppercase">
+          {profile.name || 'DotColorCommunication'}
+        </div>
+        <div className="text-[10.5px] font-bold text-black uppercase tracking-wider">
+          {profile.category || 'Printing, Packaging & Signage'}
+        </div>
+        <div className="text-[11px] font-black text-black mt-0.5">
+          Hotline: {hotline}
+        </div>
+        {companyAddress && (
+          <div className="text-[9.5px] font-semibold text-black leading-tight mt-0.5 max-w-[240px] mx-auto">
+            {companyAddress}
           </div>
+        )}
+
+        {/* Centered Document Title Badge */}
+        <div className="mt-2 pt-1 border-t border-dashed border-black">
+          <span className="inline-block bg-black text-white px-3 py-0.5 text-xs font-black uppercase tracking-wider rounded">
+            {documentTitle}
+          </span>
           {documentSubtitle && (
-            <div className="text-[9px] text-slate-600">{documentSubtitle}</div>
+            <div className="text-[10px] font-bold text-black mt-0.5">{documentSubtitle}</div>
           )}
         </div>
       </div>

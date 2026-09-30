@@ -142,15 +142,15 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   }
                   @page {
                     size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
-                    margin: ${template === 'POS' ? '2mm' : '8mm 10mm'};
+                    margin: ${template === 'POS' ? '0' : '8mm 10mm'};
                   }
                   html, body {
                     background: white !important;
                     color: black !important;
                     padding: 0 !important;
                     margin: 0 !important;
-                    font-family: sans-serif;
-                    height: 100%;
+                    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+                    height: auto !important;
                   }
                   .print\\:hidden { display: none !important; }
                   .a4-page-sheet {
@@ -174,6 +174,28 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     border-collapse: collapse !important;
                     width: 100% !important;
                   }
+                  ${template === 'POS' ? `
+                    * {
+                      color: #000000 !important;
+                      border-color: #000000 !important;
+                      -webkit-print-color-adjust: exact !important;
+                      print-color-adjust: exact !important;
+                    }
+                    body {
+                      width: 80mm !important;
+                      padding: 0 !important;
+                      margin: 0 !important;
+                    }
+                    .pos-thermal-sheet {
+                      width: 76mm !important;
+                      max-width: 76mm !important;
+                      margin: 0 auto !important;
+                      padding: 3mm 1mm !important;
+                      border: none !important;
+                      box-shadow: none !important;
+                      border-radius: 0 !important;
+                    }
+                  ` : ''}
                   ${activePadMode ? `
                     .pad-header-branding { display: none !important; }
                     .pad-header-spacer { display: block !important; height: ${padTopMarginMm}mm !important; }
@@ -237,13 +259,13 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             }
             @page {
               size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
-              margin: ${template === 'POS' ? '2mm' : '8mm 10mm'};
+              margin: ${template === 'POS' ? '0' : '8mm 10mm'};
             }
             html, body {
               background: white !important;
               color: black !important;
-              padding: 15px;
-              font-family: sans-serif;
+              padding: ${template === 'POS' ? '0' : '15px'};
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
               min-height: 100%;
             }
             .print-controls-bar {
@@ -302,6 +324,21 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 border-collapse: collapse !important;
                 width: 100% !important;
               }
+              ${template === 'POS' ? `
+                * {
+                  color: #000000 !important;
+                  border-color: #000000 !important;
+                }
+                .pos-thermal-sheet {
+                  width: 76mm !important;
+                  max-width: 76mm !important;
+                  margin: 0 auto !important;
+                  padding: 3mm 1mm !important;
+                  border: none !important;
+                  box-shadow: none !important;
+                  border-radius: 0 !important;
+                }
+              ` : ''}
               ${isPadMode ? `
                 .pad-header-branding { display: none !important; }
                 .pad-header-spacer { display: block !important; height: ${padTopMarginMm}mm !important; }
@@ -370,13 +407,13 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             }
             @page {
               size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
-              margin: ${template === 'POS' ? '2mm' : '8mm 10mm'};
+              margin: ${template === 'POS' ? '0' : '8mm 10mm'};
             }
             body {
               background: white !important;
               color: black !important;
-              padding: 20px;
-              font-family: sans-serif;
+              padding: ${template === 'POS' ? '0' : '20px'};
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
             }
             .a4-page-sheet {
               min-height: 297mm;
@@ -403,6 +440,21 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 border-collapse: collapse !important;
                 width: 100% !important;
               }
+              ${template === 'POS' ? `
+                * {
+                  color: #000000 !important;
+                  border-color: #000000 !important;
+                }
+                .pos-thermal-sheet {
+                  width: 76mm !important;
+                  max-width: 76mm !important;
+                  margin: 0 auto !important;
+                  padding: 3mm 1mm !important;
+                  border: none !important;
+                  box-shadow: none !important;
+                  border-radius: 0 !important;
+                }
+              ` : ''}
               ${isPadMode ? `
                 .pad-header-branding { display: none !important; }
                 .pad-header-spacer { display: block !important; height: ${padTopMarginMm}mm !important; }
@@ -441,7 +493,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           }
           @page {
             size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
-            margin: ${template === 'POS' ? '2mm' : '8mm 10mm'};
+            margin: ${template === 'POS' ? '0' : '8mm 10mm'};
           }
           .a4-page-sheet {
             min-height: calc(297mm - 16mm) !important;
@@ -464,6 +516,21 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             border-collapse: collapse !important;
             width: 100% !important;
           }
+          ${template === 'POS' ? `
+            * {
+              color: #000000 !important;
+              border-color: #000000 !important;
+            }
+            .pos-thermal-sheet {
+              width: 76mm !important;
+              max-width: 76mm !important;
+              margin: 0 auto !important;
+              padding: 3mm 1mm !important;
+              border: none !important;
+              box-shadow: none !important;
+              border-radius: 0 !important;
+            }
+          ` : ''}
           ${isPadMode ? `
             .pad-header-branding { display: none !important; }
             .pad-header-spacer { display: block !important; height: ${padTopMarginMm}mm !important; }
@@ -1218,9 +1285,12 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           {/* ============================================================== */}
           {/* 4. POS THERMAL 80MM SLIP */}
           {/* ============================================================== */}
+          {/* ============================================================== */}
+          {/* 4. POS THERMAL 80MM SLIP */}
+          {/* ============================================================== */}
           {template === 'POS' && (
-            <div className="bg-white max-w-[80mm] mx-auto p-4 rounded-xl shadow-xs border border-slate-300 font-mono text-[11px] text-slate-900 space-y-3">
-              {/* POS Compact Header: Brand Logo on Left, QR Code on Right */}
+            <div className="pos-thermal-sheet bg-white max-w-[80mm] w-full mx-auto p-4 sm:p-5 rounded-xl shadow-xs border border-slate-300 print:border-none print:shadow-none print:p-1 font-sans text-xs text-black space-y-3">
+              {/* POS Compact Header: Brand, Contact, Title */}
               <DocumentHeader
                 compact={true}
                 documentTitle={
@@ -1233,75 +1303,120 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 referenceNo={invoice.referenceNo}
               />
 
-              <div className="text-[10px] space-y-0.5 pb-2 border-b border-dashed border-slate-400">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Invoice #:</span>
-                  <span className="font-bold">#{invoice.invoiceNo}</span>
+              {/* Bill Details */}
+              <div className="text-xs space-y-1 pb-2 border-b-2 border-dashed border-black">
+                <div className="flex justify-between font-bold text-black">
+                  <span>Invoice #:</span>
+                  <span className="font-black font-mono">#{invoice.invoiceNo}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Date:</span>
+                <div className="flex justify-between font-bold text-black">
+                  <span>Date:</span>
                   <span>{invoice.date}</span>
                 </div>
                 {invoice.referenceNo && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Ref:</span>
-                    <span>{invoice.referenceNo}</span>
+                  <div className="flex justify-between font-bold text-black">
+                    <span>Ref / PO #:</span>
+                    <span className="font-black font-mono">{invoice.referenceNo}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Customer:</span>
-                  <span className="font-bold truncate max-w-[130px]">{invoice.customerName}</span>
+                <div className="flex justify-between font-bold text-black">
+                  <span>Customer:</span>
+                  <span className="font-black text-right max-w-[140px] truncate">{invoice.customerName}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Phone:</span>
-                  <span>{invoice.customerPhone}</span>
+                <div className="flex justify-between font-bold text-black">
+                  <span>Mobile:</span>
+                  <span className="font-black">{invoice.customerPhone}</span>
                 </div>
-              </div>
-
-              <div className="space-y-1 pb-2 border-b border-dashed border-slate-400">
-                {invoice.items.map((i, idx) => (
-                  <div key={idx} className="flex justify-between items-start">
-                    <div className="max-w-[50mm] truncate">
-                      {i.name} (x{i.qty})
-                    </div>
-                    <div className="font-bold">{i.totalPrice}</div>
+                {invoice.customerAddress && (
+                  <div className="flex justify-between font-semibold text-[11px] text-black">
+                    <span>Address:</span>
+                    <span className="text-right max-w-[150px] truncate">{invoice.customerAddress}</span>
                   </div>
-                ))}
+                )}
               </div>
 
-              <div className="space-y-0.5 text-right font-bold text-xs">
+              {/* Items Table */}
+              <div className="pb-2 border-b-2 border-dashed border-black">
+                <div className="grid grid-cols-12 text-[11px] font-black uppercase border-b border-black pb-1 mb-1.5 text-black">
+                  <div className="col-span-6">Item / Description</div>
+                  <div className="col-span-2 text-center">Qty</div>
+                  <div className="col-span-2 text-right">Rate</div>
+                  <div className="col-span-2 text-right">Total</div>
+                </div>
+                <div className="space-y-1.5">
+                  {invoice.items.map((i, idx) => (
+                    <div key={idx} className="grid grid-cols-12 text-xs items-start font-bold text-black">
+                      <div className="col-span-6 leading-tight">
+                        <div className="font-extrabold">{i.name}</div>
+                        {i.totalSqft ? (
+                          <div className="text-[10px] font-semibold text-black">
+                            {i.width}'×{i.height}'={i.totalSqft}sqft
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="col-span-2 text-center font-bold">
+                        {i.totalSqft || i.qty}
+                      </div>
+                      <div className="col-span-2 text-right font-semibold">
+                        {i.unitPrice.toLocaleString()}
+                      </div>
+                      <div className="col-span-2 text-right font-black">
+                        {i.totalPrice.toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Financial Totals */}
+              <div className="space-y-1 text-xs font-bold text-black pb-2 border-b-2 border-dashed border-black">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>{invoice.subtotal}</span>
+                  <span>{profile.currencySymbol}{invoice.subtotal.toLocaleString()}</span>
                 </div>
                 {invoice.discount > 0 && (
-                  <div className="flex justify-between text-rose-600">
+                  <div className="flex justify-between font-black">
                     <span>Discount:</span>
-                    <span>-{invoice.discount}</span>
+                    <span>-{profile.currencySymbol}{invoice.discount.toLocaleString()}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm font-black pt-1 border-t border-slate-900">
-                  <span>TOTAL:</span>
-                  <span>{invoice.grandTotal} BDT</span>
+                {invoice.vatAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span>VAT ({invoice.vatRate}%):</span>
+                    <span>+{profile.currencySymbol}{invoice.vatAmount.toLocaleString()}</span>
+                  </div>
+                )}
+                {/* Grand Total - Large, Prominent, Solid Black Double Border */}
+                <div className="flex justify-between text-sm sm:text-base font-black py-1.5 my-1 border-t-2 border-b-2 border-black">
+                  <span>TOTAL AMOUNT:</span>
+                  <span>{profile.currencySymbol}{invoice.grandTotal.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-[10px] font-normal pt-1">
-                  <span>Paid ({invoice.paymentMethod}):</span>
-                  <span>{invoice.paidAmount}</span>
+                <div className="flex justify-between text-xs pt-0.5">
+                  <span>Paid Amount ({invoice.paymentMethod || 'CASH'}):</span>
+                  <span className="font-black">{profile.currencySymbol}{invoice.paidAmount.toLocaleString()}</span>
                 </div>
-                {invoice.dueAmount > 0 && (
-                  <div className="flex justify-between text-rose-600 font-black">
-                    <span>DUE:</span>
-                    <span>{invoice.dueAmount} BDT</span>
+                {invoice.dueAmount > 0 ? (
+                  <div className="flex justify-between text-sm font-black pt-1 border-t border-black">
+                    <span>BALANCE DUE:</span>
+                    <span>{profile.currencySymbol}{invoice.dueAmount.toLocaleString()}</span>
+                  </div>
+                ) : (
+                  <div className="text-center font-black text-xs py-0.5 mt-1 border border-black rounded">
+                    *** PAID IN FULL / পরিশোধিত ***
                   </div>
                 )}
               </div>
 
-              <div className="text-center pt-2 border-t border-dashed border-slate-400 text-[9px] text-slate-500">
-                Thank you for your business!
-                <br />
-                Quality Printing &amp; Signage Solutions
-                <div className="mt-1.5 pt-1 border-t border-dotted border-slate-300 text-[8px] text-slate-500 font-sans">
-                  Software Developed by <strong className="text-slate-900 font-bold">BD HOSTT</strong> (www.bdhost.com • 01846100900)
+              {/* POS Footer */}
+              <div className="text-center pt-1 space-y-1 text-black">
+                <div className="text-xs font-black tracking-wider uppercase">
+                  *** ধন্যবাদ আবার আসবেন ***
+                </div>
+                <div className="text-[10px] font-bold">
+                  Quality Printing, Signage &amp; Advertising
+                </div>
+                <div className="pt-1.5 border-t border-dotted border-black text-[9px] font-bold text-black">
+                  Software Developed by BD HOSTT • Hotline: 01846100900
                 </div>
               </div>
             </div>
