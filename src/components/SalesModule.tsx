@@ -831,40 +831,43 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
 
                     <td className="py-3.5 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        {/* 1. Direct POS / KOT Thermal Print (80mm) */}
-                        <button
-                          type="button"
-                          onClick={() => onOpenInvoiceModal(inv.id, 'pos', { autoPrint: true })}
-                          className="px-2 py-1 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-900 rounded-lg border border-emerald-300 transition-colors flex items-center gap-1 shadow-2xs cursor-pointer font-bold"
-                          title={language === 'bn' ? 'সরাসরি POS / KOT থার্মাল প্রিন্ট (৮০মিমি রিসিট প্রিন্টার)' : 'Direct 80mm POS / KOT Thermal Print'}
+                        {/* Printer Select Dropdown (Matches status dropdown style) */}
+                        <select
+                          defaultValue=""
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            e.target.value = '';
+                            if (val === 'pos') {
+                              onOpenInvoiceModal(inv.id, 'pos', { autoPrint: true });
+                            } else if (val === 'a4') {
+                              onOpenInvoiceModal(inv.id, 'invoice', { autoPrint: true, isPadMode: false });
+                            } else if (val === 'pad') {
+                              onOpenInvoiceModal(inv.id, 'invoice', { autoPrint: true, isPadMode: true });
+                            } else if (val === 'preview') {
+                              onOpenInvoiceModal(inv.id, 'invoice', { autoPrint: false });
+                            }
+                          }}
+                          className="px-2 py-1 bg-amber-50 hover:bg-amber-100/80 text-amber-950 border border-amber-300 rounded-lg text-[11px] font-bold cursor-pointer transition-colors shadow-2xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
+                          title={language === 'bn' ? 'প্রিন্ট অপশন সিলেক্ট করুন' : 'Select print option'}
                         >
-                          <Receipt className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-[10px] font-black">POS</span>
-                        </button>
+                          <option value="" disabled>
+                            {language === 'bn' ? '🖨️ প্রিন্ট করুন ▼' : '🖨️ Print ▼'}
+                          </option>
+                          <option value="pos">
+                            {language === 'bn' ? '🧾 ৮০মিমি POS / KOT স্লিপ' : '🧾 80mm POS / KOT Slip'}
+                          </option>
+                          <option value="a4">
+                            {language === 'bn' ? '📄 A4 সাধারণ ইনভয়েস' : '📄 A4 Standard Invoice'}
+                          </option>
+                          <option value="pad">
+                            {language === 'bn' ? '📑 লেটারহেড প্যাড প্রিন্ট' : '📑 Letterhead Pad Print'}
+                          </option>
+                          <option value="preview">
+                            {language === 'bn' ? '👁️ প্রিভিউ ও এডিট' : '👁️ Preview & Edit'}
+                          </option>
+                        </select>
 
-                        {/* 2. Direct Normal Print (Prints immediately without preview) */}
-                        <button
-                          type="button"
-                          onClick={() => onOpenInvoiceModal(inv.id, 'invoice', { autoPrint: true, isPadMode: false })}
-                          className="px-1.5 py-1 text-amber-800 bg-amber-50 hover:bg-amber-100 hover:text-amber-900 rounded-lg border border-amber-300 transition-colors flex items-center gap-1 shadow-2xs cursor-pointer font-bold"
-                          title={language === 'bn' ? 'সরাসরি সাধারণ A4 প্রিন্ট (লেজার/ইঙ্কজেট - প্রিভিউ ছাড়া)' : 'Direct Normal Print (Full A4 - No Preview)'}
-                        >
-                          <Printer className="w-3.5 h-3.5 text-amber-700" />
-                          <span className="text-[10px] font-black">A4</span>
-                        </button>
-
-                        {/* 3. Direct Pad Print (Prints on letterhead pad without header branding) */}
-                        <button
-                          type="button"
-                          onClick={() => onOpenInvoiceModal(inv.id, 'invoice', { autoPrint: true, isPadMode: true })}
-                          className="px-2 py-1 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-900 rounded-lg border border-indigo-200 transition-colors flex items-center gap-1 shadow-2xs cursor-pointer font-bold"
-                          title={language === 'bn' ? 'সরাসরি প্যাড প্রিন্ট (কোম্পানি লেটারহেড প্যাডে প্রিন্ট)' : 'Direct Pad Print (For Letterhead Pad)'}
-                        >
-                          <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                          <span className="text-[10px] font-black">প্যাড</span>
-                        </button>
-
-                        {/* 4. View / Preview Invoice Modal */}
+                        {/* View / Preview Invoice Modal */}
                         <button
                           type="button"
                           onClick={() => onOpenInvoiceModal(inv.id, 'invoice', { autoPrint: false })}
@@ -1046,44 +1049,47 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                   </span>
 
                   <div className="flex items-center gap-1.5">
-                    {/* Direct POS Thermal Print */}
-                    <button
-                      type="button"
-                      onClick={() => onOpenInvoiceModal(q.id, 'pos', { autoPrint: true })}
-                      className="flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-900 border border-emerald-300 px-2 py-1.5 rounded-lg transition-colors cursor-pointer"
-                      title={language === 'bn' ? '৮০মিমি POS থার্মাল কোটেশন স্লিপ প্রিন্ট' : '80mm POS Thermal Quote Slip'}
+                    {/* Printer Select Dropdown */}
+                    <select
+                      defaultValue=""
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        e.target.value = '';
+                        if (val === 'pos') {
+                          onOpenInvoiceModal(q.id, 'pos', { autoPrint: true });
+                        } else if (val === 'a4') {
+                          onOpenInvoiceModal(q.id, 'invoice', { autoPrint: true, isPadMode: false });
+                        } else if (val === 'pad') {
+                          onOpenInvoiceModal(q.id, 'invoice', { autoPrint: true, isPadMode: true });
+                        } else if (val === 'preview') {
+                          onOpenInvoiceModal(q.id, 'invoice', { autoPrint: false });
+                        }
+                      }}
+                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100/80 text-amber-950 border border-amber-300 rounded-lg text-[11px] font-bold cursor-pointer transition-colors shadow-2xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
+                      title={language === 'bn' ? 'কোটেশন প্রিন্ট অপশন সিলেক্ট করুন' : 'Select quote print option'}
                     >
-                      <Receipt className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{language === 'bn' ? 'POS' : 'POS'}</span>
-                    </button>
-
-                    {/* Direct Normal Print */}
-                    <button
-                      type="button"
-                      onClick={() => onOpenInvoiceModal(q.id, 'invoice', { autoPrint: true, isPadMode: false })}
-                      className="flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 hover:text-amber-900 border border-amber-300 px-2 py-1.5 rounded-lg transition-colors cursor-pointer"
-                      title={language === 'bn' ? 'সরাসরি কোটেশন প্রিন্ট করুন (A4 সম্পূর্ণ)' : 'Direct Print Quotation (Full A4)'}
-                    >
-                      <Printer className="w-3.5 h-3.5 text-amber-600" />
-                      <span>{language === 'bn' ? 'A4' : 'A4'}</span>
-                    </button>
-
-                    {/* Direct Pad Print */}
-                    <button
-                      type="button"
-                      onClick={() => onOpenInvoiceModal(q.id, 'invoice', { autoPrint: true, isPadMode: true })}
-                      className="flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-1.5 rounded-lg transition-colors cursor-pointer"
-                      title={language === 'bn' ? 'সরাসরি প্যাড প্রিন্ট (লেটারহেড)' : 'Direct Pad Print'}
-                    >
-                      <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>{language === 'bn' ? 'প্যাড' : 'Pad'}</span>
-                    </button>
+                      <option value="" disabled>
+                        {language === 'bn' ? '🖨️ প্রিন্ট করুন ▼' : '🖨️ Print ▼'}
+                      </option>
+                      <option value="pos">
+                        {language === 'bn' ? '🧾 ৮০মিমি POS থার্মাল' : '🧾 80mm POS Thermal'}
+                      </option>
+                      <option value="a4">
+                        {language === 'bn' ? '📄 A4 সাধারণ কোটেশন' : '📄 A4 Standard Quote'}
+                      </option>
+                      <option value="pad">
+                        {language === 'bn' ? '📑 লেটারহেড প্যাড প্রিন্ট' : '📑 Letterhead Pad Print'}
+                      </option>
+                      <option value="preview">
+                        {language === 'bn' ? '👁️ কোটেশন প্রিভিউ' : '👁️ Quote Preview'}
+                      </option>
+                    </select>
 
                     {/* View Preview */}
                     <button
                       type="button"
                       onClick={() => onOpenInvoiceModal(q.id, 'invoice', { autoPrint: false })}
-                      className="flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                      className="p-1.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition-colors cursor-pointer"
                       title={language === 'bn' ? 'কোটেশন প্রিভিউ দেখুন' : 'View Quote Preview'}
                     >
                       <Eye className="w-3.5 h-3.5" />
