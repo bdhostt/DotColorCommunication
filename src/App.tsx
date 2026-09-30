@@ -11,6 +11,7 @@ import { CompanyProfileModule } from './components/CompanyProfileModule';
 import { SettingsModule } from './components/SettingsModule';
 import { InvoicePrintModal } from './components/InvoicePrintModal';
 import { Login } from './components/Login';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { SlidersHorizontal } from 'lucide-react';
 
 const VALID_TABS = ['pos', 'sales', 'inventory', 'supply', 'accounting', 'reports', 'settings', 'profile'];
@@ -43,8 +44,12 @@ const MainLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>(getInitialTab);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<'invoice' | 'challan' | 'pos'>('invoice');
+  const [directPrintOptions, setDirectPrintOptions] = useState<{ autoPrint: boolean; isPadMode: boolean }>({
+    autoPrint: false,
+    isPadMode: false,
+  });
 
-  const { profile, isAuthenticated, activeStaff, language } = useApp();
+  const { profile, activeStaff, language } = useApp();
 
   // Sync document title with company profile name
   useEffect(() => {
@@ -88,15 +93,6 @@ const MainLayout: React.FC = () => {
       window.removeEventListener('hashchange', handlePopState);
     };
   }, []);
-
-  if (!isAuthenticated) {
-    return <Login />;
-  }
-
-  const [directPrintOptions, setDirectPrintOptions] = useState<{ autoPrint: boolean; isPadMode: boolean }>({
-    autoPrint: false,
-    isPadMode: false,
-  });
 
   const handleOpenInvoice = (
     id: string,
@@ -227,10 +223,22 @@ const MainLayout: React.FC = () => {
   );
 };
 
+const AppContent: React.FC = () => {
+  const { isAuthenticated } = useApp();
+
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
+  return <MainLayout />;
+};
+
 export default function App() {
   return (
-    <AppProvider>
-      <MainLayout />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

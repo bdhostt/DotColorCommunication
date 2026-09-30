@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { BrandLogo } from './BrandLogo';
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle, ArrowRight, Languages } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 
 export const Login: React.FC = () => {
-  const { staffMembers = [], login, language, setLanguage } = useApp();
-  const [selectedStaffId, setSelectedStaffId] = useState<string>(
-    (staffMembers && staffMembers[1]?.id) || (staffMembers && staffMembers[0]?.id) || 'staff-02'
-  );
+  const { staffMembers = [], activeStaff, login, language, setLanguage } = useApp();
+  const [selectedStaffId, setSelectedStaffId] = useState<string>(() => {
+    if (activeStaff?.id && staffMembers.some((s) => s.id === activeStaff.id)) {
+      return activeStaff.id;
+    }
+    return staffMembers?.[0]?.id || 'staff-01';
+  });
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
@@ -31,7 +33,7 @@ export const Login: React.FC = () => {
       } else {
         setError(res.message);
       }
-    }, 400);
+    }, 250);
   };
 
   const handleQuickSelect = (staffId: string) => {
@@ -94,14 +96,14 @@ export const Login: React.FC = () => {
                       staff.avatarColor || 'bg-blue-600'
                     } flex items-center justify-center text-white text-sm font-black shrink-0 shadow-2xs`}
                   >
-                    {staff.name.charAt(0)}
+                    {(staff.name || 'U').charAt(0)}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-slate-900 truncate leading-snug">
-                      {isBn && staff.nameBn ? staff.nameBn : staff.name}
+                      {isBn && staff.nameBn ? staff.nameBn : (staff.name || 'User')}
                     </p>
                     <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                      {isBn && staff.roleBn ? staff.roleBn.split(' ')[0] : staff.role}
+                      {isBn && staff.roleBn ? staff.roleBn.split(' ')[0] : (staff.role || 'Staff')}
                     </p>
                   </div>
                 </button>
@@ -144,30 +146,18 @@ export const Login: React.FC = () => {
           </div>
 
           {/* Error & Success Alerts */}
-          <AnimatePresence mode="wait">
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                className="flex items-center gap-2 p-3 bg-rose-50 text-rose-700 rounded-2xl text-xs border border-rose-200/80"
-              >
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
-                <span className="font-semibold">{error}</span>
-              </motion.div>
-            )}
-            {success && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-2xl text-xs border border-emerald-200/80"
-              >
-                <CheckCircle className="w-4 h-4 shrink-0 text-emerald-500" />
-                <span className="font-semibold">{success}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {error && (
+            <div className="flex items-center gap-2 p-3 bg-rose-50 text-rose-700 rounded-2xl text-xs border border-rose-200/80 transition-all">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+              <span className="font-semibold">{error}</span>
+            </div>
+          )}
+          {success && (
+            <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-2xl text-xs border border-emerald-200/80 transition-all">
+              <CheckCircle className="w-4 h-4 shrink-0 text-emerald-500" />
+              <span className="font-semibold">{success}</span>
+            </div>
+          )}
 
           {/* Submit Sign In Button */}
           <div>

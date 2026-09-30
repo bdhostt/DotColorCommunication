@@ -449,17 +449,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = () => {
     const prevStaff = activeStaff;
     setIsAuthenticated(false);
-    
-    addAuditLog({
-      staffId: prevStaff.id,
-      staffName: prevStaff.name,
-      staffRole: prevStaff.role,
-      actionType: 'PROFILE_UPDATED',
-      entityType: 'System',
-      details: `${prevStaff.name} logged out`,
-      detailsBn: `${prevStaff.name} লগআউট করেছেন`,
-      location: prevStaff.location === 'Both' ? 'Office' : prevStaff.location,
-    });
+
+    try {
+      if (typeof window !== 'undefined' && window.location.search) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } catch {}
+
+    if (prevStaff?.id) {
+      addAuditLog({
+        staffId: prevStaff.id,
+        staffName: prevStaff.name || 'User',
+        staffRole: prevStaff.role || 'Staff',
+        actionType: 'PROFILE_UPDATED',
+        entityType: 'System',
+        details: `${prevStaff.name || 'User'} logged out`,
+        detailsBn: `${prevStaff.name || 'ব্যবহারকারী'} লগআউট করেছেন`,
+        location: prevStaff.location === 'Both' ? 'Office' : (prevStaff.location || 'Office'),
+      });
+    }
   };
 
   const addAuditLog = (entry: Omit<AuditLogEntry, 'id' | 'timestamp'> & { timestamp?: string }) => {
