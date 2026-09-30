@@ -18,6 +18,8 @@ import {
   Phone,
   Search,
   Lock,
+  Eye,
+  EyeOff,
   SlidersHorizontal,
   FolderSync,
   FileSpreadsheet,
@@ -59,6 +61,7 @@ export const SettingsModule: React.FC = () => {
   // User modal states
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
+  const [showUserPassword, setShowUserPassword] = useState(false);
   const [userFormData, setUserFormData] = useState({
     name: '',
     nameBn: '',
@@ -67,6 +70,7 @@ export const SettingsModule: React.FC = () => {
     location: 'Office' as 'Office' | 'Factory' | 'Both',
     phone: '',
     email: '',
+    password: '',
     customRoleId: '',
     isActive: true,
   });
@@ -111,9 +115,11 @@ export const SettingsModule: React.FC = () => {
       location: 'Office',
       phone: '',
       email: '',
+      password: '1234',
       customRoleId: userRoles[0]?.id || '',
       isActive: true,
     });
+    setShowUserPassword(false);
     setEditingStaff(null);
     setShowUserModal(true);
   };
@@ -127,9 +133,11 @@ export const SettingsModule: React.FC = () => {
       location: staff.location,
       phone: staff.phone || '',
       email: staff.email || '',
+      password: staff.password || '1234',
       customRoleId: staff.customRoleId || '',
       isActive: staff.isActive !== false,
     });
+    setShowUserPassword(false);
     setEditingStaff(staff);
     setShowUserModal(true);
   };
@@ -150,6 +158,7 @@ export const SettingsModule: React.FC = () => {
         location: userFormData.location,
         phone: userFormData.phone.trim(),
         email: userFormData.email.trim(),
+        password: userFormData.password.trim() || '1234',
         customRoleId: userFormData.customRoleId || undefined,
         isActive: userFormData.isActive,
       });
@@ -162,6 +171,7 @@ export const SettingsModule: React.FC = () => {
         location: userFormData.location,
         phone: userFormData.phone.trim(),
         email: userFormData.email.trim(),
+        password: userFormData.password.trim() || '1234',
         avatarColor: randomColor,
         customRoleId: userFormData.customRoleId || undefined,
         isActive: userFormData.isActive,
@@ -555,6 +565,10 @@ export const SettingsModule: React.FC = () => {
                                   <span className="truncate max-w-[150px]">{staff.email}</span>
                                 </div>
                               )}
+                              <div className="flex items-center gap-1 font-mono text-[10px] text-amber-800">
+                                <Lock className="w-3 h-3 text-amber-500" />
+                                <span>PIN: {staff.password || '1234'}</span>
+                              </div>
                             </div>
                           </td>
 
@@ -1216,6 +1230,43 @@ export const SettingsModule: React.FC = () => {
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl"
                   />
                 </div>
+              </div>
+
+              {/* Password Field */}
+              <div className="bg-amber-50/50 p-3 rounded-xl border border-amber-200/80 space-y-1.5">
+                <label className="font-bold text-slate-800 text-xs flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>{language === 'bn' ? 'লগইন পাসওয়ার্ড (Login Password) *' : 'Login Password *'}</span>
+                  </span>
+                  <span className="text-[10px] text-amber-800 font-semibold bg-amber-100/70 px-1.5 py-0.5 rounded">
+                    {language === 'bn' ? 'ডিফল্ট: 1234' : 'Default: 1234'}
+                  </span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showUserPassword ? 'text' : 'password'}
+                    required
+                    value={userFormData.password}
+                    onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                    placeholder={language === 'bn' ? 'পাসওয়ার্ড লিখুন (যেমন: 1234 বা গোপন পিন)' : 'Enter password (e.g. 1234 or PIN)'}
+                    className="w-full bg-white pl-3 pr-10 py-2 border border-slate-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowUserPassword(!showUserPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                    tabIndex={-1}
+                    title={showUserPassword ? (language === 'bn' ? 'পাসওয়ার্ড লুকান' : 'Hide password') : (language === 'bn' ? 'পাসওয়ার্ড দেখুন' : 'Show password')}
+                  >
+                    {showUserPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  {language === 'bn'
+                    ? 'ব্যবহারকারী এই পাসওয়ার্ড দিয়ে সফটওয়্যার লগইন স্ক্রিনে তার অ্যাকাউন্টে প্রবেশ করবেন।'
+                    : 'This password is used by the staff member to log in to their account.'}
+                </p>
               </div>
             </div>
 
