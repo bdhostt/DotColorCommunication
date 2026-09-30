@@ -46,6 +46,13 @@ const MainLayout: React.FC = () => {
 
   const { profile, isAuthenticated, activeStaff, language } = useApp();
 
+  // Sync document title with company profile name
+  useEffect(() => {
+    if (profile?.name) {
+      document.title = profile.name;
+    }
+  }, [profile?.name]);
+
   // Sync activeTab with URL & localStorage whenever it changes
   useEffect(() => {
     try {

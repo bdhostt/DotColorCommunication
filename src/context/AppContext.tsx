@@ -200,84 +200,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [profile, setProfile] = useState<CompanyProfile>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_PROFILE`);
-      const parsed = saved ? JSON.parse(saved) : {};
-      const isOldBrand = !parsed?.name || parsed.name.includes('BD Host') || parsed.name.includes('BD Hostt');
-      const mergedName = isOldBrand ? INITIAL_COMPANY_PROFILE.name : parsed.name;
-      const mergedNameBn = isOldBrand ? INITIAL_COMPANY_PROFILE.nameBn : (parsed?.nameBn || INITIAL_COMPANY_PROFILE.nameBn);
-      const mergedPhone = parsed?.phone && !parsed.phone.includes('01730') ? parsed.phone : INITIAL_COMPANY_PROFILE.phone;
-      const mergedOfficeAddr = parsed?.officeAddress && !parsed.officeAddress.includes('Nazir Ahmed') ? parsed.officeAddress : INITIAL_COMPANY_PROFILE.officeAddress;
-      const mergedFactoryAddr = parsed?.factoryAddress && !parsed.factoryAddress.includes('Nazir Ahmed') ? parsed.factoryAddress : INITIAL_COMPANY_PROFILE.factoryAddress;
-      const mergedEmails = isOldBrand || !parsed?.emails || parsed.emails.some((e: string) => e.includes('bdhost'))
-        ? INITIAL_COMPANY_PROFILE.emails
-        : parsed.emails;
-      const mergedWebsite = isOldBrand || !parsed?.website || parsed.website.includes('bdhost')
-        ? INITIAL_COMPANY_PROFILE.website
-        : parsed.website;
-      const mergedFacebook = isOldBrand || !parsed?.facebook || parsed.facebook.includes('bdhost')
-        ? INITIAL_COMPANY_PROFILE.facebook
-        : parsed.facebook;
-      const mergedFactoryName = isOldBrand || !parsed?.factoryName || parsed.factoryName.includes('BD Host')
-        ? INITIAL_COMPANY_PROFILE.factoryName
-        : parsed.factoryName;
-      const mergedFactoryNameBn = isOldBrand || !parsed?.factoryNameBn || parsed.factoryNameBn.includes('বিডি হোস্ট')
-        ? INITIAL_COMPANY_PROFILE.factoryNameBn
-        : parsed.factoryNameBn;
-      const mergedOfficeName = isOldBrand || !parsed?.officeName || parsed.officeName.includes('BD Host')
-        ? INITIAL_COMPANY_PROFILE.officeName
-        : parsed.officeName;
-      const mergedOfficeNameBn = isOldBrand || !parsed?.officeNameBn || parsed.officeNameBn.includes('বিডি হোস্ট')
-        ? INITIAL_COMPANY_PROFILE.officeNameBn
-        : parsed.officeNameBn;
-      const mergedLogoUrl = isOldBrand || (parsed?.logoUrl && parsed.logoUrl.includes('bdhostt'))
-        ? ''
-        : (parsed?.logoUrl || '');
-
-      return {
-        ...INITIAL_COMPANY_PROFILE,
-        ...(parsed || {}),
-        name: mergedName,
-        nameBn: mergedNameBn,
-        logoUrl: mergedLogoUrl,
-        emails: mergedEmails,
-        website: mergedWebsite,
-        facebook: mergedFacebook,
-        phone: mergedPhone,
-        officeAddress: mergedOfficeAddr,
-        factoryAddress: mergedFactoryAddr,
-        officePhone: parsed?.officePhone && !parsed.officePhone.includes('01730') ? parsed.officePhone : INITIAL_COMPANY_PROFILE.officePhone,
-        factoryPhone: parsed?.factoryPhone && !parsed.factoryPhone.includes('01730') ? parsed.factoryPhone : INITIAL_COMPANY_PROFILE.factoryPhone,
-        bkashNagadNumber: parsed?.bkashNagadNumber && !parsed.bkashNagadNumber.includes('01730') ? parsed.bkashNagadNumber : INITIAL_COMPANY_PROFILE.bkashNagadNumber,
-        bankName: parsed?.bankName || INITIAL_COMPANY_PROFILE.bankName,
-        bankAccount: parsed?.bankAccount || INITIAL_COMPANY_PROFILE.bankAccount,
-        bankBranch: parsed?.bankBranch || INITIAL_COMPANY_PROFILE.bankBranch,
-        routingNumber: parsed?.routingNumber || INITIAL_COMPANY_PROFILE.routingNumber,
-        factoryUnitBadge: parsed?.factoryUnitBadge || INITIAL_COMPANY_PROFILE.factoryUnitBadge,
-        factoryName: mergedFactoryName,
-        factoryNameBn: mergedFactoryNameBn,
-        factoryDescription: parsed?.factoryDescription || INITIAL_COMPANY_PROFILE.factoryDescription,
-        officeUnitBadge: parsed?.officeUnitBadge || INITIAL_COMPANY_PROFILE.officeUnitBadge,
-        officeName: mergedOfficeName,
-        officeNameBn: mergedOfficeNameBn,
-        officeDescription: parsed?.officeDescription || INITIAL_COMPANY_PROFILE.officeDescription,
-        servicesSectionTitle: parsed?.servicesSectionTitle || INITIAL_COMPANY_PROFILE.servicesSectionTitle,
-        servicesSectionTitleBn: parsed?.servicesSectionTitleBn || INITIAL_COMPANY_PROFILE.servicesSectionTitleBn,
-        servicesSectionSubtitle: parsed?.servicesSectionSubtitle || INITIAL_COMPANY_PROFILE.servicesSectionSubtitle,
-        servicesSectionSubtitleBn: parsed?.servicesSectionSubtitleBn || INITIAL_COMPANY_PROFILE.servicesSectionSubtitleBn,
-        servicesCapabilities:
-          Array.isArray(parsed?.servicesCapabilities) && parsed.servicesCapabilities.length > 0
-            ? parsed.servicesCapabilities
-            : INITIAL_COMPANY_PROFILE.servicesCapabilities,
-        customPremises: Array.isArray(parsed?.customPremises) ? parsed.customPremises : [],
-        footerBrandText:
-          isOldBrand || (parsed?.footerBrandText && (parsed.footerBrandText.toLowerCase().includes('bd host') || parsed.footerBrandText.toLowerCase().includes('bdhostt')))
-            ? INITIAL_COMPANY_PROFILE.footerBrandText
-            : (parsed?.footerBrandText || INITIAL_COMPANY_PROFILE.footerBrandText),
-        footerCopyrightText: parsed?.footerCopyrightText || INITIAL_COMPANY_PROFILE.footerCopyrightText,
-        footerPoweredByText: parsed?.footerPoweredByText || INITIAL_COMPANY_PROFILE.footerPoweredByText,
-        footerPoweredByUrl: parsed?.footerPoweredByUrl || INITIAL_COMPANY_PROFILE.footerPoweredByUrl,
-        footerHotline: parsed?.footerHotline || INITIAL_COMPANY_PROFILE.footerHotline,
-        footerShowPoweredBy: parsed?.footerShowPoweredBy ?? INITIAL_COMPANY_PROFILE.footerShowPoweredBy,
-      };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            ...INITIAL_COMPANY_PROFILE,
+            ...parsed,
+            servicesCapabilities:
+              Array.isArray(parsed?.servicesCapabilities) && parsed.servicesCapabilities.length > 0
+                ? parsed.servicesCapabilities
+                : INITIAL_COMPANY_PROFILE.servicesCapabilities,
+            customPremises: Array.isArray(parsed?.customPremises) ? parsed.customPremises : [],
+          };
+        }
+      }
+      return INITIAL_COMPANY_PROFILE;
     } catch {
       return INITIAL_COMPANY_PROFILE;
     }
@@ -399,28 +336,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem(`${STORAGE_KEY}_IS_AUTHENTICATED`);
     return saved === 'true';
   });
-
-  // Auto-migration for existing browser sessions
-  useEffect(() => {
-    const hasOldName = Boolean(profile?.name && (profile.name.toLowerCase().includes('bd host') || profile.name.toLowerCase().includes('bdhostt')));
-    const hasOldLogo = Boolean(profile?.logoUrl && profile.logoUrl.toLowerCase().includes('bdhostt'));
-    const hasOldFooter = Boolean(profile?.footerBrandText && (profile.footerBrandText.toLowerCase().includes('bd host') || profile.footerBrandText.toLowerCase().includes('bdhostt')));
-
-    if (hasOldName || hasOldLogo || hasOldFooter) {
-      setProfile((prev) => ({
-        ...prev,
-        name: hasOldName ? INITIAL_COMPANY_PROFILE.name : prev.name,
-        nameBn: hasOldName ? INITIAL_COMPANY_PROFILE.nameBn : prev.nameBn,
-        footerBrandText: hasOldFooter ? INITIAL_COMPANY_PROFILE.footerBrandText : prev.footerBrandText,
-        logoUrl: hasOldLogo ? '' : prev.logoUrl,
-        emails: hasOldName ? INITIAL_COMPANY_PROFILE.emails : prev.emails,
-        website: hasOldName ? INITIAL_COMPANY_PROFILE.website : prev.website,
-        facebook: hasOldName ? INITIAL_COMPANY_PROFILE.facebook : prev.facebook,
-        factoryName: hasOldName ? INITIAL_COMPANY_PROFILE.factoryName : prev.factoryName,
-        officeName: hasOldName ? INITIAL_COMPANY_PROFILE.officeName : prev.officeName,
-      }));
-    }
-  }, [profile?.name, profile?.logoUrl, profile?.footerBrandText]);
 
   // Sync to LocalStorage
   useEffect(() => {

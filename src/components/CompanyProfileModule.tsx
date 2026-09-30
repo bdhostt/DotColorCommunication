@@ -124,10 +124,24 @@ export const CompanyProfileModule: React.FC = () => {
     } else if (quickEditModal.fieldKey === 'logo') {
       updateProfile({ logoUrl: quickEditModal.val1 });
     } else if (quickEditModal.fieldKey === 'companyName') {
+      const newName = quickEditModal.val1.trim();
+      const newNameBn = quickEditModal.val2 !== undefined ? quickEditModal.val2.trim() : (profile.nameBn || '');
+      const shouldSyncFooter =
+        !profile.footerBrandText ||
+        profile.footerBrandText === INITIAL_COMPANY_PROFILE.footerBrandText ||
+        profile.footerBrandText === profile.name;
+
       updateProfile({
-        name: quickEditModal.val1.trim(),
-        nameBn: quickEditModal.val2?.trim() || profile.nameBn,
+        name: newName,
+        nameBn: newNameBn,
+        ...(shouldSyncFooter ? { footerBrandText: newName } : {}),
       });
+      setFormData((prev) => ({
+        ...prev,
+        name: newName,
+        nameBn: newNameBn,
+        ...(shouldSyncFooter ? { footerBrandText: newName } : {}),
+      }));
     }
     setQuickEditModal((prev) => ({ ...prev, open: false }));
     setSaveNotification(
@@ -357,9 +371,15 @@ export const CompanyProfileModule: React.FC = () => {
       .map((s) => s.trim())
       .filter(Boolean);
 
+    const shouldSyncFooter =
+      !profile.footerBrandText ||
+      profile.footerBrandText === INITIAL_COMPANY_PROFILE.footerBrandText ||
+      profile.footerBrandText === profile.name;
+
     updateProfile({
-      name: formData.name,
-      nameBn: formData.nameBn,
+      name: formData.name.trim(),
+      nameBn: formData.nameBn.trim(),
+      ...(shouldSyncFooter ? { footerBrandText: formData.name.trim() } : {}),
       tagline: formData.tagline,
       taglineBn: formData.taglineBn,
       category: formData.category,

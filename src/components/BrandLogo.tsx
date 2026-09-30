@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 
 interface BrandLogoProps {
@@ -20,8 +20,12 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   const [imageError, setImageError] = useState(false);
 
   const activeLogoUrl = explicitLogoUrl || profile?.logoUrl;
-  const isBdhosttUrl = activeLogoUrl ? activeLogoUrl.toLowerCase().includes('bdhostt') : false;
-  const hasValidCustomLogo = Boolean(activeLogoUrl && !isBdhosttUrl && !imageError);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [activeLogoUrl]);
+
+  const hasValidCustomLogo = Boolean(activeLogoUrl && !imageError);
 
   const iconSize = size === 'sm' ? 28 : size === 'md' ? 38 : size === 'lg' ? 48 : 64;
   const imgHeight = size === 'sm' ? 32 : size === 'md' ? 42 : size === 'lg' ? 56 : 72;
