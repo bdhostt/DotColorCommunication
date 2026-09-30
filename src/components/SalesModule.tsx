@@ -243,13 +243,13 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
   const [isQuoteCustomerDropdownOpen, setIsQuoteCustomerDropdownOpen] = useState(false);
 
   // Date Range Filters for Invoices
-  const [filterDatePreset, setFilterDatePreset] = useState<'ALL' | 'TODAY' | 'THIS_MONTH' | 'LAST_30' | 'CUSTOM'>('ALL');
+  const [filterDatePreset, setFilterDatePreset] = useState<'ALL' | 'TODAY' | '7D' | 'THIS_MONTH' | 'LAST_30' | 'CUSTOM'>('ALL');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [showCustomDate, setShowCustomDate] = useState<boolean>(false);
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
 
-  const handleDatePreset = (preset: 'ALL' | 'TODAY' | 'THIS_MONTH' | 'LAST_30' | 'CUSTOM') => {
+  const handleDatePreset = (preset: 'ALL' | 'TODAY' | '7D' | 'THIS_MONTH' | 'LAST_30' | 'CUSTOM') => {
     setFilterDatePreset(preset);
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
@@ -259,6 +259,12 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
       setShowCustomDate(false);
     } else if (preset === 'TODAY') {
       setStartDate(today);
+      setEndDate(today);
+      setShowCustomDate(false);
+    } else if (preset === '7D') {
+      const d = new Date();
+      d.setDate(d.getDate() - 6);
+      setStartDate(d.toISOString().slice(0, 10));
       setEndDate(today);
       setShowCustomDate(false);
     } else if (preset === 'THIS_MONTH') {
@@ -601,8 +607,8 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                   [
                     { id: 'ALL', labelEn: 'All', labelBn: 'সকল' },
                     { id: 'TODAY', labelEn: 'Today', labelBn: 'আজকে' },
-                    { id: 'THIS_MONTH', labelEn: 'Month', labelBn: 'চলতি মাস' },
-                    { id: 'LAST_30', labelEn: '30D', labelBn: '৩০ দিন' },
+                    { id: '7D', labelEn: '7 Days', labelBn: '৭ দিন' },
+                    { id: 'THIS_MONTH', labelEn: 'Month', labelBn: 'মাস' },
                     { id: 'CUSTOM', labelEn: 'Custom', labelBn: 'কাস্টম' },
                   ] as const
                 ).map((p) => (

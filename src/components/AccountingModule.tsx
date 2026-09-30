@@ -62,7 +62,7 @@ export const AccountingModule: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Date Range Filters
-  const [filterDatePreset, setFilterDatePreset] = useState<'ALL' | 'THIS_MONTH' | 'LAST_30' | 'CUSTOM'>('ALL');
+  const [filterDatePreset, setFilterDatePreset] = useState<'ALL' | 'TODAY' | '7D' | 'THIS_MONTH' | 'LAST_30' | 'CUSTOM'>('ALL');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [showCustomDate, setShowCustomDate] = useState<boolean>(false);
@@ -97,13 +97,23 @@ export const AccountingModule: React.FC = () => {
   const [editTxType, setEditTxType] = useState<TransactionType>('EXPENSE');
   const [editTxRefNo, setEditTxRefNo] = useState('');
 
-  const handleDatePreset = (preset: 'ALL' | 'THIS_MONTH' | 'LAST_30' | 'CUSTOM') => {
+  const handleDatePreset = (preset: 'ALL' | 'TODAY' | '7D' | 'THIS_MONTH' | 'LAST_30' | 'CUSTOM') => {
     setFilterDatePreset(preset);
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
     if (preset === 'ALL') {
       setStartDate('');
       setEndDate('');
+      setShowCustomDate(false);
+    } else if (preset === 'TODAY') {
+      setStartDate(today);
+      setEndDate(today);
+      setShowCustomDate(false);
+    } else if (preset === '7D') {
+      const d = new Date();
+      d.setDate(d.getDate() - 6);
+      setStartDate(d.toISOString().slice(0, 10));
+      setEndDate(today);
       setShowCustomDate(false);
     } else if (preset === 'THIS_MONTH') {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -562,8 +572,9 @@ export const AccountingModule: React.FC = () => {
               {(
                 [
                   { id: 'ALL', labelEn: 'All', labelBn: 'সকল' },
-                  { id: 'THIS_MONTH', labelEn: 'Month', labelBn: 'চলতি মাস' },
-                  { id: 'LAST_30', labelEn: '30D', labelBn: '৩০ দিন' },
+                  { id: 'TODAY', labelEn: 'Today', labelBn: 'আজকে' },
+                  { id: '7D', labelEn: '7 Days', labelBn: '৭ দিন' },
+                  { id: 'THIS_MONTH', labelEn: 'Month', labelBn: 'মাস' },
                   { id: 'CUSTOM', labelEn: 'Custom', labelBn: 'কাস্টম' },
                 ] as const
               ).map((p) => (
