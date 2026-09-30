@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import QRCode from 'qrcode';
 import { useApp } from '../context/AppContext';
 import { SalesInvoice } from '../types';
 import { BrandLogo } from './BrandLogo';
@@ -51,6 +52,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   const [hardwareAgentStatus, setHardwareAgentStatus] = useState<HardwareAgentStatus>({ isOnline: false });
   const [isHardwarePrinting, setIsHardwarePrinting] = useState(false);
   const [hardwarePrintMsg, setHardwarePrintMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [posQrDataUrl, setPosQrDataUrl] = useState<string>('');
 
   useEffect(() => {
     if (template === 'POS') {
@@ -103,6 +105,31 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   };
 
   useEffect(() => {
+    if (template === 'POS' && invoice) {
+      const qrPayload = [
+        profile.name || 'DotColor Communication',
+        `Invoice: ${invoice.invoiceNo}`,
+        `Date: ${invoice.date}`,
+        `Total: ${invoice.grandTotal} BDT`,
+        `Due: ${invoice.dueAmount} BDT`,
+        `Hotline: ${profile.phone || '01846100900'}`,
+        'Powered by BD HOSTT',
+      ].join('\n');
+
+      QRCode.toDataURL(qrPayload, {
+        width: 120,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#ffffff',
+        },
+      })
+        .then((url) => setPosQrDataUrl(url))
+        .catch((err) => console.error('Failed to generate POS QR code:', err));
+    }
+  }, [template, invoice.invoiceNo, invoice.date, invoice.grandTotal, invoice.dueAmount, profile]);
+
+  useEffect(() => {
     if (autoPrint && invoiceId) {
       const timer = setTimeout(() => {
         handlePrint(initialPadMode);
@@ -147,11 +174,12 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           printFrame.style.position = 'fixed';
           printFrame.style.right = '0';
           printFrame.style.bottom = '0';
-          printFrame.style.width = '0';
-          printFrame.style.height = '0';
           printFrame.style.border = '0';
           document.body.appendChild(printFrame);
         }
+        printFrame.style.width = template === 'POS' ? '80mm' : '210mm';
+        printFrame.style.height = '1000px';
+        printFrame.style.visibility = 'hidden';
 
         const doc = printFrame.contentDocument || printFrame.contentWindow?.document;
         if (doc) {
@@ -171,41 +199,23 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   * {
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
+                    box-sizing: border-box !important;
                   }
                   @page {
-                    size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
-                    margin: ${template === 'POS' ? '0' : '8mm 10mm'};
+                    size: ${template === 'POS' ? '80mm auto !important' : 'A4 portrait !important'};
+                    margin: ${template === 'POS' ? '0mm !important' : '8mm 10mm !important'};
                   }
                   html, body {
-                    background: white !important;
-                    color: black !important;
-                    padding: 0 !important;
-                    margin: 0 !important;
-                    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
-                    height: auto !important;
-                  }
-                  .print\\:hidden { display: none !important; }
-                  .a4-page-sheet {
-                    min-height: calc(297mm - 16mm) !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    justify-content: space-between !important;
-                    box-sizing: border-box !important;
+                    background: #ffffff !important;
+                    color: #000000 !important;
                     padding: 0 !important;
                     margin: 0 auto !important;
-                    border: none !important;
-                    box-shadow: none !important;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Courier New", monospace !important;
+                    height: auto !important;
+                    width: ${template === 'POS' ? '80mm !important' : 'auto !important'};
+                    max-width: ${template === 'POS' ? '80mm !important' : 'none !important'};
                   }
-                  .a4-page-content {
-                    flex: 1 0 auto !important;
-                  }
-                  .a4-page-footer {
-                    margin-top: auto !important;
-                  }
-                  table {
-                    border-collapse: collapse !important;
-                    width: 100% !important;
-                  }
+                  .print\\:hidden { display: none !important; }
                   ${template === 'POS' ? `
                     * {
                       color: #000000 !important;
@@ -215,19 +225,42 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     }
                     body {
                       width: 80mm !important;
+                      max-width: 80mm !important;
                       padding: 0 !important;
-                      margin: 0 !important;
+                      margin: 0 auto !important;
                     }
                     .pos-thermal-sheet {
-                      width: 76mm !important;
-                      max-width: 76mm !important;
+                      width: 78mm !important;
+                      max-width: 78mm !important;
                       margin: 0 auto !important;
-                      padding: 3mm 1mm !important;
+                      padding: 1mm 1mm !important;
                       border: none !important;
                       box-shadow: none !important;
                       border-radius: 0 !important;
                     }
-                  ` : ''}
+                  ` : `
+                    .a4-page-sheet {
+                      min-height: calc(297mm - 16mm) !important;
+                      display: flex !important;
+                      flex-direction: column !important;
+                      justify-content: space-between !important;
+                      box-sizing: border-box !important;
+                      padding: 0 !important;
+                      margin: 0 auto !important;
+                      border: none !important;
+                      box-shadow: none !important;
+                    }
+                    .a4-page-content {
+                      flex: 1 0 auto !important;
+                    }
+                    .a4-page-footer {
+                      margin-top: auto !important;
+                    }
+                    table {
+                      border-collapse: collapse !important;
+                      width: 100% !important;
+                    }
+                  `}
                   ${activePadMode ? `
                     .pad-header-branding { display: none !important; }
                     .pad-header-spacer { display: block !important; height: ${padTopMarginMm}mm !important; }
@@ -430,10 +463,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   border-color: #000000 !important;
                 }
                 .pos-thermal-sheet {
-                  width: 76mm !important;
-                  max-width: 76mm !important;
+                  width: 78mm !important;
+                  max-width: 78mm !important;
                   margin: 0 auto !important;
-                  padding: 3mm 1mm !important;
+                  padding: 1mm 1mm !important;
                   border: none !important;
                   box-shadow: none !important;
                   border-radius: 0 !important;
@@ -456,7 +489,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               ✕ ${language === 'bn' ? 'বন্ধ করুন (Close)' : 'Close Window'}
             </button>
           </div>
-          <div style="max-width: 210mm; margin: 0 auto;">
+          <div style="max-width: ${template === 'POS' ? '80mm' : '210mm'}; margin: 0 auto;">
             ${printableContent.innerHTML}
           </div>
           <script>
@@ -546,10 +579,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   border-color: #000000 !important;
                 }
                 .pos-thermal-sheet {
-                  width: 76mm !important;
-                  max-width: 76mm !important;
+                  width: 78mm !important;
+                  max-width: 78mm !important;
                   margin: 0 auto !important;
-                  padding: 3mm 1mm !important;
+                  padding: 1mm 1mm !important;
                   border: none !important;
                   box-shadow: none !important;
                   border-radius: 0 !important;
@@ -564,7 +597,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           </style>
         </head>
         <body onload="window.print()">
-          <div style="max-width: 210mm; margin: 0 auto;">
+          <div style="max-width: ${template === 'POS' ? '80mm' : '210mm'}; margin: 0 auto;">
             ${printableContent.innerHTML}
           </div>
         </body>
@@ -587,14 +620,22 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
       {autoPrint && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 animate-in fade-in slide-in-from-bottom-3 pointer-events-none">
           <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-            <Printer className="w-5 h-5 animate-pulse" />
+            {template === 'POS' ? (
+              <Receipt className="w-5 h-5 animate-pulse text-emerald-400" />
+            ) : (
+              <Printer className="w-5 h-5 animate-pulse" />
+            )}
           </div>
           <div>
             <div className="text-xs font-bold text-slate-100">
-              {initialPadMode ? 'প্যাড প্রিন্ট ডায়ালগ ওপেন হচ্ছে...' : 'প্রিন্টার ডায়ালগ ওপেন হচ্ছে...'}
+              {template === 'POS'
+                ? (language === 'bn' ? '৮০মিমি POS / KOT থার্মাল প্রিন্ট ডায়ালগ ওপেন হচ্ছে...' : 'Opening 80mm POS / KOT Print Dialog...')
+                : initialPadMode
+                ? (language === 'bn' ? 'প্যাড প্রিন্ট ডায়ালগ ওপেন হচ্ছে...' : 'Opening Pad Print Dialog...')
+                : (language === 'bn' ? 'A4 প্রিন্টার ডায়ালগ ওপেন হচ্ছে...' : 'Opening A4 Printer Dialog...')}
             </div>
             <div className="text-[11px] text-slate-400 font-mono">
-              #{invoice.invoiceNo} {initialPadMode ? '• Letterhead Pad' : '• Normal A4'}
+              #{invoice.invoiceNo} {template === 'POS' ? '• 80mm POS Slip' : initialPadMode ? '• Letterhead Pad' : '• Normal A4'}
             </div>
           </div>
         </div>
@@ -603,7 +644,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
       <div
         className={
           autoPrint
-            ? "fixed -left-[9999px] -top-[9999px] w-[210mm] opacity-0 pointer-events-none"
+            ? `fixed -left-[9999px] -top-[9999px] ${template === 'POS' ? 'w-[80mm]' : 'w-[210mm]'} opacity-0 pointer-events-none`
             : "fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:static print:bg-white print:p-0 print:overflow-visible print:block"
         }
       >
@@ -613,31 +654,19 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            box-sizing: border-box !important;
           }
           @page {
-            size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
-            margin: ${template === 'POS' ? '0' : '8mm 10mm'};
+            size: ${template === 'POS' ? '80mm auto !important' : 'A4 portrait !important'};
+            margin: ${template === 'POS' ? '0mm !important' : '8mm 10mm !important'};
           }
-          .a4-page-sheet {
-            min-height: calc(297mm - 16mm) !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: space-between !important;
-            box-sizing: border-box !important;
-            padding: 0 !important;
+          html, body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            width: ${template === 'POS' ? '80mm !important' : 'auto !important'};
+            max-width: ${template === 'POS' ? '80mm !important' : 'none !important'};
             margin: 0 auto !important;
-            border: none !important;
-            box-shadow: none !important;
-          }
-          .a4-page-content {
-            flex: 1 0 auto !important;
-          }
-          .a4-page-footer {
-            margin-top: auto !important;
-          }
-          table {
-            border-collapse: collapse !important;
-            width: 100% !important;
+            padding: 0 !important;
           }
           ${template === 'POS' ? `
             * {
@@ -645,15 +674,37 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               border-color: #000000 !important;
             }
             .pos-thermal-sheet {
-              width: 76mm !important;
-              max-width: 76mm !important;
+              width: 78mm !important;
+              max-width: 78mm !important;
               margin: 0 auto !important;
-              padding: 3mm 1mm !important;
+              padding: 1mm 1mm !important;
               border: none !important;
               box-shadow: none !important;
               border-radius: 0 !important;
             }
-          ` : ''}
+          ` : `
+            .a4-page-sheet {
+              min-height: calc(297mm - 16mm) !important;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: space-between !important;
+              box-sizing: border-box !important;
+              padding: 0 !important;
+              margin: 0 auto !important;
+              border: none !important;
+              box-shadow: none !important;
+            }
+            .a4-page-content {
+              flex: 1 0 auto !important;
+            }
+            .a4-page-footer {
+              margin-top: auto !important;
+            }
+            table {
+              border-collapse: collapse !important;
+              width: 100% !important;
+            }
+          `}
           ${isPadMode ? `
             .pad-header-branding { display: none !important; }
             .pad-header-spacer { display: block !important; height: ${padTopMarginMm}mm !important; }
@@ -1477,89 +1528,172 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           {/* 4. POS THERMAL 80MM SLIP */}
           {/* ============================================================== */}
           {template === 'POS' && (
-            <div className="bg-white max-w-[80mm] mx-auto p-4 rounded-xl shadow-xs border border-slate-300 print:border-none print:shadow-none font-mono text-[11px] text-slate-900 space-y-3">
-              {/* POS Compact Header: Brand Logo on Left, QR Code on Right */}
-              <DocumentHeader
-                compact={true}
-                documentTitle={
-                  (invoice as any).isQuote
-                    ? 'QUOTATION SLIP'
-                    : (language === 'bn' ? 'ক্যাশ মেমো / ইনভয়েস' : 'TAX INVOICE / বিল')
-                }
-                documentNo={invoice.invoiceNo}
-                documentDate={invoice.date}
-                referenceNo={invoice.referenceNo}
-              />
+            <div className="pos-thermal-sheet bg-white w-[78mm] max-w-[78mm] mx-auto p-2 border border-slate-300 print:border-none print:shadow-none font-mono text-black leading-tight space-y-2 select-text">
+              {/* 1. Company Branding Header */}
+              <div className="text-center space-y-0.5 pb-2 border-b-2 border-dashed border-black">
+                <div className="font-black text-sm uppercase tracking-wide text-black">
+                  {profile.name || 'DOT COLOR COMMUNICATION'}
+                </div>
+                <div className="text-[10px] font-bold text-black uppercase">
+                  {profile.category || 'Printing, Packaging & Signage'}
+                </div>
+                {(profile.officeAddress || profile.factoryAddress) && (
+                  <div className="text-[9px] text-black leading-snug">
+                    {profile.officeAddress || profile.factoryAddress}
+                  </div>
+                )}
+                <div className="text-[10px] font-black text-black">
+                  Hotline: {profile.phone || '01846100900, 01756007600'}
+                </div>
+              </div>
 
-              <div className="text-[10px] space-y-0.5 pb-2 border-b border-dashed border-slate-400">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Invoice #:</span>
-                  <span className="font-bold">#{invoice.invoiceNo}</span>
+              {/* 2. Receipt Title Badge */}
+              <div className="text-center py-1 border-b border-dashed border-black">
+                <span className="font-black text-xs uppercase tracking-widest px-2 py-0.5 border border-black rounded-xs inline-block">
+                  {(invoice as any).isQuote
+                    ? '*** QUOTATION SLIP ***'
+                    : (language === 'bn' ? '*** ক্যাশ মেমো / POS রিসিট ***' : '*** CASH MEMO / POS RECEIPT ***')}
+                </span>
+              </div>
+
+              {/* 3. Invoice & Customer Meta */}
+              <div className="text-[11px] space-y-1 pb-2 border-b-2 border-dashed border-black">
+                <div className="flex justify-between font-bold">
+                  <span>Invoice No:</span>
+                  <span className="font-black">#{invoice.invoiceNo}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Date:</span>
-                  <span>{invoice.date}</span>
+                  <span>Date &amp; Time:</span>
+                  <span className="font-semibold">{invoice.date}</span>
                 </div>
                 {invoice.referenceNo && (
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Ref:</span>
+                    <span>Ref / PO:</span>
                     <span>{invoice.referenceNo}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Customer:</span>
-                  <span className="font-bold truncate max-w-[130px]">{invoice.customerName}</span>
+                <div className="flex justify-between items-start pt-0.5">
+                  <span className="shrink-0 mr-2">Customer:</span>
+                  <span className="font-black text-right break-words">{invoice.customerName}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Phone:</span>
-                  <span>{invoice.customerPhone}</span>
-                </div>
+                {invoice.customerPhone && (
+                  <div className="flex justify-between">
+                    <span>Phone:</span>
+                    <span className="font-bold">{invoice.customerPhone}</span>
+                  </div>
+                )}
+                {invoice.deliveryDate && (
+                  <div className="flex justify-between">
+                    <span>Delivery:</span>
+                    <span>{invoice.deliveryDate}</span>
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-1 pb-2 border-b border-dashed border-slate-400">
-                {invoice.items.map((i, idx) => (
-                  <div key={idx} className="flex justify-between items-start">
-                    <div className="max-w-[50mm] truncate">
-                      {i.name} (x{i.qty})
+              {/* 4. Line Items Table */}
+              <div className="pb-2 border-b-2 border-dashed border-black">
+                {/* Table Column Headers */}
+                <div className="flex justify-between font-black text-[10px] uppercase pb-1 border-b border-black">
+                  <span className="w-[45%] text-left">ITEM / বিবরণ</span>
+                  <span className="w-[15%] text-center">QTY</span>
+                  <span className="w-[20%] text-right">RATE</span>
+                  <span className="w-[20%] text-right">TOTAL</span>
+                </div>
+
+                {/* Items Rows */}
+                <div className="divide-y divide-dotted divide-slate-400 pt-1">
+                  {invoice.items.map((i, idx) => (
+                    <div key={idx} className="py-1 space-y-0.5">
+                      <div className="font-black text-[11px] text-black leading-snug break-words">
+                        {idx + 1}. {i.name}
+                      </div>
+                      {Boolean(i.totalSqft && i.width && i.height) && (
+                        <div className="text-[9px] text-black font-semibold pl-3">
+                          ({i.width}' x {i.height}' = {i.totalSqft} sqft)
+                        </div>
+                      )}
+                      {i.notes && (
+                        <div className="text-[9px] text-black pl-3 italic">
+                          * {i.notes}
+                        </div>
+                      )}
+                      <div className="flex justify-between text-[11px] font-semibold pl-3">
+                        <span className="text-[10px] text-black">
+                          {i.qty} {i.unit || 'pcs'} × {Number(i.unitPrice).toLocaleString()}
+                        </span>
+                        <span className="font-black text-black">
+                          {Number(i.totalPrice).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
-                    <div className="font-bold">{i.totalPrice}</div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
 
-              <div className="space-y-0.5 text-right font-bold text-xs">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>{invoice.subtotal}</span>
+              {/* 5. Financial Summary */}
+              <div className="space-y-1 text-xs font-bold pt-1">
+                <div className="flex justify-between text-[11px]">
+                  <span>Subtotal / সাবটোটাল:</span>
+                  <span>{Number(invoice.subtotal).toLocaleString()} BDT</span>
                 </div>
+
                 {invoice.discount > 0 && (
-                  <div className="flex justify-between text-rose-600">
-                    <span>Discount:</span>
-                    <span>-{invoice.discount}</span>
+                  <div className="flex justify-between text-[11px]">
+                    <span>Discount / ছাড়:</span>
+                    <span>-{Number(invoice.discount).toLocaleString()} BDT</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm font-black pt-1 border-t border-slate-900">
-                  <span>TOTAL:</span>
-                  <span>{invoice.grandTotal} BDT</span>
+
+                {invoice.vatAmount > 0 && (
+                  <div className="flex justify-between text-[11px]">
+                    <span>VAT / ভ্যাট:</span>
+                    <span>+{Number(invoice.vatAmount).toLocaleString()} BDT</span>
+                  </div>
+                )}
+
+                {/* GRAND TOTAL: BOLD DOUBLE LINE */}
+                <div className="py-1.5 my-1 border-y-2 border-black flex justify-between items-center text-sm font-black">
+                  <span>TOTAL / সর্বমোট:</span>
+                  <span className="text-base">{Number(invoice.grandTotal).toLocaleString()} BDT</span>
                 </div>
-                <div className="flex justify-between text-[10px] font-normal pt-1">
-                  <span>Paid ({invoice.paymentMethod}):</span>
-                  <span>{invoice.paidAmount}</span>
+
+                <div className="flex justify-between text-[11px] font-semibold">
+                  <span>Paid ({invoice.paymentMethod || 'Cash'}):</span>
+                  <span>{Number(invoice.paidAmount).toLocaleString()} BDT</span>
                 </div>
-                {invoice.dueAmount > 0 && (
-                  <div className="flex justify-between text-rose-600 font-black">
-                    <span>DUE:</span>
-                    <span>{invoice.dueAmount} BDT</span>
+
+                {invoice.dueAmount > 0 ? (
+                  <div className="flex justify-between text-xs font-black py-0.5 border-t border-dotted border-black">
+                    <span>DUE / বকেয়া:</span>
+                    <span className="text-sm font-black">{Number(invoice.dueAmount).toLocaleString()} BDT</span>
+                  </div>
+                ) : (
+                  <div className="text-center font-black text-[10px] py-0.5 text-black border-t border-dotted border-black">
+                    *** PAID IN FULL (পরিশোধিত) ***
                   </div>
                 )}
               </div>
 
-              <div className="text-center pt-2 border-t border-dashed border-slate-400 text-[9px] text-slate-500">
-                Thank you for your business!
-                <br />
-                Quality Printing &amp; Signage Solutions
-                <div className="mt-1.5 pt-1 border-t border-dotted border-slate-300 text-[8px] text-slate-500 font-sans">
-                  Software Developed by <strong className="text-slate-900 font-bold">BD HOSTT</strong> (www.bdhost.com • 01846100900)
+              {/* 6. Scannable Verification QR Code */}
+              {posQrDataUrl && (
+                <div className="flex flex-col items-center justify-center pt-2 border-t-2 border-dashed border-black">
+                  <img
+                    src={posQrDataUrl}
+                    alt="Receipt Verification QR"
+                    className="w-20 h-20 object-contain mx-auto"
+                  />
+                  <div className="text-[8px] font-bold uppercase tracking-wider text-black mt-0.5">
+                    Scan to Verify / যোগাযোগ
+                  </div>
+                </div>
+              )}
+
+              {/* 7. Footer Notes & Credit */}
+              <div className="text-center pt-1 border-t border-dashed border-black text-[9px] text-black space-y-0.5">
+                <div className="font-bold">পণ্য গ্রহণের সময় গণনা ও কোয়ালিটি যাচাই করুন।</div>
+                <div className="font-bold">ধন্যবাদ! আবার আসবেন।</div>
+                <div className="pt-1 text-[8px] font-sans text-black">
+                  Software by <strong className="font-bold">BD HOSTT</strong> (Hotline: 01846100900)
                 </div>
               </div>
             </div>

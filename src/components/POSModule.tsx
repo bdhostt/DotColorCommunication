@@ -28,7 +28,11 @@ import {
 import { POSSalesOverview } from './POSSalesOverview';
 
 interface POSModuleProps {
-  onOpenInvoiceModal: (invoiceId: string, mode?: 'invoice' | 'challan' | 'pos') => void;
+  onOpenInvoiceModal: (
+    invoiceId: string,
+    mode?: 'invoice' | 'challan' | 'pos',
+    options?: { autoPrint?: boolean; isPadMode?: boolean }
+  ) => void;
 }
 
 export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
@@ -452,8 +456,8 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
           : `Order confirmed successfully! Invoice: ${newInvoice.invoiceNo}`,
       });
 
-      // Open Print Modal directly in POS thermal slip format
-      onOpenInvoiceModal(newInvoice.id, 'pos');
+      // Open Print Modal directly in POS thermal slip format with autoPrint
+      onOpenInvoiceModal(newInvoice.id, 'pos', { autoPrint: true });
     } catch (err: any) {
       console.error('Checkout error:', err);
       setCheckoutFeedback({
