@@ -28,19 +28,23 @@ interface InvoicePrintModalProps {
   invoiceId: string | null;
   mode?: 'invoice' | 'challan' | 'pos';
   onClose: () => void;
+  autoPrint?: boolean;
+  initialPadMode?: boolean;
 }
 
 export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   invoiceId,
   mode = 'invoice',
   onClose,
+  autoPrint = false,
+  initialPadMode = false,
 }) => {
   const { invoices, quotations, profile, language } = useApp();
   const [template, setTemplate] = useState<'A4' | 'POS' | 'WORK_ORDER' | 'CHALLAN'>(
     mode === 'challan' ? 'CHALLAN' : mode === 'pos' ? 'POS' : 'A4'
   );
-  const [isPadMode, setIsPadMode] = useState(false);
-  const [padTopMarginMm, setPadTopMarginMm] = useState<number>(42);
+  const [isPadMode, setIsPadMode] = useState(initialPadMode);
+  const [padTopMarginMm, setPadTopMarginMm] = useState<number>(profile.padTopMarginMm || 42);
   const [printError, setPrintError] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPrinterBridgeOpen, setIsPrinterBridgeOpen] = useState(false);
@@ -98,13 +102,28 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
     isQuote: true,
   };
 
+  useEffect(() => {
+    if (autoPrint && invoiceId) {
+      const timer = setTimeout(() => {
+        handlePrint(initialPadMode);
+      }, 180);
+      return () => clearTimeout(timer);
+    }
+  }, [autoPrint, initialPadMode, invoiceId]);
+
   const tryDirectWindowPrint = () => {
     try {
       window.print();
       setIsPrinting(false);
+      if (autoPrint) {
+        setTimeout(onClose, 600);
+      }
     } catch (err: any) {
       console.error('Direct window.print() failed:', err);
       setIsPrinting(false);
+      if (autoPrint) {
+        setTimeout(onClose, 600);
+      }
       setPrintError(
         language === 'bn'
           ? 'ব্রাউজার প্রিভিউ আইফ্রেমের কারণে প্রিন্ট ডায়ালগ সরাসরি ওপেন হয়নি। অনুগ্রহ করে পাশের "নতুন ট্যাবে প্রিন্ট" বাটনে ক্লিক করুন অথবা "ডাউনলোড" করুন।'
@@ -228,6 +247,9 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               printFrame?.contentWindow?.focus();
               printFrame?.contentWindow?.print();
               setIsPrinting(false);
+              if (autoPrint) {
+                setTimeout(onClose, 600);
+              }
             } catch (err) {
               console.warn('Iframe print blocked, trying window.print():', err);
               tryDirectWindowPrint();
@@ -561,7 +583,30 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:static print:bg-white print:p-0 print:overflow-visible print:block">
+    <>
+      {autoPrint && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 animate-in fade-in slide-in-from-bottom-3 pointer-events-none">
+          <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+            <Printer className="w-5 h-5 animate-pulse" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-slate-100">
+              {initialPadMode ? 'প্যাড প্রিন্ট ডায়ালগ ওপেন হচ্ছে...' : 'প্রিন্টার ডায়ালগ ওপেন হচ্ছে...'}
+            </div>
+            <div className="text-[11px] text-slate-400 font-mono">
+              #{invoice.invoiceNo} {initialPadMode ? '• Letterhead Pad' : '• Normal A4'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div
+        className={
+          autoPrint
+            ? "fixed -left-[9999px] -top-[9999px] w-[210mm] opacity-0 pointer-events-none"
+            : "fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:static print:bg-white print:p-0 print:overflow-visible print:block"
+        }
+      >
       {/* Print styles for direct browser print (Ctrl+P / direct print) */}
       <style>{`
         @media print {
@@ -1532,5 +1577,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
         }}
       />
     </div>
+    </>
   );
 };

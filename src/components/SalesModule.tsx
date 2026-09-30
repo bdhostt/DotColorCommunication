@@ -31,7 +31,11 @@ import { ReportPrintModal } from './ReportPrintModal';
 import { CreateSalesInvoiceModal } from './CreateSalesInvoiceModal';
 
 interface SalesModuleProps {
-  onOpenInvoiceModal: (invoiceId: string) => void;
+  onOpenInvoiceModal: (
+    invoiceId: string,
+    mode?: 'invoice' | 'challan' | 'pos',
+    options?: { autoPrint?: boolean; isPadMode?: boolean }
+  ) => void;
   onOpenChallanModal: (invoiceId: string) => void;
 }
 
@@ -826,14 +830,35 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
 
                     <td className="py-3.5 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        {/* View & Print Invoice */}
+                        {/* 1. Direct Normal Print (Prints immediately without preview) */}
                         <button
                           type="button"
-                          onClick={() => onOpenInvoiceModal(inv.id)}
-                          className="p-1.5 text-slate-700 hover:text-amber-600 hover:bg-amber-50 rounded-lg border border-slate-200 transition-colors"
-                          title="View & Print Invoice"
+                          onClick={() => onOpenInvoiceModal(inv.id, 'invoice', { autoPrint: true, isPadMode: false })}
+                          className="p-1.5 text-amber-800 bg-amber-50 hover:bg-amber-100 hover:text-amber-900 rounded-lg border border-amber-300 transition-colors shadow-2xs cursor-pointer"
+                          title={language === 'bn' ? 'সরাসরি প্রিন্ট করুন (A4 সম্পূর্ণ ইনভয়েস - প্রিভিউ ছাড়া)' : 'Direct Normal Print (Full A4 - No Preview)'}
                         >
-                          <Printer className="w-3.5 h-3.5" />
+                          <Printer className="w-3.5 h-3.5 text-amber-700" />
+                        </button>
+
+                        {/* 2. Direct Pad Print (Prints on letterhead pad without header branding) */}
+                        <button
+                          type="button"
+                          onClick={() => onOpenInvoiceModal(inv.id, 'invoice', { autoPrint: true, isPadMode: true })}
+                          className="px-2 py-1 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-900 rounded-lg border border-indigo-200 transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
+                          title={language === 'bn' ? 'সরাসরি প্যাড প্রিন্ট (কোম্পানি লেটারহেড প্যাডে প্রিন্ট)' : 'Direct Pad Print (For Letterhead Pad)'}
+                        >
+                          <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                          <span className="text-[10px] font-black">প্যাড</span>
+                        </button>
+
+                        {/* 3. View / Preview Invoice Modal */}
+                        <button
+                          type="button"
+                          onClick={() => onOpenInvoiceModal(inv.id, 'invoice', { autoPrint: false })}
+                          className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                          title={language === 'bn' ? 'ইনভয়েস প্রিভিউ ও বিস্তারিত দেখুন' : 'View / Preview Invoice'}
+                        >
+                          <Eye className="w-3.5 h-3.5" />
                         </button>
 
                         {/* Edit Invoice */}
@@ -1008,14 +1033,36 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                   </span>
 
                   <div className="flex items-center gap-1.5">
-                    {/* Print & View Button */}
+                    {/* Direct Normal Print */}
                     <button
                       type="button"
-                      onClick={() => onOpenInvoiceModal(q.id)}
-                      className="flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                      onClick={() => onOpenInvoiceModal(q.id, 'invoice', { autoPrint: true, isPadMode: false })}
+                      className="flex items-center gap-1 text-[11px] font-bold text-slate-800 bg-amber-50 hover:bg-amber-100 hover:text-amber-900 border border-amber-300 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                      title={language === 'bn' ? 'সরাসরি কোটেশন প্রিন্ট করুন (A4 সম্পূর্ণ)' : 'Direct Print Quotation'}
                     >
                       <Printer className="w-3.5 h-3.5 text-amber-600" />
-                      <span>{language === 'bn' ? 'প্রিন্ট ও ভিউ' : 'Print & View'}</span>
+                      <span>{language === 'bn' ? 'প্রিন্ট' : 'Print'}</span>
+                    </button>
+
+                    {/* Direct Pad Print */}
+                    <button
+                      type="button"
+                      onClick={() => onOpenInvoiceModal(q.id, 'invoice', { autoPrint: true, isPadMode: true })}
+                      className="flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-1.5 rounded-lg transition-colors cursor-pointer"
+                      title={language === 'bn' ? 'সরাসরি প্যাড প্রিন্ট (লেটারহেড)' : 'Direct Pad Print'}
+                    >
+                      <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>{language === 'bn' ? 'প্যাড' : 'Pad'}</span>
+                    </button>
+
+                    {/* View Preview */}
+                    <button
+                      type="button"
+                      onClick={() => onOpenInvoiceModal(q.id, 'invoice', { autoPrint: false })}
+                      className="flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                      title={language === 'bn' ? 'কোটেশন প্রিভিউ দেখুন' : 'View Quote Preview'}
+                    >
+                      <Eye className="w-3.5 h-3.5" />
                     </button>
 
                     {/* Edit Button if not converted to invoice */}

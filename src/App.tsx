@@ -93,14 +93,28 @@ const MainLayout: React.FC = () => {
     return <Login />;
   }
 
-  const handleOpenInvoice = (id: string, mode: 'invoice' | 'challan' | 'pos' = 'invoice') => {
+  const [directPrintOptions, setDirectPrintOptions] = useState<{ autoPrint: boolean; isPadMode: boolean }>({
+    autoPrint: false,
+    isPadMode: false,
+  });
+
+  const handleOpenInvoice = (
+    id: string,
+    mode: 'invoice' | 'challan' | 'pos' = 'invoice',
+    options?: { autoPrint?: boolean; isPadMode?: boolean }
+  ) => {
     setSelectedInvoiceId(id);
     setModalMode(mode);
+    setDirectPrintOptions({
+      autoPrint: Boolean(options?.autoPrint),
+      isPadMode: Boolean(options?.isPadMode),
+    });
   };
 
   const handleOpenChallan = (id: string) => {
     setSelectedInvoiceId(id);
     setModalMode('challan');
+    setDirectPrintOptions({ autoPrint: false, isPadMode: false });
   };
 
   return (
@@ -130,9 +144,15 @@ const MainLayout: React.FC = () => {
       {/* Invoice & Challan Modal */}
       {selectedInvoiceId && (
         <InvoicePrintModal
+          key={`${selectedInvoiceId}-${directPrintOptions.autoPrint ? 'auto' : 'view'}-${directPrintOptions.isPadMode ? 'pad' : 'normal'}`}
           invoiceId={selectedInvoiceId}
           mode={modalMode}
-          onClose={() => setSelectedInvoiceId(null)}
+          autoPrint={directPrintOptions.autoPrint}
+          initialPadMode={directPrintOptions.isPadMode}
+          onClose={() => {
+            setSelectedInvoiceId(null);
+            setDirectPrintOptions({ autoPrint: false, isPadMode: false });
+          }}
         />
       )}
 

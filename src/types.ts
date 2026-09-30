@@ -72,6 +72,7 @@ export interface CompanyProfile {
   routingNumber?: string;
   bkashNagadNumber?: string;
   bankingNotes?: string;
+  padTopMarginMm?: number;
   
   // Dynamic Factory Details
   factoryUnitBadge?: string;
