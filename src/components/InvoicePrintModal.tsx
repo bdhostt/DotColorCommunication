@@ -132,6 +132,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 <title>${invoice.invoiceNo} - Print</title>
                 ${styles}
                 <style>
+                  * {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                  }
                   @page {
                     size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
                     margin: ${template === 'POS' ? '2mm' : '8mm 10mm'};
@@ -161,6 +165,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   }
                   .a4-page-footer {
                     margin-top: auto !important;
+                  }
+                  table {
+                    border-collapse: collapse !important;
+                    width: 100% !important;
                   }
                 </style>
               </head>
@@ -209,6 +217,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           <script src="https://cdn.tailwindcss.com"></script>
           ${styles}
           <style>
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
             @page {
               size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
               margin: ${template === 'POS' ? '2mm' : '8mm 10mm'};
@@ -272,6 +284,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 box-shadow: none !important;
                 padding: 0 !important;
               }
+              table {
+                border-collapse: collapse !important;
+                width: 100% !important;
+              }
             }
           </style>
         </head>
@@ -329,6 +345,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           <script src="https://cdn.tailwindcss.com"></script>
           ${styles}
           <style>
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
             @page {
               size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
               margin: ${template === 'POS' ? '2mm' : '8mm 10mm'};
@@ -360,6 +380,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 box-shadow: none !important;
                 padding: 0 !important;
               }
+              table {
+                border-collapse: collapse !important;
+                width: 100% !important;
+              }
             }
           </style>
         </head>
@@ -387,6 +411,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
       {/* Print styles for direct browser print (Ctrl+P / direct print) */}
       <style>{`
         @media print {
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           @page {
             size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
             margin: ${template === 'POS' ? '2mm' : '8mm 10mm'};
@@ -407,6 +435,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           }
           .a4-page-footer {
             margin-top: auto !important;
+          }
+          table {
+            border-collapse: collapse !important;
+            width: 100% !important;
           }
         }
       `}</style>
@@ -544,7 +576,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               />
 
               {/* Bill To & Invoice Meta Box (Screenshot Layout: Left BILL TO, Right INVOICE DETAILS) */}
-              <div className="bg-white p-4 rounded-xl border border-slate-300 shadow-2xs grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="bg-white p-4 rounded-xl border-2 border-slate-400 print:border-slate-600 shadow-2xs grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 {/* Left Column: BILL TO */}
                 <div className="space-y-1.5">
                   <span className="text-[11px] font-black uppercase text-slate-900 tracking-wider block mb-1">
@@ -581,7 +613,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </div>
 
                 {/* Right Column: Invoice Details */}
-                <div className="space-y-1.5 sm:border-l sm:border-slate-200 sm:pl-4">
+                <div className="space-y-1.5 sm:border-l-2 sm:border-slate-300 print:sm:border-slate-400 sm:pl-4">
                   <span className="text-[11px] font-black uppercase text-slate-900 tracking-wider block mb-1">
                     DOCUMENT DETAILS:
                   </span>
@@ -625,40 +657,40 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               </div>
 
               {/* Items Table */}
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse border border-slate-300 print:border-slate-500 rounded-lg overflow-hidden">
                 <thead>
-                  <tr className="bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider">
-                    <th className="py-2.5 px-3 rounded-l">SL</th>
-                    <th className="py-2.5 px-3">Service / Item Description</th>
-                    <th className="py-2.5 px-3 text-center">Unit</th>
-                    <th className="py-2.5 px-3 text-center">Qty / SqFt</th>
-                    <th className="py-2.5 px-3 text-right">Rate (৳)</th>
-                    <th className="py-2.5 px-3 text-right rounded-r">Total (৳)</th>
+                  <tr className="bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider border-b border-slate-900">
+                    <th className="py-2.5 px-3 border-r border-slate-700 font-bold">SL</th>
+                    <th className="py-2.5 px-3 border-r border-slate-700 font-bold">Service / Item Description</th>
+                    <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold">Unit</th>
+                    <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold">Qty / SqFt</th>
+                    <th className="py-2.5 px-3 text-right border-r border-slate-700 font-bold">Rate (৳)</th>
+                    <th className="py-2.5 px-3 text-right font-bold">Total (৳)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 text-xs">
+                <tbody className="divide-y divide-slate-300 print:divide-slate-400 text-xs">
                   {invoice.items.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50">
-                      <td className="py-2.5 px-3 font-semibold text-slate-500">{idx + 1}</td>
-                      <td className="py-2.5 px-3">
-                        <div className="font-bold text-slate-900">{item.name}</div>
+                    <tr key={idx} className="border-b border-slate-300 print:border-slate-400 hover:bg-slate-50/50">
+                      <td className="py-2.5 px-3 font-bold text-slate-700 border-r border-slate-300 print:border-slate-400 text-center">{idx + 1}</td>
+                      <td className="py-2.5 px-3 border-r border-slate-300 print:border-slate-400">
+                        <div className="font-bold text-slate-950 text-xs">{item.name}</div>
                         {item.totalSqft && (
-                          <div className="text-[11px] text-amber-700 font-medium">
+                          <div className="text-[11px] text-amber-800 font-semibold mt-0.5">
                             Dimensions: {item.width}' × {item.height}' = {item.totalSqft} SqFt
                           </div>
                         )}
                         {item.notes && (
-                          <div className="text-[10px] text-slate-500 italic">{item.notes}</div>
+                          <div className="text-[10px] text-slate-600 italic mt-0.5">{item.notes}</div>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-center font-medium">{item.unit}</td>
-                      <td className="py-2.5 px-3 text-center font-bold">
+                      <td className="py-2.5 px-3 text-center font-medium text-slate-800 border-r border-slate-300 print:border-slate-400">{item.unit}</td>
+                      <td className="py-2.5 px-3 text-center font-black text-slate-950 border-r border-slate-300 print:border-slate-400">
                         {item.totalSqft ? item.totalSqft : item.qty}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-semibold">
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-900 border-r border-slate-300 print:border-slate-400">
                         {item.unitPrice.toLocaleString()}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-black">
+                      <td className="py-2.5 px-3 text-right font-black text-slate-950">
                         {item.totalPrice.toLocaleString()}
                       </td>
                     </tr>
@@ -670,18 +702,20 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               <div className="grid grid-cols-12 gap-6 pt-2">
                 <div className="col-span-7 space-y-3">
                   {invoice.jobSpecs && (
-                    <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs">
-                      <strong className="text-amber-900 block mb-0.5">Job Instructions:</strong>
-                      <span className="text-slate-700">{invoice.jobSpecs}</span>
+                    <div className="bg-amber-50/80 p-3 rounded-xl border border-amber-300 print:border-amber-400 text-xs shadow-2xs">
+                      <strong className="text-amber-950 font-bold block mb-0.5">Job Instructions:</strong>
+                      <span className="text-slate-800">{invoice.jobSpecs}</span>
                     </div>
                   )}
 
-                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-[11px] space-y-1">
-                    <strong className="text-slate-800 block">Bank Account for Payment:</strong>
-                    <div>Bank: {profile.bankName}</div>
-                    <div>Account: {profile.bankAccount}</div>
-                    <div>Branch: {profile.bankBranch}</div>
-                    <div>bKash / Nagad: {profile.phone}</div>
+                  <div className="bg-slate-50/80 p-3.5 rounded-xl border-2 border-slate-400 print:border-slate-600 text-[11px] space-y-1.5 shadow-2xs">
+                    <strong className="text-slate-900 font-extrabold block border-b border-slate-300 print:border-slate-400 pb-1 mb-1">
+                      Bank Account for Payment:
+                    </strong>
+                    <div className="text-slate-700"><span className="font-semibold text-slate-900">Bank:</span> {profile.bankName}</div>
+                    <div className="text-slate-700"><span className="font-semibold text-slate-900">Account:</span> {profile.bankAccount}</div>
+                    <div className="text-slate-700"><span className="font-semibold text-slate-900">Branch:</span> {profile.bankBranch}</div>
+                    <div className="text-slate-700"><span className="font-semibold text-slate-900">bKash / Nagad:</span> {profile.phone}</div>
                   </div>
                 </div>
 
@@ -831,7 +865,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               />
 
               {/* Order Meta Box */}
-              <div className="bg-white p-4 rounded-xl border border-amber-300 shadow-2xs grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="bg-white p-4 rounded-xl border-2 border-amber-400 print:border-slate-600 shadow-2xs grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div className="space-y-1.5">
                   <span className="text-[11px] font-black uppercase text-amber-900 tracking-wider block mb-1">
                     CLIENT DETAILS:
@@ -854,7 +888,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   </div>
                 </div>
 
-                <div className="space-y-1.5 sm:border-l sm:border-amber-200 sm:pl-4">
+                <div className="space-y-1.5 sm:border-l-2 sm:border-amber-300 print:sm:border-slate-400 sm:pl-4">
                   <span className="text-[11px] font-black uppercase text-amber-900 tracking-wider block mb-1">
                     PRODUCTION DEADLINE & STATUS:
                   </span>
@@ -964,7 +998,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               />
 
               {/* Delivery Meta Box */}
-              <div className="bg-white p-4 rounded-xl border border-slate-300 shadow-2xs grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="bg-white p-4 rounded-xl border-2 border-slate-400 print:border-slate-600 shadow-2xs grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div className="space-y-1.5">
                   <span className="text-[11px] font-black uppercase text-slate-900 tracking-wider block mb-1">
                     DELIVER TO:
@@ -985,7 +1019,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   </div>
                 </div>
 
-                <div className="space-y-1.5 sm:border-l sm:border-slate-200 sm:pl-4">
+                <div className="space-y-1.5 sm:border-l-2 sm:border-slate-300 print:sm:border-slate-400 sm:pl-4">
                   <span className="text-[11px] font-black uppercase text-slate-900 tracking-wider block mb-1">
                     DISPATCH DETAILS:
                   </span>
@@ -1012,22 +1046,22 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </div>
               </div>
 
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse border border-slate-300 print:border-slate-500 rounded-lg overflow-hidden">
                 <thead>
-                  <tr className="bg-slate-100 text-slate-800 text-[11px] font-bold uppercase border-b border-slate-200">
-                    <th className="py-2.5 px-3">SL</th>
-                    <th className="py-2.5 px-3">Description of Goods Delivered</th>
-                    <th className="py-2.5 px-3 text-center">Unit</th>
-                    <th className="py-2.5 px-3 text-right">Delivered Quantity</th>
+                  <tr className="bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider border-b border-slate-900">
+                    <th className="py-2.5 px-3 border-r border-slate-700 font-bold">SL</th>
+                    <th className="py-2.5 px-3 border-r border-slate-700 font-bold">Description of Goods Delivered</th>
+                    <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold">Unit</th>
+                    <th className="py-2.5 px-3 text-right font-bold">Delivered Quantity</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-300 print:divide-slate-400 text-xs">
                   {invoice.items.map((i, idx) => (
-                    <tr key={idx}>
-                      <td className="py-2 px-3 text-slate-500">{idx + 1}</td>
-                      <td className="py-2 px-3 font-bold">{i.name}</td>
-                      <td className="py-2 px-3 text-center">{i.unit}</td>
-                      <td className="py-2 px-3 text-right font-black text-sm">
+                    <tr key={idx} className="border-b border-slate-300 print:border-slate-400 hover:bg-slate-50/50">
+                      <td className="py-2.5 px-3 text-slate-700 font-bold text-center border-r border-slate-300 print:border-slate-400">{idx + 1}</td>
+                      <td className="py-2.5 px-3 font-bold text-slate-950 border-r border-slate-300 print:border-slate-400">{i.name}</td>
+                      <td className="py-2.5 px-3 text-center font-medium text-slate-800 border-r border-slate-300 print:border-slate-400">{i.unit}</td>
+                      <td className="py-2.5 px-3 text-right font-black text-sm text-slate-950">
                         {i.qty} {i.unit}
                       </td>
                     </tr>
@@ -1035,7 +1069,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </tbody>
               </table>
 
-              <div className="bg-slate-50 p-4 rounded-xl text-[11px] text-slate-600 leading-relaxed">
+              <div className="bg-slate-50/80 p-4 rounded-xl border-2 border-slate-400 print:border-slate-600 text-[11px] text-slate-800 leading-relaxed shadow-2xs">
                 <p>
                   ঘোষণাপত্র: উপরিউক্ত পণ্য সামগ্রী সঠিক গণনা ও অক্ষত অবস্থায় গ্রহণ করিলাম।
                 </p>

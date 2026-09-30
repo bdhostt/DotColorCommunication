@@ -123,9 +123,9 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
         </div>
 
         {/* 2. Right Side: QR Code & Company Contact Block (exactly as in uploaded card/screenshot) */}
-        <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-300 shadow-2xs shrink-0 max-w-lg">
+        <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border-2 border-slate-400 print:border-slate-600 shadow-2xs shrink-0 max-w-lg">
           {/* QR Code */}
-          <div className="shrink-0 p-1 bg-white rounded-lg border border-slate-200">
+          <div className="shrink-0 p-1 bg-white rounded-lg border border-slate-300 print:border-slate-400">
             {qrDataUrl ? (
               <img
                 src={qrDataUrl}
