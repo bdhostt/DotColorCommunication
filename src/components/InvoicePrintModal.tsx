@@ -132,9 +132,36 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 <title>${invoice.invoiceNo} - Print</title>
                 ${styles}
                 <style>
-                  @page { margin: 6mm; size: auto; }
-                  body { background: white !important; color: black !important; padding: 0 !important; margin: 0 !important; font-family: sans-serif; }
+                  @page {
+                    size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
+                    margin: ${template === 'POS' ? '2mm' : '8mm 10mm'};
+                  }
+                  html, body {
+                    background: white !important;
+                    color: black !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    font-family: sans-serif;
+                    height: 100%;
+                  }
                   .print\\:hidden { display: none !important; }
+                  .a4-page-sheet {
+                    min-height: calc(297mm - 16mm) !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    justify-content: space-between !important;
+                    box-sizing: border-box !important;
+                    padding: 0 !important;
+                    margin: 0 auto !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                  }
+                  .a4-page-content {
+                    flex: 1 0 auto !important;
+                  }
+                  .a4-page-footer {
+                    margin-top: auto !important;
+                  }
                 </style>
               </head>
               <body>
@@ -182,8 +209,17 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           <script src="https://cdn.tailwindcss.com"></script>
           ${styles}
           <style>
-            @page { margin: 6mm; size: auto; }
-            body { background: white !important; color: black !important; padding: 15px; font-family: sans-serif; }
+            @page {
+              size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
+              margin: ${template === 'POS' ? '2mm' : '8mm 10mm'};
+            }
+            html, body {
+              background: white !important;
+              color: black !important;
+              padding: 15px;
+              font-family: sans-serif;
+              min-height: 100%;
+            }
             .print-controls-bar {
               display: flex;
               justify-content: center;
@@ -214,9 +250,28 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               cursor: pointer;
               border: none;
             }
+            .a4-page-sheet {
+              min-height: 297mm;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: space-between !important;
+              box-sizing: border-box !important;
+            }
+            .a4-page-content {
+              flex: 1 0 auto !important;
+            }
+            .a4-page-footer {
+              margin-top: auto !important;
+            }
             @media print {
               .print-controls-bar { display: none !important; }
               body { padding: 0 !important; }
+              .a4-page-sheet {
+                min-height: calc(297mm - 16mm) !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+              }
             }
           </style>
         </head>
@@ -274,9 +329,38 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           <script src="https://cdn.tailwindcss.com"></script>
           ${styles}
           <style>
-            @page { margin: 6mm; size: auto; }
-            body { background: white !important; color: black !important; padding: 20px; font-family: sans-serif; }
-            @media print { body { padding: 0 !important; } }
+            @page {
+              size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
+              margin: ${template === 'POS' ? '2mm' : '8mm 10mm'};
+            }
+            body {
+              background: white !important;
+              color: black !important;
+              padding: 20px;
+              font-family: sans-serif;
+            }
+            .a4-page-sheet {
+              min-height: 297mm;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: space-between !important;
+              box-sizing: border-box !important;
+            }
+            .a4-page-content {
+              flex: 1 0 auto !important;
+            }
+            .a4-page-footer {
+              margin-top: auto !important;
+            }
+            @media print {
+              body { padding: 0 !important; }
+              .a4-page-sheet {
+                min-height: calc(297mm - 16mm) !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+              }
+            }
           </style>
         </head>
         <body onload="window.print()">
@@ -300,6 +384,32 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:static print:bg-white print:p-0 print:overflow-visible print:block">
+      {/* Print styles for direct browser print (Ctrl+P / direct print) */}
+      <style>{`
+        @media print {
+          @page {
+            size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
+            margin: ${template === 'POS' ? '2mm' : '8mm 10mm'};
+          }
+          .a4-page-sheet {
+            min-height: calc(297mm - 16mm) !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            box-sizing: border-box !important;
+            padding: 0 !important;
+            margin: 0 auto !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+          .a4-page-content {
+            flex: 1 0 auto !important;
+          }
+          .a4-page-footer {
+            margin-top: auto !important;
+          }
+        }
+      `}</style>
       {/* Container */}
       <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[96vh] flex flex-col shadow-2xl border border-slate-200 print:max-w-none print:w-full print:max-h-none print:h-auto print:border-none print:shadow-none print:rounded-none">
         
@@ -418,7 +528,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           {/* 1. STANDARD A4 TAX / SALES INVOICE */}
           {/* ============================================================== */}
           {template === 'A4' && (
-            <div className="bg-white max-w-[210mm] mx-auto p-8 rounded-xl shadow-xs print:shadow-none print:p-6 border border-slate-200 print:border-none space-y-6 text-slate-900 text-xs">
+            <div className="a4-page-sheet bg-white max-w-[210mm] min-h-[297mm] mx-auto p-8 rounded-xl shadow-xs print:shadow-none print:p-0 border border-slate-200 print:border-none flex flex-col justify-between text-slate-900 text-xs">
+              <div className="a4-page-content space-y-6 flex-1">
               
               {/* Header: Company Logo on Left, QR Banner on Right (as per Screenshot) */}
               <DocumentHeader
@@ -677,24 +788,29 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </div>
               </div>
 
-              {/* Signatures */}
-              <div className="pt-12 flex justify-between items-end text-center text-xs text-slate-600">
-                <div>
-                  <div className="w-36 border-t border-slate-400 mx-auto mb-1" />
-                  <span>Customer's Signature</span>
-                </div>
-                <div>
-                  <div className="w-44 border-t border-slate-400 mx-auto mb-1" />
-                  <span className="font-bold text-slate-900">For {profile.name}</span>
-                </div>
               </div>
 
-              {/* IT Firm Partner Advertising Footer */}
-              <div className="pt-6 mt-6 border-t border-slate-200 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1">
-                <span>DotColorCommunication Sales, POS &amp; ERP</span>
-                <span className="font-semibold text-slate-600">
-                  Software Developed &amp; Powered by <strong className="text-blue-700 font-bold">BD HOSTT</strong> (www.bdhost.com • Hotline: 01846100900)
-                </span>
+              {/* Signatures & Footer pinned to bottom */}
+              <div className="a4-page-footer mt-auto pt-8 space-y-6">
+                {/* Signatures */}
+                <div className="flex justify-between items-end text-center text-xs text-slate-600">
+                  <div>
+                    <div className="w-36 border-t border-slate-400 mx-auto mb-1" />
+                    <span>Customer's Signature</span>
+                  </div>
+                  <div>
+                    <div className="w-44 border-t border-slate-400 mx-auto mb-1" />
+                    <span className="font-bold text-slate-900">For {profile.name}</span>
+                  </div>
+                </div>
+
+                {/* IT Firm Partner Advertising Footer */}
+                <div className="pt-4 border-t border-slate-200 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1">
+                  <span>DotColorCommunication Sales, POS &amp; ERP</span>
+                  <span className="font-semibold text-slate-600">
+                    Software Developed by <strong className="text-blue-700 font-bold">BD HOSTT</strong> (www.bdhost.com • Hotline: 01846100900)
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -703,7 +819,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           {/* 2. FACTORY WORK ORDER / JOB CARD */}
           {/* ============================================================== */}
           {template === 'WORK_ORDER' && (
-            <div className="bg-white max-w-[210mm] mx-auto p-8 rounded-xl shadow-xs border border-amber-300 space-y-6 text-xs text-slate-900">
+            <div className="a4-page-sheet bg-white max-w-[210mm] min-h-[297mm] mx-auto p-8 rounded-xl shadow-xs print:shadow-none print:p-0 border border-amber-300 print:border-none flex flex-col justify-between text-xs text-slate-900">
+              <div className="a4-page-content space-y-6 flex-1">
               {/* Header with Brand Logo on Left, QR Banner on Right */}
               <DocumentHeader
                 documentTitle="PRODUCTION WORK ORDER / কারখানা জব কার্ড"
@@ -805,22 +922,28 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </div>
               )}
 
-              <div className="pt-8 grid grid-cols-3 gap-4 text-center text-xs text-slate-600">
-                <div>
-                  <div className="border-t border-slate-300 pt-1">Graphic Designer</div>
-                </div>
-                <div>
-                  <div className="border-t border-slate-300 pt-1">Machine Operator / Print Master</div>
-                </div>
-                <div>
-                  <div className="border-t border-slate-300 pt-1">Quality Inspection & Packing</div>
-                </div>
               </div>
 
-              {/* IT Firm Partner Advertising Footer */}
-              <div className="pt-4 mt-4 border-t border-amber-200 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1">
-                <span>Production Work Order &amp; Job Card</span>
-                <span>Powered by <strong className="text-blue-700 font-bold">BD HOSTT</strong> IT Solutions (Hotline: 01846100900)</span>
+              <div className="a4-page-footer mt-auto pt-8 space-y-4">
+                <div className="grid grid-cols-3 gap-4 text-center text-xs text-slate-600">
+                  <div>
+                    <div className="border-t border-slate-300 pt-1">Graphic Designer</div>
+                  </div>
+                  <div>
+                    <div className="border-t border-slate-300 pt-1">Machine Operator / Print Master</div>
+                  </div>
+                  <div>
+                    <div className="border-t border-slate-300 pt-1">Quality Inspection & Packing</div>
+                  </div>
+                </div>
+
+                {/* IT Firm Partner Advertising Footer */}
+                <div className="pt-4 border-t border-amber-200 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1">
+                  <span>Production Work Order &amp; Job Card</span>
+                  <span className="font-semibold text-slate-600">
+                    Software Developed by <strong className="text-blue-700 font-bold">BD HOSTT</strong> (www.bdhost.com • Hotline: 01846100900)
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -829,7 +952,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           {/* 3. DELIVERY CHALLAN */}
           {/* ============================================================== */}
           {template === 'CHALLAN' && (
-            <div className="bg-white max-w-[210mm] mx-auto p-8 rounded-xl shadow-xs border border-slate-200 space-y-6 text-xs text-slate-900">
+            <div className="a4-page-sheet bg-white max-w-[210mm] min-h-[297mm] mx-auto p-8 rounded-xl shadow-xs print:shadow-none print:p-0 border border-slate-200 print:border-none flex flex-col justify-between text-xs text-slate-900">
+              <div className="a4-page-content space-y-6 flex-1">
               {/* Header with Brand Logo on Left, QR Banner on Right */}
               <DocumentHeader
                 documentTitle="DELIVERY CHALLAN / চালান"
@@ -917,23 +1041,27 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </p>
               </div>
 
-              <div className="pt-16 flex justify-between items-end text-center text-xs text-slate-600">
-                <div>
-                  <div className="w-36 border-t border-slate-400 mx-auto mb-1" />
-                  <span>Receiver's Signature with Seal</span>
-                </div>
-                <div>
-                  <div className="w-40 border-t border-slate-400 mx-auto mb-1" />
-                  <span className="font-bold text-slate-900">Delivered By ({profile.name})</span>
-                </div>
               </div>
 
-              {/* IT Firm Partner Advertising Footer */}
-              <div className="pt-6 mt-6 border-t border-slate-200 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1">
-                <span>Official Delivery Challan • DotColorCommunication</span>
-                <span className="font-semibold text-slate-600">
-                  Software Developed &amp; Powered by <strong className="text-blue-700 font-bold">BD HOSTT</strong> (www.bdhost.com • Hotline: 01846100900)
-                </span>
+              <div className="a4-page-footer mt-auto pt-8 space-y-6">
+                <div className="flex justify-between items-end text-center text-xs text-slate-600">
+                  <div>
+                    <div className="w-36 border-t border-slate-400 mx-auto mb-1" />
+                    <span>Receiver's Signature with Seal</span>
+                  </div>
+                  <div>
+                    <div className="w-40 border-t border-slate-400 mx-auto mb-1" />
+                    <span className="font-bold text-slate-900">Delivered By ({profile.name})</span>
+                  </div>
+                </div>
+
+                {/* IT Firm Partner Advertising Footer */}
+                <div className="pt-4 border-t border-slate-200 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1">
+                  <span>Official Delivery Challan • DotColorCommunication</span>
+                  <span className="font-semibold text-slate-600">
+                    Software Developed by <strong className="text-blue-700 font-bold">BD HOSTT</strong> (www.bdhost.com • Hotline: 01846100900)
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -1024,7 +1152,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 <br />
                 Quality Printing &amp; Signage Solutions
                 <div className="mt-1.5 pt-1 border-t border-dotted border-slate-300 text-[8px] text-slate-500 font-sans">
-                  Powered by <strong className="text-slate-900 font-bold">BD HOSTT</strong> (www.bdhost.com • 01846100900)
+                  Software Developed by <strong className="text-slate-900 font-bold">BD HOSTT</strong> (www.bdhost.com • 01846100900)
                 </div>
               </div>
             </div>

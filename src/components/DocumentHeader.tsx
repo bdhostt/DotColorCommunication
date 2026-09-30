@@ -39,7 +39,7 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
           `Email: ${profile.emails?.[0] || 'info@dotcolorcommunication.com'}`,
           `Web: ${profile.website || 'www.dotcolorcommunication.com'}`,
           `Address: ${profile.factoryAddress || 'South Noya Para, Banglabazar, Cox\'s Bazar, Chattogram, Bangladesh.'}`,
-          'Powered by: BD HOSTT (www.bdhost.com • Hotline: 01846100900)',
+          'Software Developed by: BD HOSTT (www.bdhost.com • Hotline: 01846100900)',
         ]
           .filter(Boolean)
           .join('\n');

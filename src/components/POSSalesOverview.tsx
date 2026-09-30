@@ -278,7 +278,6 @@ export const POSSalesOverview: React.FC<POSSalesOverviewProps> = ({
                 [
                   { id: 'today', en: 'Today', bn: 'আজকে' },
                   { id: '7d', en: '7 Days', bn: '৭ দিন' },
-                  { id: '30d', en: '30 Days', bn: '৩০ দিন' },
                   { id: 'this_month', en: 'Month', bn: 'মাস' },
                   { id: 'custom', en: 'Custom', bn: 'কাস্টম' },
                 ] as const
