@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { SalesInvoice } from '../types';
 import { BrandLogo } from './BrandLogo';
 import { DocumentHeader } from './DocumentHeader';
+import { dispatchHardwarePrint, checkHardwareAgentStatus, HardwareAgentStatus } from '../utils/hardwarePrint';
+import { PrinterBridgeModal } from './PrinterBridgeModal';
 import {
   Printer,
   X,
@@ -19,6 +21,7 @@ import {
   MapPin,
   Calendar,
   FileSpreadsheet,
+  Settings,
 } from 'lucide-react';
 
 interface InvoicePrintModalProps {
@@ -40,6 +43,16 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   const [padTopMarginMm, setPadTopMarginMm] = useState<number>(42);
   const [printError, setPrintError] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isPrinterBridgeOpen, setIsPrinterBridgeOpen] = useState(false);
+  const [hardwareAgentStatus, setHardwareAgentStatus] = useState<HardwareAgentStatus>({ isOnline: false });
+  const [isHardwarePrinting, setIsHardwarePrinting] = useState(false);
+  const [hardwarePrintMsg, setHardwarePrintMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (template === 'POS') {
+      checkHardwareAgentStatus().then((st) => setHardwareAgentStatus(st));
+    }
+  }, [template]);
 
   if (!invoiceId) return null;
   
@@ -233,6 +246,71 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   const handlePadPrint = () => {
     setIsPadMode(true);
     handlePrint(true);
+  };
+
+  const handleHardwarePrint = async () => {
+    setIsHardwarePrinting(true);
+    setHardwarePrintMsg(null);
+
+    const hardwarePayload = {
+      companyName: profile.name || 'DotColor Communication',
+      companyCategory: profile.category || 'Printing, Packaging & Signage',
+      companyHotline: profile.phone || '01846100900',
+      companyAddress: profile.officeAddress || profile.factoryAddress || 'Dhaka, Bangladesh',
+      documentTitle: 'TAX INVOICE / বিল',
+      invoiceNo: invoice.invoiceNo,
+      referenceNo: invoice.referenceNo,
+      date: invoice.date,
+      customerName: invoice.customerName,
+      customerPhone: invoice.customerPhone,
+      customerAddress: invoice.customerAddress,
+      items: invoice.items.map((item) => ({
+        name: item.name,
+        qty: item.qty,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        width: item.width,
+        height: item.height,
+        totalSqft: item.totalSqft,
+        notes: item.notes,
+      })),
+      subtotal: invoice.subtotal,
+      discount: invoice.discount,
+      vatRate: invoice.vatRate,
+      vatAmount: invoice.vatAmount,
+      grandTotal: invoice.grandTotal,
+      paidAmount: invoice.paidAmount,
+      dueAmount: invoice.dueAmount,
+      paymentMethod: invoice.paymentMethod,
+    };
+
+    try {
+      const ok = await dispatchHardwarePrint('/api/hardware/print-invoice', hardwarePayload);
+      if (ok) {
+        setHardwarePrintMsg({
+          type: 'success',
+          text: language === 'bn'
+            ? '✅ ৮০মিমি থার্মাল প্রিন্টারে সরাসরি প্রিন্ট পাঠানো হয়েছে!'
+            : '✅ Direct print sent to 80mm thermal printer!',
+        });
+        setTimeout(() => setHardwarePrintMsg(null), 4000);
+      } else {
+        setHardwarePrintMsg({
+          type: 'error',
+          text: language === 'bn'
+            ? '⚠️ প্রিন্টার এজেন্ট কানেক্ট করা যায়নি। নিচের "এজেন্ট সেটআপ" বাটনে ক্লিক করে এজেন্ট চালু করুন।'
+            : '⚠️ Could not reach printer agent. Please click "Agent Setup" to start the agent.',
+        });
+        setIsPrinterBridgeOpen(true);
+      }
+    } catch {
+      setHardwarePrintMsg({
+        type: 'error',
+        text: language === 'bn' ? '⚠️ প্রিন্ট পাঠাতে সমস্যা হয়েছে।' : '⚠️ Print dispatch failed.',
+      });
+    } finally {
+      setIsHardwarePrinting(false);
+    }
   };
 
   const handleOpenInNewTab = () => {
@@ -621,6 +699,48 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
           {/* Action buttons (Right side: user mark 1 area) */}
           <div className="flex items-center gap-2">
+            {/* Direct Hardware Thermal Print Button for 80mm POS Slip */}
+            {template === 'POS' && (
+              <button
+                type="button"
+                onClick={handleHardwarePrint}
+                disabled={isHardwarePrinting}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all ${
+                  hardwareAgentStatus.isOnline
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                }`}
+                title={
+                  hardwareAgentStatus.isOnline
+                    ? `৮০মিমি প্রিন্টারে সরাসরি হার্ডওয়্যার প্রিন্ট (${hardwareAgentStatus.activePrinter || '80 Printer'})`
+                    : '৮০মিমি থার্মাল প্রিন্টারে সরাসরি প্রিন্ট (এজেন্ট রানিং না থাকলে সেটআপ ডায়ালগ ওপেন হবে)'
+                }
+              >
+                <Printer className="w-4 h-4 text-emerald-200" />
+                <span>
+                  {isHardwarePrinting
+                    ? (language === 'bn' ? 'প্রিন্ট হচ্ছে...' : 'Printing...')
+                    : (language === 'bn' ? 'থার্মাল প্রিন্টার (Agent)' : 'Thermal Printer (Agent)')}
+                </span>
+                {hardwareAgentStatus.isOnline ? (
+                  <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" title="Agent Online" />
+                ) : (
+                  <span className="text-[10px] px-1 bg-white/20 rounded font-normal">Setup</span>
+                )}
+              </button>
+            )}
+
+            {template === 'POS' && (
+              <button
+                type="button"
+                onClick={() => setIsPrinterBridgeOpen(true)}
+                className="p-2 text-slate-600 hover:text-slate-900 bg-slate-200/80 hover:bg-slate-300 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
+                title={language === 'bn' ? 'প্রিন্টার এজেন্ট স্ট্যাটাস ও সেটআপ' : 'Printer Agent Status & Setup'}
+              >
+                <Settings className="w-4 h-4 text-slate-700" />
+              </button>
+            )}
+
             {/* Standard Full Print */}
             <button
               type="button"
@@ -676,6 +796,32 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Hardware Print Feedback Message */}
+        {hardwarePrintMsg && (
+          <div
+            className={`print:hidden mx-4 mt-3 p-2.5 rounded-xl text-xs font-bold flex items-center justify-between animate-in fade-in ${
+              hardwarePrintMsg.type === 'success'
+                ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                : 'bg-rose-100 text-rose-900 border border-rose-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {hardwarePrintMsg.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              )}
+              <span>{hardwarePrintMsg.text}</span>
+            </div>
+            <button
+              onClick={() => setHardwarePrintMsg(null)}
+              className="text-slate-500 hover:text-slate-800 p-1 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Pad Mode Interactive Settings Banner */}
         {isPadMode && template !== 'POS' && (
@@ -1376,6 +1522,15 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
         </div>
       </div>
+
+      {/* Printer Agent Bridge Modal */}
+      <PrinterBridgeModal
+        isOpen={isPrinterBridgeOpen}
+        onClose={() => {
+          setIsPrinterBridgeOpen(false);
+          checkHardwareAgentStatus().then((st) => setHardwareAgentStatus(st));
+        }}
+      />
     </div>
   );
 };

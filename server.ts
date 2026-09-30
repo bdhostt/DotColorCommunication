@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 dotenv.config();
@@ -121,9 +122,137 @@ app.post('/api/state/reset', async (_req, res) => {
   }
 });
 
+// --- DotColor Communication Printer Bridge Cloud Queue ---
+interface CloudPrintJob {
+  id: string;
+  type: string;
+  payload: any;
+  status: 'pending' | 'completed';
+  createdAt: number;
+}
+
+const cloudPrintJobs: CloudPrintJob[] = [];
+let lastAgentHeartbeat = 0;
+let lastAgentTelemetry: any = {};
+
+// Clean up old jobs after 1 hour
+setInterval(() => {
+  const now = Date.now();
+  for (let i = cloudPrintJobs.length - 1; i >= 0; i--) {
+    if (now - cloudPrintJobs[i].createdAt > 3600000) {
+      cloudPrintJobs.splice(i, 1);
+    }
+  }
+}, 60000);
+
+// Print Bridge: Polling endpoint for local agent
+app.get('/api/print-bridge/poll', (req, res) => {
+  lastAgentHeartbeat = Date.now();
+  const metaHeader = req.headers['x-agent-printers'];
+  if (typeof metaHeader === 'string' && metaHeader.trim()) {
+    try {
+      const decoded = JSON.parse(Buffer.from(metaHeader, 'base64').toString('utf8'));
+      if (decoded && typeof decoded === 'object') {
+        lastAgentTelemetry = decoded;
+      }
+    } catch {}
+  }
+  const pending = cloudPrintJobs.filter((j) => j.status === 'pending');
+  res.json({
+    success: true,
+    jobs: pending,
+    serverTime: Date.now(),
+  });
+});
+
+// Print Bridge: Mark jobs completed by agent
+app.post('/api/print-bridge/complete', (req, res) => {
+  lastAgentHeartbeat = Date.now();
+  const { jobIds } = req.body || {};
+  if (Array.isArray(jobIds)) {
+    for (const j of cloudPrintJobs) {
+      if (jobIds.includes(j.id)) {
+        j.status = 'completed';
+      }
+    }
+  }
+  res.json({ success: true });
+});
+
+// Print Bridge: Agent status endpoint
+app.get('/api/print-bridge/status', (_req, res) => {
+  const isOnline = Date.now() - lastAgentHeartbeat < 30000;
+  res.json({
+    success: true,
+    isAgentOnline: isOnline,
+    activePrinter: isOnline ? lastAgentTelemetry.activePrinter : undefined,
+    isUsbConnected: isOnline ? Boolean(lastAgentTelemetry.isUsbConnected) : false,
+    isLanReachable: isOnline ? Boolean(lastAgentTelemetry.isLanReachable) : false,
+    printers: isOnline ? lastAgentTelemetry.printers || [] : [],
+    detailedPrinters: isOnline ? lastAgentTelemetry.detailedPrinters || [] : [],
+    lastHeartbeatAgoSeconds: Math.floor((Date.now() - lastAgentHeartbeat) / 1000),
+    pendingCount: cloudPrintJobs.filter((j) => j.status === 'pending').length,
+  });
+});
+
+// Print Bridge: Hardware Print Enqueue Endpoint
+const handlePrintQueue = (req: express.Request, res: express.Response) => {
+  try {
+    const payload = req.body;
+    if (!payload) {
+      return res.status(400).json({ success: false, error: 'No invoice data provided' });
+    }
+
+    const job: CloudPrintJob = {
+      id: 'job_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      type: 'INVOICE',
+      payload,
+      status: 'pending',
+      createdAt: Date.now(),
+    };
+
+    cloudPrintJobs.push(job);
+    res.json({ success: true, queued: true, jobId: job.id });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message });
+  }
+};
+
+app.post('/api/hardware/print-invoice', handlePrintQueue);
+app.post('/api/hardware/print-bill', handlePrintQueue);
+app.post('/api/hardware/print-pos', handlePrintQueue);
+
+// Download 1-Click Printer Agent Setup ZIP
+app.get('/api/download/printer-agent-zip', (_req, res) => {
+  const candidates = [
+    path.join(__dirname, 'public', 'downloads', 'DotColorPrinter-Setup.zip'),
+    path.join(__dirname, 'dist', 'downloads', 'DotColorPrinter-Setup.zip'),
+  ];
+  for (const zipPath of candidates) {
+    if (fs.existsSync(zipPath)) {
+      res.setHeader('Content-Disposition', 'attachment; filename="DotColorPrinter-Setup.zip"');
+      res.setHeader('Content-Type', 'application/zip');
+      return res.sendFile(zipPath);
+    }
+  }
+  return res.status(404).json({ success: false, error: 'Setup package not found' });
+});
+
+// Download 1-Click Installer BAT directly
+app.get('/api/download/printer-installer-bat', (_req, res) => {
+  const batPath = path.join(__dirname, 'scripts', 'INSTALL-DOTCOLOR-PRINTER.bat');
+  if (fs.existsSync(batPath)) {
+    res.setHeader('Content-Disposition', 'attachment; filename="INSTALL-DOTCOLOR-PRINTER.bat"');
+    res.setHeader('Content-Type', 'application/x-bat');
+    return res.sendFile(batPath);
+  }
+  return res.status(404).json({ success: false, error: 'Installer script not found' });
+});
+
 // Serve frontend in production or if dist exists
 const distPath = path.join(__dirname, 'dist');
 app.use(express.static(distPath));
+app.use('/downloads', express.static(path.join(__dirname, 'public', 'downloads')));
 
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) return next();
