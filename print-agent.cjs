@@ -574,7 +574,7 @@ async function processPrintJob(job) {
   return false;
 }
 
-function startLocalHttpServer() {
+function startLocalHttpServer(retryCount = 0) {
   const server = http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -637,7 +637,23 @@ function startLocalHttpServer() {
 
   server.on('error', (err) => {
     if (err && err.code === 'EADDRINUSE') {
-      console.log('ℹ️ [Local Bridge] Port ' + LOCAL_PORT + ' is already active in another background instance.');
+      if (retryCount < 2) {
+        console.log('⚠️ [Local Bridge] Port ' + LOCAL_PORT + ' is in use by another instance. Freeing port and taking over...');
+        try { server.close(); } catch (e) {}
+
+        const killCmd = process.platform === 'win32'
+          ? `powershell -NoProfile -ExecutionPolicy Bypass -Command "$conns = Get-NetTCPConnection -LocalPort ${LOCAL_PORT} -ErrorAction SilentlyContinue; foreach ($c in $conns) { if ($c.OwningProcess -ne $PID -and $c.OwningProcess -ne 0) { Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue } }; Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { ($_.Name -match '^(node|wscript)\\.exe$') -and ($_.CommandLine -match 'print-agent\\.cjs|run-printer-silent\\.vbs') -and ($_.ProcessId -ne $PID) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`
+          : `fuser -k ${LOCAL_PORT}/tcp`;
+
+        exec(killCmd, () => {
+          setTimeout(() => {
+            startLocalHttpServer(retryCount + 1);
+          }, 1000);
+        });
+        return;
+      }
+
+      console.log('ℹ️ [Local Bridge] Port ' + LOCAL_PORT + ' is already active in another background instance and could not be released.');
       process.exit(42);
     }
     console.error('⚠️ [Local Bridge Server Error]:', err.message);

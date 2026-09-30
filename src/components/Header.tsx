@@ -22,7 +22,10 @@ import {
   Cloud,
   CloudOff,
   RefreshCw,
+  Printer,
 } from 'lucide-react';
+import { PrinterBridgeModal } from './PrinterBridgeModal';
+import { checkHardwareAgentStatus, HardwareAgentStatus } from '../utils/hardwarePrint';
 
 interface HeaderProps {
   activeTab: string;
@@ -52,7 +55,28 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
 
   const [showBackupModal, setShowBackupModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showPrinterModal, setShowPrinterModal] = useState(false);
+  const [printerStatus, setPrinterStatus] = useState<HardwareAgentStatus>({ isOnline: false });
   const [importStatus, setImportStatus] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const fetchPrinterStatus = async () => {
+      try {
+        const s = await checkHardwareAgentStatus();
+        if (isMounted) setPrinterStatus(s);
+      } catch {
+        if (isMounted) setPrinterStatus({ isOnline: false });
+      }
+    };
+
+    fetchPrinterStatus();
+    const interval = setInterval(fetchPrinterStatus, 6000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   // Compute stats
   const lowStockCount = products.filter(
@@ -158,6 +182,44 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                 title={language === 'bn' ? 'কনফিগারেশন ও সেটিংস' : 'Settings & Admin'}
               >
                 <Settings className="w-4 h-4" />
+              </button>
+
+              {/* Thermal Printer Hardware Bridge Status Button */}
+              <button
+                type="button"
+                id="btn-printer-status"
+                onClick={() => setShowPrinterModal(true)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer shadow-2xs ${
+                  printerStatus.isOnline
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400'
+                    : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 hover:border-rose-300'
+                }`}
+                title={
+                  printerStatus.isOnline
+                    ? `80mm POS Thermal Printer: Connected (${printerStatus.activePrinter || '80 Printer'}) - Click to view status, test print, or download agent`
+                    : 'POS Printer Agent Disconnected - Click to Download 1-Click Installer (.ZIP / .BAT) & Setup'
+                }
+              >
+                <span className="relative flex h-2 w-2">
+                  {printerStatus.isOnline && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  )}
+                  <span
+                    className={`relative inline-flex rounded-full h-2 w-2 ${
+                      printerStatus.isOnline ? 'bg-emerald-500' : 'bg-rose-500'
+                    }`}
+                  ></span>
+                </span>
+                <Printer className={`w-3.5 h-3.5 ${printerStatus.isOnline ? 'text-emerald-600' : 'text-rose-600'}`} />
+                <span className="font-bold">
+                  {printerStatus.isOnline
+                    ? language === 'bn'
+                      ? 'প্রিন্টার সচল'
+                      : 'Printer OK'
+                    : language === 'bn'
+                    ? 'প্রিন্টার অফলাইন'
+                    : 'Printer Offline'}
+                </span>
               </button>
 
               {/* Cloud Sync Status Indicator */}
@@ -529,6 +591,15 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
           </div>
         </div>
       )}
+
+      {/* Thermal Printer Hardware Bridge Modal */}
+      <PrinterBridgeModal
+        isOpen={showPrinterModal}
+        onClose={() => {
+          setShowPrinterModal(false);
+          checkHardwareAgentStatus().then(setPrinterStatus).catch(() => {});
+        }}
+      />
     </>
   );
 };

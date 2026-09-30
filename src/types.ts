@@ -421,6 +421,7 @@ export interface StaffMember {
   avatarColor: string;
   isActive?: boolean;
   customRoleId?: string;
+  roleTitle?: string;
   password?: string;
 }
 

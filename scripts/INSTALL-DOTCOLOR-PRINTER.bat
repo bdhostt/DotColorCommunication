@@ -39,6 +39,11 @@ if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 if not exist "%INSTALL_DIR%\scripts" mkdir "%INSTALL_DIR%\scripts"
 
 set "SRC_DIR=%~dp0"
+if not exist "%SRC_DIR%print-agent.cjs" (
+    if exist "%SRC_DIR%..\print-agent.cjs" (
+        set "SRC_DIR=%~dp0..\"
+    )
+)
 
 :: If run as a standalone Direct .BAT from Downloads without the extracted ZIP files, auto-download package from cloud
 if not exist "%SRC_DIR%print-agent.cjs" (

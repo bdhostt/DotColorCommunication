@@ -15,19 +15,32 @@ if (-not (Test-Path $vbsPath)) {
     exit 1
 }
 
-# 0. Stop any existing old instances of print-agent.cjs so the updated version can bind to port 9123
+# 0. Stop any existing old instances and release port 9123
 Write-Host "[0/3] Stopping any older running Printer Agent instances..." -ForegroundColor Yellow
 Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
     ($_.Name -match '^(node|wscript)\.exe$') -and ($_.CommandLine -match 'print-agent\.cjs|run-printer-silent\.vbs|start-printer-agent\.bat')
 } | ForEach-Object {
     Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
 }
+Get-NetTCPConnection -LocalPort 9123 -ErrorAction SilentlyContinue | ForEach-Object {
+    if ($_.OwningProcess -ne 0) {
+        Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
+    }
+}
 Start-Sleep -Milliseconds 600
+
+# Remove any legacy shortcuts from startup
+$startupFolder = [System.IO.Path]::Combine($env:APPDATA, 'Microsoft\Windows\Start Menu\Programs\Startup')
+@("POSPrinterAgent.lnk", "CafeBananiPrinterAgent.lnk", "BDHosttPrinterAgent.lnk") | ForEach-Object {
+    $oldLnk = Join-Path $startupFolder $_
+    if (Test-Path $oldLnk) {
+        Remove-Item -Force $oldLnk -ErrorAction SilentlyContinue
+    }
+}
 
 # 1. Add to Windows Startup folder
 Write-Host "[1/3] Setting up Windows Auto-Start on PC Boot..." -ForegroundColor Yellow
 $wsh = New-Object -ComObject WScript.Shell
-$startupFolder = [System.IO.Path]::Combine($env:APPDATA, 'Microsoft\Windows\Start Menu\Programs\Startup')
 $startupShortcut = Join-Path $startupFolder "DotColorPrinterAgent.lnk"
 
 $s1 = $wsh.CreateShortcut($startupShortcut)

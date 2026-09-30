@@ -29,5 +29,13 @@ if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 Compress-Archive -Path "$pkgDir\*" -DestinationPath $zipPath -Force
 Remove-Item $pkgDir -Recurse -Force
 
+# Copy to dist/downloads as well if dist directory exists
+$distDownloadsDir = Join-Path $rootDir "dist\downloads"
+if (Test-Path $distDownloadsDir) {
+    Copy-Item $zipPath $distDownloadsDir -Force
+    Write-Host "Synced to dist/downloads"
+}
+
 Write-Host "Created Zip at: $zipPath"
 Get-Item $zipPath | Select-Object Name, Length
+
