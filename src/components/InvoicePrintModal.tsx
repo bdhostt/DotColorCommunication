@@ -18,6 +18,7 @@ import {
   Mail,
   MapPin,
   Calendar,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 interface InvoicePrintModalProps {
@@ -35,6 +36,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   const [template, setTemplate] = useState<'A4' | 'POS' | 'WORK_ORDER' | 'CHALLAN'>(
     mode === 'challan' ? 'CHALLAN' : mode === 'pos' ? 'POS' : 'A4'
   );
+  const [isPadMode, setIsPadMode] = useState(false);
+  const [padTopMarginMm, setPadTopMarginMm] = useState<number>(42);
   const [printError, setPrintError] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
@@ -97,7 +100,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = (padModeOverride?: boolean) => {
+    const activePadMode = padModeOverride !== undefined ? padModeOverride : isPadMode;
     setPrintError(null);
     setIsPrinting(true);
 
@@ -170,6 +174,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     border-collapse: collapse !important;
                     width: 100% !important;
                   }
+                  ${activePadMode ? `
+                    .pad-header-branding { display: none !important; }
+                    .pad-header-spacer { display: block !important; height: ${padTopMarginMm}mm !important; }
+                    .pad-footer-credit { display: none !important; }
+                  ` : ''}
                 </style>
               </head>
               <body>
@@ -197,6 +206,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
     }
 
     tryDirectWindowPrint();
+  };
+
+  const handlePadPrint = () => {
+    setIsPadMode(true);
+    handlePrint(true);
   };
 
   const handleOpenInNewTab = () => {
@@ -288,6 +302,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 border-collapse: collapse !important;
                 width: 100% !important;
               }
+              ${isPadMode ? `
+                .pad-header-branding { display: none !important; }
+                .pad-header-spacer { display: block !important; height: ${padTopMarginMm}mm !important; }
+                .pad-footer-credit { display: none !important; }
+              ` : ''}
             }
           </style>
         </head>
@@ -384,6 +403,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 border-collapse: collapse !important;
                 width: 100% !important;
               }
+              ${isPadMode ? `
+                .pad-header-branding { display: none !important; }
+                .pad-header-spacer { display: block !important; height: ${padTopMarginMm}mm !important; }
+                .pad-footer-credit { display: none !important; }
+              ` : ''}
             }
           </style>
         </head>
@@ -440,6 +464,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             border-collapse: collapse !important;
             width: 100% !important;
           }
+          ${isPadMode ? `
+            .pad-header-branding { display: none !important; }
+            .pad-header-spacer { display: block !important; height: ${padTopMarginMm}mm !important; }
+            .pad-footer-credit { display: none !important; }
+          ` : ''}
         }
       `}</style>
       {/* Container */}
@@ -447,65 +476,111 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
         
         {/* Top Control Bar (Hidden when printing via CSS @media print) */}
         <div className="print:hidden p-3 sm:p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50 rounded-t-2xl">
-          {/* Template Switcher */}
-          {isQuote ? (
-            <div className="text-slate-800 text-sm font-black flex items-center gap-2 px-1">
-              <FileText className="w-5 h-5 text-amber-500" />
-              <span>{language === 'bn' ? 'কোটেশন ও প্রাক্কলন প্রিন্ট ভিউ' : 'Quotation Print & View'}</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => setTemplate('A4')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  template === 'A4' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                A4 বিল ও ইনভয়েস
-              </button>
-              <button
-                type="button"
-                onClick={() => setTemplate('WORK_ORDER')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  template === 'WORK_ORDER' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                ফ্যাক্টরি ওয়ার্ক অর্ডার
-              </button>
-              <button
-                type="button"
-                onClick={() => setTemplate('CHALLAN')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  template === 'CHALLAN' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                ডেলিভারি চালান
-              </button>
-              <button
-                type="button"
-                onClick={() => setTemplate('POS')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  template === 'POS' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                80mm থার্মাল স্লিপ
-              </button>
-            </div>
-          )}
+          {/* Template Switcher & Pad Mode Toggle */}
+          <div className="flex flex-wrap items-center gap-2">
+            {isQuote ? (
+              <div className="text-slate-800 text-sm font-black flex items-center gap-2 px-1">
+                <FileText className="w-5 h-5 text-amber-500" />
+                <span>{language === 'bn' ? 'কোটেশন ও প্রাক্কলন প্রিন্ট ভিউ' : 'Quotation Print & View'}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setTemplate('A4')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    template === 'A4' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  A4 বিল ও ইনভয়েস
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTemplate('WORK_ORDER')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    template === 'WORK_ORDER' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  ফ্যাক্টরি ওয়ার্ক অর্ডার
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTemplate('CHALLAN')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    template === 'CHALLAN' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  ডেলিভারি চালান
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTemplate('POS')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    template === 'POS' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  80mm থার্মাল স্লিপ
+                </button>
+              </div>
+            )}
 
+            {/* Quick Pad View Toggle */}
+            {template !== 'POS' && (
+              <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-xl p-0.5 shadow-2xs text-xs">
+                <button
+                  type="button"
+                  onClick={() => setIsPadMode(false)}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    !isPadMode ? 'bg-slate-900 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="সম্পূর্ণ ইনভয়েস প্রিভিউ"
+                >
+                  নরমাল ভিউ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPadMode(true)}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    isPadMode ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-600 hover:text-indigo-600'
+                  }`}
+                  title="লেটারহেড প্যাড প্রিভিউ"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>প্যাড ভিউ</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Action buttons (Right side: user mark 1 area) */}
           <div className="flex items-center gap-2">
+            {/* Standard Full Print */}
             <button
               type="button"
-              onClick={handlePrint}
+              onClick={() => handlePrint(false)}
               disabled={isPrinting}
               className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
-              title={language === 'bn' ? 'সরাসরি প্রিন্ট ডায়ালগ ওপেন করুন' : 'Open direct print dialog'}
+              title={language === 'bn' ? 'সম্পূর্ণ ইনভয়েস লোগো ও ফুটারসহ প্রিন্ট করুন' : 'Print complete document with header and footer'}
             >
               <Printer className="w-4 h-4 text-amber-400" />
               <span>{isPrinting ? (language === 'bn' ? 'প্রিন্ট হচ্ছে...' : 'Printing...') : (language === 'bn' ? 'প্রিন্ট করুন (Print)' : 'Print Document')}</span>
             </button>
 
+            {/* Pad Print Button (User request at mark 1) */}
+            {template !== 'POS' && (
+              <button
+                type="button"
+                onClick={handlePadPrint}
+                disabled={isPrinting}
+                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all ring-2 ring-indigo-300"
+                title={language === 'bn' ? 'কোম্পানি প্যাডের জন্য হেডার ও ফুটার ছাড়া সরাসরি প্রিন্ট করুন' : 'Print for pre-printed letterhead pad without header & footer'}
+              >
+                <FileSpreadsheet className="w-4 h-4 text-indigo-200" />
+                <span>{language === 'bn' ? 'প্যাড প্রিন্ট (Pad Print)' : 'Pad Print'}</span>
+              </button>
+            )}
+
+            {/* Open in New Tab */}
             <button
               type="button"
               onClick={handleOpenInNewTab}
@@ -513,7 +588,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               title={language === 'bn' ? 'আলাদা ট্যাবে খুলে সরাসরি প্রিন্ট করুন' : 'Open document in a new browser tab to print'}
             >
               <ExternalLink className="w-4 h-4 text-slate-950" />
-              <span>{language === 'bn' ? 'নতুন ট্যাবে প্রিন্ট' : 'Open in New Tab'}</span>
+              <span>{language === 'bn' ? 'নতুন ট্যাবে' : 'Open in New Tab'}</span>
             </button>
 
             <button
@@ -534,6 +609,40 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Pad Mode Interactive Settings Banner */}
+        {isPadMode && template !== 'POS' && (
+          <div className="print:hidden mx-4 my-2 p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs text-indigo-950">
+            <div className="flex items-center gap-2">
+              <FileSpreadsheet className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span className="font-bold">
+                {language === 'bn' ? 'লেটারহেড প্যাড মোড চালু:' : 'Letterhead Pad Mode Active:'}
+              </span>
+              <span className="text-indigo-800 text-[11px]">
+                {language === 'bn'
+                  ? 'হেডার (লোগো/কিউআর) এবং নিচের সফটওয়্যার ফুটার ছাড়া কেবল মূল বিল প্রিন্ট হবে।'
+                  : 'Header branding and software footer are hidden.'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-semibold">
+              <span className="text-slate-600">{language === 'bn' ? 'প্যাড ফাঁকা স্পেস:' : 'Pad Top Space:'}</span>
+              {[30, 38, 42, 50].map((mm) => (
+                <button
+                  key={mm}
+                  type="button"
+                  onClick={() => setPadTopMarginMm(mm)}
+                  className={`px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                    padTopMarginMm === mm
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-100'
+                  }`}
+                >
+                  {mm}mm
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Informational Banner if print is restricted */}
         {printError && (
@@ -573,6 +682,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 documentNo={invoice.invoiceNo}
                 documentDate={invoice.date}
                 referenceNo={invoice.referenceNo}
+                isPadMode={isPadMode}
+                padTopMarginMm={padTopMarginMm}
               />
 
               {/* Bill To & Invoice Meta Box (Screenshot Layout: Left BILL TO, Right INVOICE DETAILS) */}
@@ -839,7 +950,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </div>
 
                 {/* IT Firm Partner Advertising Footer */}
-                <div className="pt-4 border-t border-slate-200 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1">
+                <div className={`pad-footer-credit pt-4 border-t border-slate-200 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1 ${isPadMode ? 'hidden print:hidden' : ''}`}>
                   <span>DotColorCommunication Sales, POS &amp; ERP</span>
                   <span className="font-semibold text-slate-600">
                     Software Developed by <strong className="text-blue-700 font-bold">BD HOSTT</strong> (www.bdhost.com • Hotline: 01846100900)
@@ -862,6 +973,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 documentNo={`WO-${invoice.invoiceNo}`}
                 documentDate={invoice.date}
                 referenceNo={invoice.referenceNo}
+                isPadMode={isPadMode}
+                padTopMarginMm={padTopMarginMm}
               />
 
               {/* Order Meta Box */}
@@ -972,7 +1085,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </div>
 
                 {/* IT Firm Partner Advertising Footer */}
-                <div className="pt-4 border-t border-amber-200 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1">
+                <div className={`pad-footer-credit pt-4 border-t border-amber-200 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1 ${isPadMode ? 'hidden print:hidden' : ''}`}>
                   <span>Production Work Order &amp; Job Card</span>
                   <span className="font-semibold text-slate-600">
                     Software Developed by <strong className="text-blue-700 font-bold">BD HOSTT</strong> (www.bdhost.com • Hotline: 01846100900)
@@ -995,6 +1108,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 documentNo={`CH-${invoice.invoiceNo}`}
                 documentDate={invoice.date}
                 referenceNo={invoice.referenceNo}
+                isPadMode={isPadMode}
+                padTopMarginMm={padTopMarginMm}
               />
 
               {/* Delivery Meta Box */}
@@ -1090,7 +1205,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </div>
 
                 {/* IT Firm Partner Advertising Footer */}
-                <div className="pt-4 border-t border-slate-200 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1">
+                <div className={`pad-footer-credit pt-4 border-t border-slate-200 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1 ${isPadMode ? 'hidden print:hidden' : ''}`}>
                   <span>Official Delivery Challan • DotColorCommunication</span>
                   <span className="font-semibold text-slate-600">
                     Software Developed by <strong className="text-blue-700 font-bold">BD HOSTT</strong> (www.bdhost.com • Hotline: 01846100900)

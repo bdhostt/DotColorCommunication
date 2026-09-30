@@ -12,6 +12,8 @@ export interface DocumentHeaderProps {
   referenceNo?: string;
   compact?: boolean; // For 80mm POS slips
   className?: string;
+  isPadMode?: boolean;
+  padTopMarginMm?: number;
 }
 
 export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
@@ -22,6 +24,8 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
   referenceNo,
   compact = false,
   className = '',
+  isPadMode = false,
+  padTopMarginMm = 42,
 }) => {
   const { profile } = useApp();
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
@@ -112,8 +116,25 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
   // Standard Full Layout (A4 Invoice, Challan, Work Order, Quotation, Reports)
   return (
     <div className={`w-full text-slate-900 ${className}`}>
+      {/* Pad Header Spacer (Reserved blank space for pre-printed letterhead pad) */}
+      <div
+        className={`pad-header-spacer ${isPadMode ? 'block' : 'hidden'}`}
+        style={{ height: `${padTopMarginMm}mm` }}
+      >
+        {isPadMode && (
+          <div className="print:hidden h-full flex flex-col items-center justify-center border-2 border-dashed border-indigo-300 bg-indigo-50/50 rounded-xl p-2.5 text-center my-1">
+            <span className="font-black text-xs text-indigo-900 tracking-wider uppercase">
+              কোম্পানি লেটারহেড প্যাড এরিয়া ({padTopMarginMm}mm)
+            </span>
+            <span className="text-[10px] text-indigo-600 mt-0.5">
+              প্রিন্ট করার সময় এই ফাঁকা জায়গায় আপনার অফসেট প্যাডের ছাপা লোগো ও ঠিকানা থাকবে
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* Top Header Row: 1 Logo on Left, 2 QR on Right */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4">
+      <div className={`pad-header-branding flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 ${isPadMode ? 'hidden print:hidden' : ''}`}>
         {/* 1. Left Side: Company Brand Logo */}
         <div className="flex flex-col">
           <BrandLogo size="lg" showTagline={true} tagline={profile.tagline || 'YOUR VISION, OUR CREATION!'} />
