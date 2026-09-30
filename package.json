@@ -9,6 +9,7 @@
     "dev:server": "node ./node_modules/tsx/dist/cli.mjs server.ts",
     "server": "node ./node_modules/tsx/dist/cli.mjs server.ts",
     "build": "node ./node_modules/vite/bin/vite.js build",
+    "start": "node ./node_modules/tsx/dist/cli.mjs server.ts",
     "preview": "node ./node_modules/vite/bin/vite.js preview",
     "clean": "rm -rf dist",
     "lint": "node ./node_modules/typescript/bin/tsc --noEmit"
@@ -27,6 +28,7 @@
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "recharts": "^3.10.1",
+    "tsx": "^4.21.0",
     "vite": "^6.2.3",
     "xlsx": "^0.18.5"
   },
