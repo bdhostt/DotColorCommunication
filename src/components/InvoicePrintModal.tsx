@@ -1285,12 +1285,9 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           {/* ============================================================== */}
           {/* 4. POS THERMAL 80MM SLIP */}
           {/* ============================================================== */}
-          {/* ============================================================== */}
-          {/* 4. POS THERMAL 80MM SLIP */}
-          {/* ============================================================== */}
           {template === 'POS' && (
-            <div className="pos-thermal-sheet bg-white max-w-[80mm] w-full mx-auto p-4 sm:p-5 rounded-xl shadow-xs border border-slate-300 print:border-none print:shadow-none print:p-1 font-sans text-xs text-black space-y-3">
-              {/* POS Compact Header: Brand, Contact, Title */}
+            <div className="bg-white max-w-[80mm] mx-auto p-4 rounded-xl shadow-xs border border-slate-300 print:border-none print:shadow-none font-mono text-[11px] text-slate-900 space-y-3">
+              {/* POS Compact Header: Brand Logo on Left, QR Code on Right */}
               <DocumentHeader
                 compact={true}
                 documentTitle={
@@ -1303,120 +1300,75 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 referenceNo={invoice.referenceNo}
               />
 
-              {/* Bill Details */}
-              <div className="text-xs space-y-1 pb-2 border-b-2 border-dashed border-black">
-                <div className="flex justify-between font-bold text-black">
-                  <span>Invoice #:</span>
-                  <span className="font-black font-mono">#{invoice.invoiceNo}</span>
+              <div className="text-[10px] space-y-0.5 pb-2 border-b border-dashed border-slate-400">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Invoice #:</span>
+                  <span className="font-bold">#{invoice.invoiceNo}</span>
                 </div>
-                <div className="flex justify-between font-bold text-black">
-                  <span>Date:</span>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Date:</span>
                   <span>{invoice.date}</span>
                 </div>
                 {invoice.referenceNo && (
-                  <div className="flex justify-between font-bold text-black">
-                    <span>Ref / PO #:</span>
-                    <span className="font-black font-mono">{invoice.referenceNo}</span>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Ref:</span>
+                    <span>{invoice.referenceNo}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-bold text-black">
-                  <span>Customer:</span>
-                  <span className="font-black text-right max-w-[140px] truncate">{invoice.customerName}</span>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Customer:</span>
+                  <span className="font-bold truncate max-w-[130px]">{invoice.customerName}</span>
                 </div>
-                <div className="flex justify-between font-bold text-black">
-                  <span>Mobile:</span>
-                  <span className="font-black">{invoice.customerPhone}</span>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Phone:</span>
+                  <span>{invoice.customerPhone}</span>
                 </div>
-                {invoice.customerAddress && (
-                  <div className="flex justify-between font-semibold text-[11px] text-black">
-                    <span>Address:</span>
-                    <span className="text-right max-w-[150px] truncate">{invoice.customerAddress}</span>
-                  </div>
-                )}
               </div>
 
-              {/* Items Table */}
-              <div className="pb-2 border-b-2 border-dashed border-black">
-                <div className="grid grid-cols-12 text-[11px] font-black uppercase border-b border-black pb-1 mb-1.5 text-black">
-                  <div className="col-span-6">Item / Description</div>
-                  <div className="col-span-2 text-center">Qty</div>
-                  <div className="col-span-2 text-right">Rate</div>
-                  <div className="col-span-2 text-right">Total</div>
-                </div>
-                <div className="space-y-1.5">
-                  {invoice.items.map((i, idx) => (
-                    <div key={idx} className="grid grid-cols-12 text-xs items-start font-bold text-black">
-                      <div className="col-span-6 leading-tight">
-                        <div className="font-extrabold">{i.name}</div>
-                        {i.totalSqft ? (
-                          <div className="text-[10px] font-semibold text-black">
-                            {i.width}'×{i.height}'={i.totalSqft}sqft
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="col-span-2 text-center font-bold">
-                        {i.totalSqft || i.qty}
-                      </div>
-                      <div className="col-span-2 text-right font-semibold">
-                        {i.unitPrice.toLocaleString()}
-                      </div>
-                      <div className="col-span-2 text-right font-black">
-                        {i.totalPrice.toLocaleString()}
-                      </div>
+              <div className="space-y-1 pb-2 border-b border-dashed border-slate-400">
+                {invoice.items.map((i, idx) => (
+                  <div key={idx} className="flex justify-between items-start">
+                    <div className="max-w-[50mm] truncate">
+                      {i.name} (x{i.qty})
                     </div>
-                  ))}
-                </div>
+                    <div className="font-bold">{i.totalPrice}</div>
+                  </div>
+                ))}
               </div>
 
-              {/* Financial Totals */}
-              <div className="space-y-1 text-xs font-bold text-black pb-2 border-b-2 border-dashed border-black">
+              <div className="space-y-0.5 text-right font-bold text-xs">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>{profile.currencySymbol}{invoice.subtotal.toLocaleString()}</span>
+                  <span>{invoice.subtotal}</span>
                 </div>
                 {invoice.discount > 0 && (
-                  <div className="flex justify-between font-black">
+                  <div className="flex justify-between text-rose-600">
                     <span>Discount:</span>
-                    <span>-{profile.currencySymbol}{invoice.discount.toLocaleString()}</span>
+                    <span>-{invoice.discount}</span>
                   </div>
                 )}
-                {invoice.vatAmount > 0 && (
-                  <div className="flex justify-between">
-                    <span>VAT ({invoice.vatRate}%):</span>
-                    <span>+{profile.currencySymbol}{invoice.vatAmount.toLocaleString()}</span>
-                  </div>
-                )}
-                {/* Grand Total - Large, Prominent, Solid Black Double Border */}
-                <div className="flex justify-between text-sm sm:text-base font-black py-1.5 my-1 border-t-2 border-b-2 border-black">
-                  <span>TOTAL AMOUNT:</span>
-                  <span>{profile.currencySymbol}{invoice.grandTotal.toLocaleString()}</span>
+                <div className="flex justify-between text-sm font-black pt-1 border-t border-slate-900">
+                  <span>TOTAL:</span>
+                  <span>{invoice.grandTotal} BDT</span>
                 </div>
-                <div className="flex justify-between text-xs pt-0.5">
-                  <span>Paid Amount ({invoice.paymentMethod || 'CASH'}):</span>
-                  <span className="font-black">{profile.currencySymbol}{invoice.paidAmount.toLocaleString()}</span>
+                <div className="flex justify-between text-[10px] font-normal pt-1">
+                  <span>Paid ({invoice.paymentMethod}):</span>
+                  <span>{invoice.paidAmount}</span>
                 </div>
-                {invoice.dueAmount > 0 ? (
-                  <div className="flex justify-between text-sm font-black pt-1 border-t border-black">
-                    <span>BALANCE DUE:</span>
-                    <span>{profile.currencySymbol}{invoice.dueAmount.toLocaleString()}</span>
-                  </div>
-                ) : (
-                  <div className="text-center font-black text-xs py-0.5 mt-1 border border-black rounded">
-                    *** PAID IN FULL / পরিশোধিত ***
+                {invoice.dueAmount > 0 && (
+                  <div className="flex justify-between text-rose-600 font-black">
+                    <span>DUE:</span>
+                    <span>{invoice.dueAmount} BDT</span>
                   </div>
                 )}
               </div>
 
-              {/* POS Footer */}
-              <div className="text-center pt-1 space-y-1 text-black">
-                <div className="text-xs font-black tracking-wider uppercase">
-                  *** ধন্যবাদ আবার আসবেন ***
-                </div>
-                <div className="text-[10px] font-bold">
-                  Quality Printing, Signage &amp; Advertising
-                </div>
-                <div className="pt-1.5 border-t border-dotted border-black text-[9px] font-bold text-black">
-                  Software Developed by BD HOSTT • Hotline: 01846100900
+              <div className="text-center pt-2 border-t border-dashed border-slate-400 text-[9px] text-slate-500">
+                Thank you for your business!
+                <br />
+                Quality Printing &amp; Signage Solutions
+                <div className="mt-1.5 pt-1 border-t border-dotted border-slate-300 text-[8px] text-slate-500 font-sans">
+                  Software Developed by <strong className="text-slate-900 font-bold">BD HOSTT</strong> (www.bdhost.com • 01846100900)
                 </div>
               </div>
             </div>
