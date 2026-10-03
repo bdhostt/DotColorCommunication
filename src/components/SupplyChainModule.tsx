@@ -1331,6 +1331,7 @@ export const SupplyChainModule: React.FC = () => {
                       <div className="flex items-center gap-1">
                         <input
                           type="number"
+                          step="any"
                           min="1"
                           value={item.qty}
                           onChange={(e) =>
@@ -1361,6 +1362,7 @@ export const SupplyChainModule: React.FC = () => {
                     <div className="col-span-3">
                       <input
                         type="number"
+                        step="any"
                         min="0"
                         value={item.unitCost}
                         onChange={(e) =>
@@ -1403,6 +1405,7 @@ export const SupplyChainModule: React.FC = () => {
                     </label>
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       max={poSubtotal}
                       value={poPaidAmount}
@@ -2183,6 +2186,7 @@ export const SupplyChainModule: React.FC = () => {
                   </div>
                   <input
                     type="number"
+                    step="any"
                     min="1"
                     max={effectiveDue}
                     required
@@ -2407,6 +2411,7 @@ export const SupplyChainModule: React.FC = () => {
                   </div>
                   <input
                     type="number"
+                    step="any"
                     min="1"
                     max={poToPay.dueAmount}
                     required
@@ -2651,8 +2656,8 @@ export const SupplyChainModule: React.FC = () => {
                     <div className="col-span-3">
                       <input
                         type="number"
+                        step="any"
                         min="0"
-                        step="0.01"
                         value={item.receivedQty}
                         onChange={(e) => {
                           const val = parseFloat(e.target.value) || 0;

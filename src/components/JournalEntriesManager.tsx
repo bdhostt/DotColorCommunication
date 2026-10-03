@@ -420,6 +420,7 @@ export const JournalEntriesManager: React.FC = () => {
                 </label>
                 <input
                   type="number"
+                  step="any"
                   min="1"
                   required
                   value={formData.amount}
@@ -687,6 +688,7 @@ export const JournalEntriesManager: React.FC = () => {
                 </label>
                 <input
                   type="number"
+                  step="any"
                   min="1"
                   required
                   value={editFormData.amount}

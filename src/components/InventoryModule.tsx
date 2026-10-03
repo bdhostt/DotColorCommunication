@@ -688,6 +688,7 @@ export const InventoryModule: React.FC = () => {
                     </label>
                     <input
                       type="number"
+                      step="any"
                       min="1"
                       required
                       value={adjustQty}
@@ -705,6 +706,7 @@ export const InventoryModule: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    step="any"
                     min="1"
                     required
                     value={adjustQty}
@@ -870,6 +872,7 @@ export const InventoryModule: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     value={formData.unitPrice}
                     onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
@@ -882,6 +885,7 @@ export const InventoryModule: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     value={formData.costPrice}
                     onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })}
@@ -897,6 +901,7 @@ export const InventoryModule: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     value={formData.stockOffice + formData.stockFactory}
                     onChange={(e) =>
@@ -915,6 +920,7 @@ export const InventoryModule: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     value={formData.minStockAlert}
                     onChange={(e) =>

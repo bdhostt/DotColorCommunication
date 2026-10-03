@@ -691,6 +691,7 @@ export const ChartOfAccountsManager: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    step="any"
                     value={formData.openingBalance}
                     onChange={(e) => setFormData({ ...formData, openingBalance: Number(e.target.value) })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono font-bold"

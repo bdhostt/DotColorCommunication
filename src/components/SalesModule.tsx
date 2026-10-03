@@ -1386,6 +1386,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                 </label>
                 <input
                   type="number"
+                  step="any"
                   min="1"
                   max={paymentModalInvoice.dueAmount}
                   required
@@ -1542,6 +1543,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                       </label>
                       <input
                         type="number"
+                        step="any"
                         min="1"
                         value={invItemQty}
                         onChange={(e) => setInvItemQty(Math.max(1, Number(e.target.value)))}
@@ -1554,6 +1556,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                       </label>
                       <input
                         type="number"
+                        step="any"
                         min="1"
                         value={invItemPrice}
                         onChange={(e) => setInvItemPrice(Math.max(1, Number(e.target.value)))}
@@ -1622,6 +1625,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                               <div className="flex items-center justify-center gap-1">
                                 <input
                                   type="number"
+                                  step="any"
                                   min="1"
                                   value={item.qty}
                                   onChange={(e) =>
@@ -1637,6 +1641,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                                 <span className="text-slate-400 font-semibold text-xs">৳</span>
                                 <input
                                   type="number"
+                                  step="any"
                                   min="0"
                                   value={item.unitPrice}
                                   onChange={(e) =>
@@ -1715,6 +1720,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                             </div>
                             <input
                               type="number"
+                              step="any"
                               min="0"
                               value={invoiceDiscount}
                               onChange={(e) => setInvoiceDiscount(Math.max(0, Number(e.target.value)))}
@@ -1757,6 +1763,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                             </div>
                             <input
                               type="number"
+                              step="any"
                               min="0"
                               value={invoiceVatAmountInput}
                               onChange={(e) => setInvoiceVatAmountInput(Math.max(0, Number(e.target.value)))}
@@ -2099,6 +2106,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                       </label>
                       <input
                         type="number"
+                        step="any"
                         min="1"
                         value={quoteItemQty}
                         onChange={(e) => setQuoteItemQty(Math.max(1, Number(e.target.value)))}
@@ -2111,6 +2119,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                       </label>
                       <input
                         type="number"
+                        step="any"
                         min="1"
                         value={quoteItemPrice}
                         onChange={(e) => setQuoteItemPrice(Math.max(1, Number(e.target.value)))}
@@ -2180,6 +2189,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                               <div className="flex items-center justify-center gap-1">
                                 <input
                                   type="number"
+                                  step="any"
                                   min="1"
                                   value={item.qty}
                                   onChange={(e) =>
@@ -2195,6 +2205,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                                 <span className="text-slate-400 font-semibold text-xs">৳</span>
                                 <input
                                   type="number"
+                                  step="any"
                                   min="0"
                                   value={item.unitPrice}
                                   onChange={(e) =>
@@ -2273,6 +2284,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                             </div>
                             <input
                               type="number"
+                              step="any"
                               min="0"
                               value={quoteDiscount}
                               onChange={(e) => setQuoteDiscount(Math.max(0, Number(e.target.value)))}
@@ -2315,6 +2327,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                             </div>
                             <input
                               type="number"
+                              step="any"
                               min="0"
                               value={quoteVatAmountInput}
                               onChange={(e) => setQuoteVatAmountInput(Math.max(0, Number(e.target.value)))}
@@ -2498,6 +2511,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                   </label>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     value={customerFormData.advanceBalance}
                     onChange={(e) => setCustomerFormData({ ...customerFormData, advanceBalance: Number(e.target.value) })}

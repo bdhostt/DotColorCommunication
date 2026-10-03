@@ -941,6 +941,7 @@ export const AuditTrailComponent: React.FC<AuditTrailComponentProps> = ({ onOpen
                   <input
                     id="note-amount-input"
                     type="number"
+                    step="any"
                     value={noteAmount}
                     onChange={(e) => setNoteAmount(e.target.value)}
                     placeholder="0.00"

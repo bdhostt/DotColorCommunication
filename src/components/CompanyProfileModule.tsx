@@ -1431,6 +1431,7 @@ export const CompanyProfileModule: React.FC = () => {
                       <label className="font-bold text-slate-700 block mb-1">Experience (Years)</label>
                       <input
                         type="number"
+                        step="any"
                         value={formData.experienceYears}
                         onChange={(e) => setFormData({ ...formData, experienceYears: Number(e.target.value) })}
                         className="w-full px-3 py-2 border border-slate-200 rounded-xl"
@@ -2130,6 +2131,7 @@ export const CompanyProfileModule: React.FC = () => {
                     </label>
                     <input
                       type="number"
+                      step="any"
                       required
                       min="0"
                       value={quickEditModal.val1}

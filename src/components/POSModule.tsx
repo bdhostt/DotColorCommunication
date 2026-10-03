@@ -1001,6 +1001,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                   </div>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     max={discountType === 'percent' ? 100 : subtotal}
                     value={discountAmount || ''}
@@ -1053,6 +1054,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                   </div>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     max={vatType === 'percent' ? 100 : undefined}
                     value={vatAmountInput || ''}
@@ -1187,6 +1189,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                     </label>
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       placeholder="0"
                       value={splitCash}
@@ -1203,6 +1206,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                     </label>
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       placeholder="0"
                       value={splitCard}
@@ -1219,6 +1223,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                     </label>
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       placeholder="0"
                       value={splitBkash}
@@ -1235,6 +1240,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                     </label>
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       placeholder="0"
                       value={splitNagad}
@@ -1256,6 +1262,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                   </label>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     placeholder="0"
                     value={splitDue}
@@ -1371,7 +1378,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                 </label>
                 <input
                   type="number"
-                  step="0.5"
+                  step="any"
                   min="0.5"
                   value={dimWidth}
                   onChange={(e) => setDimWidth(Math.max(0.1, Number(e.target.value)))}
@@ -1385,7 +1392,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                 </label>
                 <input
                   type="number"
-                  step="0.5"
+                  step="any"
                   min="0.5"
                   value={dimHeight}
                   onChange={(e) => setDimHeight(Math.max(0.1, Number(e.target.value)))}
@@ -1401,6 +1408,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                 </label>
                 <input
                   type="number"
+                  step="any"
                   min="1"
                   value={dimQty}
                   onChange={(e) => setDimQty(Math.max(1, Number(e.target.value)))}

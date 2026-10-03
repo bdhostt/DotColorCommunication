@@ -779,7 +779,7 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
                 </label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="any"
                   min="0"
                   value={itemWidth}
                   onChange={(e) => setItemWidth(e.target.value ? Number(e.target.value) : '')}
@@ -794,7 +794,7 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
                 </label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="any"
                   min="0"
                   value={itemHeight}
                   onChange={(e) => setItemHeight(e.target.value ? Number(e.target.value) : '')}
@@ -809,6 +809,7 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
                 </label>
                 <input
                   type="number"
+                  step="any"
                   min="1"
                   value={itemQty}
                   onChange={(e) => setItemQty(Math.max(1, Number(e.target.value)))}
@@ -822,6 +823,7 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
                 </label>
                 <input
                   type="number"
+                  step="any"
                   min="0"
                   value={itemPrice}
                   onChange={(e) => setItemPrice(Math.max(0, Number(e.target.value)))}
@@ -876,6 +878,7 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
                           <div className="flex items-center justify-center gap-1">
                             <input
                               type="number"
+                              step="any"
                               min="1"
                               value={item.qty}
                               onChange={(e) =>
@@ -891,6 +894,7 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
                             <span className="text-slate-400 font-semibold text-xs">৳</span>
                             <input
                               type="number"
+                              step="any"
                               min="0"
                               value={item.unitPrice}
                               onChange={(e) =>
@@ -962,6 +966,7 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
                     </div>
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       max={discountType === 'percent' ? 100 : subtotal}
                       value={discountAmount || ''}
@@ -1012,6 +1017,7 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
                     </div>
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       max={vatType === 'percent' ? 100 : undefined}
                       value={vatAmountInput || ''}
@@ -1076,6 +1082,7 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
                   <div className="flex items-center gap-1.5">
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       max={grandTotal}
                       value={paidAmount}

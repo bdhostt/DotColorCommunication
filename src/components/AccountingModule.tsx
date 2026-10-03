@@ -836,6 +836,7 @@ export const AccountingModule: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    step="any"
                     min="1"
                     required
                     value={expenseAmount}
@@ -971,6 +972,7 @@ export const AccountingModule: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    step="any"
                     min="1"
                     required
                     value={incomeAmount}
@@ -1195,6 +1197,7 @@ export const AccountingModule: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    step="any"
                     min="1"
                     required
                     value={editTxAmount}
