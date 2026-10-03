@@ -19,37 +19,39 @@ export interface DocumentHeaderProps {
 export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
   documentTitle,
   documentSubtitle,
-  documentNo,
   compact = false,
   className = '',
   isPadMode = false,
   padTopMarginMm = 42,
   invoiceId,
+  documentNo,
 }) => {
   const { profile } = useApp();
-  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [posQrDataUrl, setPosQrDataUrl] = useState<string>('');
 
-  // Generate high-resolution scannable QR Code pointing to the invoice URL so scanning opens the invoice
+  // Generate QR code for compact POS thermal slips if needed
   useEffect(() => {
-    const origin =
-      typeof window !== 'undefined' && window.location.origin && window.location.origin !== 'null'
-        ? window.location.origin
-        : 'https://dotcolor.onrender.com';
+    if (compact) {
+      const origin =
+        typeof window !== 'undefined' && window.location.origin && window.location.origin !== 'null'
+          ? window.location.origin
+          : 'https://dotcolor.onrender.com';
 
-    const targetInvoiceId = invoiceId || documentNo || '';
-    const invoiceQrUrl = `${origin}/?invoiceId=${encodeURIComponent(targetInvoiceId)}`;
+      const targetInvoiceId = invoiceId || documentNo || '';
+      const invoiceQrUrl = `${origin}/?invoiceId=${encodeURIComponent(targetInvoiceId)}`;
 
-    QRCode.toDataURL(invoiceQrUrl, {
-      width: compact ? 100 : 160,
-      margin: 1,
-      color: {
-        dark: '#000000',
-        light: '#ffffff',
-      },
-    })
-      .then((url) => setQrDataUrl(url))
-      .catch((err) => console.error('Failed to generate Invoice QR Code:', err));
-  }, [invoiceId, documentNo, compact]);
+      QRCode.toDataURL(invoiceQrUrl, {
+        width: 100,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#ffffff',
+        },
+      })
+        .then((url) => setPosQrDataUrl(url))
+        .catch((err) => console.error('Failed to generate POS QR Code:', err));
+    }
+  }, [compact, invoiceId, documentNo]);
 
   // Compact layout for 80mm POS thermal slips
   if (compact) {
@@ -67,9 +69,9 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
 
           {/* 2. QR Code */}
           <div className="shrink-0 flex items-center bg-white p-0.5 rounded border border-black">
-            {qrDataUrl ? (
+            {posQrDataUrl ? (
               <img
-                src={qrDataUrl}
+                src={posQrDataUrl}
                 alt="Invoice QR"
                 className="w-9 h-9 object-contain"
               />
@@ -114,47 +116,38 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
         )}
       </div>
 
-      {/* Top Header Row: Company Brand Logo */}
+      {/* Top Header Row: Company Brand Logo moved to Mark 1 (Top-Right as annotated by user) */}
       <div
-        className={`pad-header-branding flex items-center justify-between pb-3 ${
+        className={`pad-header-branding flex items-center justify-end pb-3 ${
           isPadMode ? 'hidden print:hidden' : ''
         }`}
       >
-        {/* 1. Left Side: Company Brand Logo (spans across the header area nicely, no 4-sided border) */}
-        <div className="flex flex-col items-start text-left">
+        {/* Mark 1: Top-Right Company Brand Logo */}
+        <div className="flex flex-col items-end text-right">
           <BrandLogo
             size="xl"
-            className="items-start text-left"
+            className="items-end text-right"
             showTagline={profile.showTagline !== false}
             tagline={profile.tagline || 'YOUR VISION, OUR CREATION!'}
-            taglineClassName="text-[11px] sm:text-[12px] uppercase font-black tracking-widest text-black mt-1"
+            taglineClassName="text-[11px] sm:text-[12px] uppercase font-black tracking-widest text-black mt-1 text-right"
           />
           {profile.showCategory !== false && (
-            <div className="text-xs sm:text-[13px] font-black text-black tracking-wide mt-1">
+            <div className="text-xs sm:text-[13px] font-black text-black tracking-wide mt-1 text-right">
               ({profile.category || 'Printing, Packaging, Advertising & Brand Promotions'})
             </div>
           )}
         </div>
       </div>
 
-      {/* Centered Document Title with clean black divider & compact scannable QR Code (Place 3) */}
+      {/* Centered Document Title with clean black divider */}
       <div className="relative my-3">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t-2 border-black" />
         </div>
         <div className="relative flex justify-center">
-          <div className="bg-white px-4 py-1 flex items-center gap-2.5 border-2 border-black rounded-lg shadow-2xs">
-            {qrDataUrl && (
-              <img
-                src={qrDataUrl}
-                alt="Invoice QR"
-                className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
-              />
-            )}
-            <span className="text-base sm:text-lg font-black uppercase tracking-widest text-black">
-              {documentTitle}
-            </span>
-          </div>
+          <span className="bg-white px-5 py-0.5 text-base sm:text-lg font-black uppercase tracking-widest text-black border-2 border-black rounded-lg shadow-2xs">
+            {documentTitle}
+          </span>
         </div>
       </div>
       {documentSubtitle && (

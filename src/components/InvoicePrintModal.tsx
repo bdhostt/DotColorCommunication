@@ -53,6 +53,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   const [isHardwarePrinting, setIsHardwarePrinting] = useState(false);
   const [hardwarePrintMsg, setHardwarePrintMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [posQrDataUrl, setPosQrDataUrl] = useState<string>('');
+  const [a4QrDataUrl, setA4QrDataUrl] = useState<string>('');
 
   useEffect(() => {
     if (template === 'POS') {
@@ -137,6 +138,29 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
         .catch((err) => console.error('Failed to generate POS QR code:', err));
     }
   }, [template, invoice.invoiceNo, invoice.date, invoice.grandTotal, invoice.dueAmount, profile]);
+
+  useEffect(() => {
+    if (invoice) {
+      const origin =
+        typeof window !== 'undefined' && window.location.origin && window.location.origin !== 'null'
+          ? window.location.origin
+          : 'https://dotcolor.onrender.com';
+
+      const targetInvoiceId = invoice.id || invoice.invoiceNo;
+      const invoiceQrUrl = `${origin}/?invoiceId=${encodeURIComponent(targetInvoiceId)}`;
+
+      QRCode.toDataURL(invoiceQrUrl, {
+        width: 160,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#ffffff',
+        },
+      })
+        .then((url) => setA4QrDataUrl(url))
+        .catch((err) => console.error('Failed to generate A4 Invoice QR Code:', err));
+    }
+  }, [invoice.id, invoice.invoiceNo]);
 
   useEffect(() => {
     if (autoPrint && invoiceId) {
@@ -1032,36 +1056,51 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   </div>
                 </div>
 
-                {/* Right Column: Invoice Details */}
-                <div className="space-y-1.5 sm:border-l-2 sm:border-black sm:pl-4">
+                {/* Right Column: Invoice Details with Mark 2 QR Code */}
+                <div className="space-y-1.5 sm:border-l-2 sm:border-black sm:pl-4 flex flex-col justify-between">
                   <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
                     DOCUMENT DETAILS:
                   </span>
-                  <div className="space-y-1 text-black">
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-black font-bold">Invoice Date :</span>
-                      <span className="font-black text-black">{invoice.date}</span>
-                    </div>
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-black font-bold">Invoice # :</span>
-                      <span className="font-black text-black font-mono">#{invoice.invoiceNo}</span>
-                    </div>
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-black font-bold">Ref/PO # :</span>
-                      <span className="font-black text-black font-mono">
-                        {invoice.referenceNo && !['nill', 'nil', 'none', 'null', '-'].includes(invoice.referenceNo.trim().toLowerCase())
-                          ? invoice.referenceNo
-                          : ''}
-                      </span>
-                    </div>
-                    {invoice.deliveryDate && (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="space-y-1 text-black flex-1">
                       <div className="flex items-baseline">
-                        <span className="w-28 shrink-0 text-black font-bold">
-                          {(invoice as any).isQuote ? 'Valid Until :' : 'Delivery Target :'}
-                        </span>
-                        <span className="font-black text-black">{invoice.deliveryDate}</span>
+                        <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Invoice Date :</span>
+                        <span className="font-black text-black">{invoice.date}</span>
                       </div>
-                    )}
+                      <div className="flex items-baseline">
+                        <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Invoice # :</span>
+                        <span className="font-black text-black font-mono">#{invoice.invoiceNo}</span>
+                      </div>
+                      {invoice.referenceNo && !['nill', 'nil', 'none', 'null', '-'].includes(invoice.referenceNo.trim().toLowerCase()) && (
+                        <div className="flex items-baseline">
+                          <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Ref/PO # :</span>
+                          <span className="font-black text-black font-mono">{invoice.referenceNo}</span>
+                        </div>
+                      )}
+                      {invoice.deliveryDate && (
+                        <div className="flex items-baseline">
+                          <span className="w-24 sm:w-28 shrink-0 text-black font-bold">
+                            {(invoice as any).isQuote ? 'Valid Until :' : 'Delivery Target :'}
+                          </span>
+                          <span className="font-black text-black">{invoice.deliveryDate}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Mark 2: Scannable Invoice QR Code */}
+                    <div className="shrink-0 p-1 bg-white rounded-lg border-2 border-black flex items-center justify-center shadow-2xs">
+                      {a4QrDataUrl ? (
+                        <img
+                          src={a4QrDataUrl}
+                          alt={`Invoice QR #${invoice.invoiceNo}`}
+                          className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 flex items-center justify-center text-[9px] text-black font-bold">
+                          QR
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

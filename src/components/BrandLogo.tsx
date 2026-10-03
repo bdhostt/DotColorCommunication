@@ -28,22 +28,27 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   }, [activeLogoUrl]);
 
   const hasValidCustomLogo = Boolean(activeLogoUrl && !imageError);
-  const imgHeight = size === 'sm' ? 32 : size === 'md' ? 42 : size === 'lg' ? 56 : 72;
+  const imgHeight =
+    size === 'sm' ? 32 : size === 'md' ? 42 : size === 'lg' ? 56 : 72;
 
   const defaultTaglineClass =
     'text-[10px] sm:text-[11px] uppercase font-black tracking-widest text-black mt-1 whitespace-nowrap';
+
+  const isRightAligned = className.includes('items-end') || className.includes('text-right');
 
   // If custom logo image URL is uploaded and loads without error, render the image
   if (hasValidCustomLogo) {
     return (
       <div className={`flex flex-col select-none ${className}`}>
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 ${isRightAligned ? 'justify-end' : ''}`}>
           <img
             src={activeLogoUrl}
             alt={profile?.name || 'Company Logo'}
             onError={() => setImageError(true)}
             style={{ maxHeight: `${imgHeight}px` }}
-            className="w-auto object-contain shrink-0 max-w-[240px]"
+            className={`w-auto object-contain shrink-0 ${
+              size === 'xl' ? 'max-w-[320px]' : 'max-w-[240px]'
+            }`}
           />
         </div>
         {showTagline && (
