@@ -203,6 +203,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object') {
+          if (
+            parsed.logoUrl &&
+            (parsed.logoUrl.startsWith('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALL') ||
+             parsed.logoUrl.includes('ALLCAYAAACHp'))
+          ) {
+            parsed.logoUrl = '/dotcolor-logo.svg';
+          }
+          if (parsed.name === 'DotColorCommunication Sales, POS & ERP') {
+            parsed.name = 'Dot Color';
+          }
+          if (parsed.footerBrandText === 'DotColorCommunication Sales, POS & ERP') {
+            parsed.footerBrandText = 'Dot Color';
+          }
           return {
             ...INITIAL_COMPANY_PROFILE,
             ...parsed,
@@ -2052,7 +2065,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const importDatabase = (jsonString: string): boolean => {
     try {
       const data = JSON.parse(jsonString);
-      if (data.profile) setProfile(data.profile);
+      if (data.profile) {
+        if (
+          data.profile.logoUrl &&
+          (data.profile.logoUrl.startsWith('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALL') ||
+           data.profile.logoUrl.includes('ALLCAYAAACHp'))
+        ) {
+          data.profile.logoUrl = '/dotcolor-logo.svg';
+        }
+        if (data.profile.name === 'DotColorCommunication Sales, POS & ERP') {
+          data.profile.name = 'Dot Color';
+        }
+        if (data.profile.footerBrandText === 'DotColorCommunication Sales, POS & ERP') {
+          data.profile.footerBrandText = 'Dot Color';
+        }
+        setProfile(data.profile);
+      }
       if (data.products) setProducts(data.products);
       if (data.customers) setCustomers(data.customers);
       if (data.suppliers) setSuppliers(data.suppliers);

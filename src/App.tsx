@@ -167,11 +167,13 @@ const MainLayout: React.FC = () => {
       )}
 
       {/* Professional 1-Line Footer */}
-      <footer className="bg-white border-t border-slate-200 mt-auto print:hidden py-2 px-4 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
+      <footer className="bg-white border-t border-slate-200 mt-auto print:hidden py-3 text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2">
             <span className="font-bold text-slate-800">
-              {profile.footerBrandText || profile.name || 'DotColorCommunication Sales, POS & ERP'}
+              {profile.footerBrandText && profile.footerBrandText !== 'DotColorCommunication Sales, POS & ERP'
+                ? profile.footerBrandText
+                : profile.name || 'Dot Color'}
             </span>
             <span className="text-slate-400">•</span>
             <span>{profile.footerCopyrightText || `© ${new Date().getFullYear()}`}</span>

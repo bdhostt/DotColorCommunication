@@ -229,7 +229,12 @@ export const CompanyProfileModule: React.FC = () => {
     tradeLicense: profile.tradeLicense || '',
     currency: profile.currency || 'BDT',
     currencySymbol: profile.currencySymbol || '৳',
-    logoUrl: profile.logoUrl || '',
+    logoUrl:
+      profile.logoUrl &&
+      (profile.logoUrl.startsWith('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALL') ||
+       profile.logoUrl.includes('ALLCAYAAACHp'))
+        ? '/dotcolor-logo.svg'
+        : profile.logoUrl || '',
     qrCodeValue: profile.qrCodeValue || '',
 
     // Factory Premise
@@ -319,7 +324,12 @@ export const CompanyProfileModule: React.FC = () => {
       tradeLicense: profile.tradeLicense || '',
       currency: profile.currency || 'BDT',
       currencySymbol: profile.currencySymbol || '৳',
-      logoUrl: profile.logoUrl || '',
+      logoUrl:
+        profile.logoUrl &&
+        (profile.logoUrl.startsWith('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALL') ||
+         profile.logoUrl.includes('ALLCAYAAACHp'))
+          ? '/dotcolor-logo.svg'
+          : profile.logoUrl || '',
       qrCodeValue: profile.qrCodeValue || '',
 
       factoryUnitBadge: profile.factoryUnitBadge || 'DIGITAL PRINTING & FABRICATION UNIT',

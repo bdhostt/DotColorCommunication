@@ -27,7 +27,20 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     setImageError(false);
   }, [activeLogoUrl]);
 
-  const hasValidCustomLogo = Boolean(activeLogoUrl && !imageError);
+  const isLegacyCommunicationImage = Boolean(
+    activeLogoUrl &&
+    typeof activeLogoUrl === 'string' &&
+    (activeLogoUrl.startsWith('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALL') ||
+     activeLogoUrl.includes('ALLCAYAAACHp'))
+  );
+
+  const hasValidCustomLogo = Boolean(
+    activeLogoUrl &&
+    !imageError &&
+    activeLogoUrl.trim() !== '' &&
+    activeLogoUrl !== '/dotcolor-logo.svg' &&
+    !isLegacyCommunicationImage
+  );
   const imgHeight =
     size === 'sm' ? 32 : size === 'md' ? 42 : size === 'lg' ? 56 : 72;
 
