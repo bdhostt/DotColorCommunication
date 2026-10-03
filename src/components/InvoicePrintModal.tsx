@@ -40,7 +40,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   autoPrint = false,
   initialPadMode = false,
 }) => {
-  const { invoices, quotations, profile, language } = useApp();
+  const { invoices, quotations, profile, language, cloudSyncStatus, syncWithCloud } = useApp();
   const [template, setTemplate] = useState<'A4' | 'POS' | 'WORK_ORDER' | 'CHALLAN'>(
     mode === 'challan' ? 'CHALLAN' : mode === 'pos' ? 'POS' : 'A4'
   );
@@ -54,6 +54,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   const [hardwarePrintMsg, setHardwarePrintMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [posQrDataUrl, setPosQrDataUrl] = useState<string>('');
   const [a4QrDataUrl, setA4QrDataUrl] = useState<string>('');
+  const [fetchedInvoice, setFetchedInvoice] = useState<SalesInvoice | null>(null);
+  const [isFetchingInvoice, setIsFetchingInvoice] = useState<boolean>(false);
 
   useEffect(() => {
     if (template === 'POS') {
@@ -61,58 +63,138 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
     }
   }, [template]);
 
-  if (!invoiceId) return null;
-  
-  const isQuote = invoiceId.startsWith('qt-') || invoiceId.startsWith('q-');
+  const cleanId = (invoiceId || '').trim();
+  const lowerCleanId = cleanId.toLowerCase();
+  const lowerNoHash = lowerCleanId.replace(/^#/, '');
+
+  const isQuote = Boolean(invoiceId && (invoiceId.startsWith('qt-') || invoiceId.startsWith('q-')));
   const quote = isQuote
-    ? (quotations || []).find((q) => q.id === invoiceId || q.quoteNo.toLowerCase() === invoiceId.toLowerCase())
+    ? (quotations || []).find(
+        (q) =>
+          q.id === cleanId ||
+          q.quoteNo.toLowerCase() === lowerCleanId ||
+          q.quoteNo.toLowerCase() === lowerNoHash
+      )
     : null;
-  const realInvoice = isQuote
+  const realInvoice = (!invoiceId || isQuote)
     ? null
-    : invoices.find(
+    : (invoices || []).find(
         (inv) =>
-          inv.id === invoiceId ||
-          inv.invoiceNo.toLowerCase() === invoiceId.toLowerCase() ||
-          inv.invoiceNo.toLowerCase() === invoiceId.replace(/^#/, '').toLowerCase()
+          inv.id === cleanId ||
+          (inv.invoiceNo && inv.invoiceNo.toLowerCase() === lowerCleanId) ||
+          (inv.invoiceNo && inv.invoiceNo.toLowerCase() === lowerNoHash) ||
+          (inv.id && inv.id.toLowerCase() === lowerCleanId)
       );
 
-  if (!realInvoice && !quote) return null;
+  // Fallback direct single invoice fetch from public API (for mobile QR code scans)
+  useEffect(() => {
+    if (!invoiceId || realInvoice || quote || fetchedInvoice) return;
+
+    let isCancelled = false;
+    setIsFetchingInvoice(true);
+
+    const loadSingleInvoice = async () => {
+      try {
+        const queryId = invoiceId.trim().replace(/^#/, '');
+        const res = await fetch(`/api/public/invoice/${encodeURIComponent(queryId)}`);
+        if (!res.ok) {
+          throw new Error('Invoice not found');
+        }
+        const data = await res.json();
+        if (data.success && data.data && !isCancelled) {
+          if (data.type === 'quotation') {
+            const q = data.data;
+            setFetchedInvoice({
+              id: q.id,
+              invoiceNo: q.quoteNo,
+              referenceNo: q.referenceNo,
+              date: q.date,
+              customerId: 'quote',
+              customerName: q.customerName,
+              customerPhone: q.customerPhone,
+              customerCompany: q.customerCompany || '',
+              customerAddress: '',
+              items: (q.items || []).map((item: any) => ({
+                ...item,
+                totalSqft: 0,
+                width: 0,
+                height: 0,
+              })),
+              subtotal: q.grandTotal,
+              discount: 0,
+              discountType: 'amount' as const,
+              discountValue: 0,
+              vatRate: 0,
+              vatAmount: 0,
+              grandTotal: q.grandTotal,
+              paidAmount: 0,
+              dueAmount: q.grandTotal,
+              paymentMethod: 'Cash',
+              paymentStatus: (q.status as any) || 'Due',
+              productionStatus: 'Queued',
+              warehouseLocation: 'Office',
+              notes: q.notes || '',
+              jobSpecs: '',
+              deliveryDate: q.validUntil,
+              isQuote: true,
+            });
+          } else {
+            setFetchedInvoice(data.data);
+          }
+        }
+      } catch (err: any) {
+        if (!isCancelled) {
+          console.warn('Could not load invoice directly from public endpoint:', err);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsFetchingInvoice(false);
+        }
+      }
+    };
+
+    loadSingleInvoice();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [invoiceId, realInvoice, quote, fetchedInvoice]);
 
   // Adapt quotation into an invoice-like schema for rendering
-  const invoice: SalesInvoice = realInvoice || {
-    id: quote!.id,
-    invoiceNo: quote!.quoteNo,
-    referenceNo: quote!.referenceNo,
-    date: quote!.date,
+  const invoice: SalesInvoice | null = realInvoice || (quote ? {
+    id: quote.id,
+    invoiceNo: quote.quoteNo,
+    referenceNo: quote.referenceNo,
+    date: quote.date,
     customerId: 'quote',
-    customerName: quote!.customerName,
-    customerPhone: quote!.customerPhone,
-    customerCompany: quote!.customerCompany || '',
+    customerName: quote.customerName,
+    customerPhone: quote.customerPhone,
+    customerCompany: quote.customerCompany || '',
     customerAddress: '',
-    items: quote!.items.map(item => ({
+    items: quote.items.map((item) => ({
       ...item,
       totalSqft: 0,
       width: 0,
       height: 0,
     })),
-    subtotal: quote!.grandTotal,
+    subtotal: quote.grandTotal,
     discount: 0,
     discountType: 'amount' as const,
     discountValue: 0,
     vatRate: 0,
     vatAmount: 0,
-    grandTotal: quote!.grandTotal,
+    grandTotal: quote.grandTotal,
     paidAmount: 0,
-    dueAmount: quote!.grandTotal,
+    dueAmount: quote.grandTotal,
     paymentMethod: 'Cash',
-    paymentStatus: (quote!.status as any) || 'Due',
+    paymentStatus: (quote.status as any) || 'Due',
     productionStatus: 'Queued',
     warehouseLocation: 'Office',
-    notes: quote!.notes || '',
+    notes: quote.notes || '',
     jobSpecs: '',
-    deliveryDate: quote!.validUntil,
+    deliveryDate: quote.validUntil,
     isQuote: true,
-  };
+  } : null) || fetchedInvoice;
 
   useEffect(() => {
     if (template === 'POS' && invoice) {
@@ -137,7 +219,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
         .then((url) => setPosQrDataUrl(url))
         .catch((err) => console.error('Failed to generate POS QR code:', err));
     }
-  }, [template, invoice.invoiceNo, invoice.date, invoice.grandTotal, invoice.dueAmount, profile]);
+  }, [template, invoice?.invoiceNo, invoice?.date, invoice?.grandTotal, invoice?.dueAmount, profile]);
 
   useEffect(() => {
     if (invoice) {
@@ -160,16 +242,16 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
         .then((url) => setA4QrDataUrl(url))
         .catch((err) => console.error('Failed to generate A4 Invoice QR Code:', err));
     }
-  }, [invoice.id, invoice.invoiceNo]);
+  }, [invoice?.id, invoice?.invoiceNo]);
 
   useEffect(() => {
-    if (autoPrint && invoiceId) {
+    if (autoPrint && invoiceId && invoice) {
       const timer = setTimeout(() => {
         handlePrint(initialPadMode);
       }, 180);
       return () => clearTimeout(timer);
     }
-  }, [autoPrint, initialPadMode, invoiceId]);
+  }, [autoPrint, initialPadMode, invoiceId, invoice]);
 
   const tryDirectWindowPrint = () => {
     try {
@@ -641,12 +723,81 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${invoice.invoiceNo || 'document'}.html`;
+    a.download = `${invoice?.invoiceNo || 'document'}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  if (!invoiceId) return null;
+
+  if (!invoice) {
+    const isStillSyncing =
+      isFetchingInvoice ||
+      cloudSyncStatus === 'syncing' ||
+      cloudSyncStatus === 'idle';
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95">
+          {isStillSyncing ? (
+            <>
+              <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              <div>
+                <h3 className="font-bold text-slate-800 text-base">
+                  {language === 'bn' ? 'ইনভয়েস লোড হচ্ছে...' : 'Loading Invoice...'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  {language === 'bn'
+                    ? 'ক্লাউড সার্ভার থেকে ইনভয়েস তথ্য আনা হচ্ছে, অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন...'
+                    : 'Fetching invoice details from cloud server, please wait a moment...'}
+                </p>
+                <div className="mt-2 inline-block px-2.5 py-0.5 bg-slate-100 rounded text-[11px] font-mono text-slate-600">
+                  ID: #{invoiceId}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto text-xl font-bold">
+                ✕
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-base">
+                  {language === 'bn' ? 'ইনভয়েস পাওয়া যায়নি' : 'Invoice Not Found'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  {language === 'bn'
+                    ? `"${invoiceId}" নম্বরের কোনো ইনভয়েস খুঁজে পাওয়া যায়নি। নম্বরটি সঠিক কিনা যাচাই করুন।`
+                    : `No invoice found matching "${invoiceId}". Please verify the document number.`}
+                </p>
+              </div>
+              <div className="flex gap-2 justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    syncWithCloud?.();
+                    setIsFetchingInvoice(true);
+                  }}
+                  className="px-3.5 py-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg cursor-pointer transition-colors shadow-2xs"
+                >
+                  {language === 'bn' ? 'পুনরায় চেষ্টা করুন' : 'Retry'}
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-3.5 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 border border-slate-300 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+                >
+                  {language === 'bn' ? 'বন্ধ করুন' : 'Close'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

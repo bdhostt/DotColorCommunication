@@ -81,6 +81,54 @@ app.get('/api/state', async (_req, res) => {
   }
 });
 
+// Public single invoice fetch endpoint (for QR code scan lookup)
+app.get('/api/public/invoice/:id', async (req, res) => {
+  const queryId = (req.params.id || '').trim().toLowerCase();
+  const queryNoHash = queryId.replace(/^#/, '');
+
+  if (!isConnected) {
+    return res.status(503).json({ success: false, message: 'Database is currently offline.' });
+  }
+
+  try {
+    const doc = await ErpState.findOne({ id: 'singleton' });
+    if (!doc || !doc.data) {
+      return res.status(404).json({ success: false, message: 'Invoice not found.' });
+    }
+
+    const invoices = Array.isArray(doc.data.invoices) ? doc.data.invoices : [];
+    const quotations = Array.isArray(doc.data.quotations) ? doc.data.quotations : [];
+    const profile = doc.data.profile || {};
+
+    const foundInvoice = invoices.find(
+      (inv: any) =>
+        (inv.id && inv.id.toLowerCase() === queryId) ||
+        (inv.invoiceNo && inv.invoiceNo.toLowerCase() === queryId) ||
+        (inv.invoiceNo && inv.invoiceNo.toLowerCase() === queryNoHash)
+    );
+
+    if (foundInvoice) {
+      return res.json({ success: true, type: 'invoice', data: foundInvoice, profile });
+    }
+
+    const foundQuote = quotations.find(
+      (q: any) =>
+        (q.id && q.id.toLowerCase() === queryId) ||
+        (q.quoteNo && q.quoteNo.toLowerCase() === queryId) ||
+        (q.quoteNo && q.quoteNo.toLowerCase() === queryNoHash)
+    );
+
+    if (foundQuote) {
+      return res.json({ success: true, type: 'quotation', data: foundQuote, profile });
+    }
+
+    return res.status(404).json({ success: false, message: 'Invoice not found.' });
+  } catch (error: any) {
+    console.error('Error fetching public invoice:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Save or Update ERP state in MongoDB
 app.post('/api/state', async (req, res) => {
   if (!isConnected) {
