@@ -254,6 +254,7 @@ const AppContent: React.FC = () => {
         <InvoicePrintModal
           invoiceId={publicInvoiceId}
           mode="invoice"
+          isPublicView={true}
           onClose={() => {
             try {
               const url = new URL(window.location.href);

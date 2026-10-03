@@ -23,7 +23,11 @@ import {
   Calendar,
   FileSpreadsheet,
   Settings,
+  ZoomIn,
+  Maximize2,
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface InvoicePrintModalProps {
   invoiceId: string | null;
@@ -31,6 +35,7 @@ interface InvoicePrintModalProps {
   onClose: () => void;
   autoPrint?: boolean;
   initialPadMode?: boolean;
+  isPublicView?: boolean;
 }
 
 export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
@@ -39,6 +44,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   onClose,
   autoPrint = false,
   initialPadMode = false,
+  isPublicView = false,
 }) => {
   const { invoices, quotations, profile, language, cloudSyncStatus, syncWithCloud } = useApp();
   const [template, setTemplate] = useState<'A4' | 'POS' | 'WORK_ORDER' | 'CHALLAN'>(
@@ -56,6 +62,21 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   const [a4QrDataUrl, setA4QrDataUrl] = useState<string>('');
   const [fetchedInvoice, setFetchedInvoice] = useState<SalesInvoice | null>(null);
   const [isFetchingInvoice, setIsFetchingInvoice] = useState<boolean>(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState<boolean>(false);
+  const [isMobileFit, setIsMobileFit] = useState<boolean>(true);
+  const [viewportWidth, setViewportWidth] = useState<number>(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1024
+  );
+  const sheetRef = React.useRef<HTMLDivElement | null>(null);
+  const [sheetHeight, setSheetHeight] = useState<number>(1123);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (template === 'POS') {
@@ -632,102 +653,81 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
     }
   };
 
-  const handleDownloadHTML = () => {
-    const printableContent = document.getElementById('printable-invoice-content');
-    if (!printableContent) return;
+  const handleDownloadPDF = async () => {
+    if (!invoice) return;
+    setIsDownloadingPdf(true);
+    setPrintError(null);
 
-    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-      .map((s) => s.outerHTML)
-      .join('\n');
+    try {
+      const printableElement =
+        document.getElementById('a4-document-sheet') ||
+        document.getElementById('printable-invoice-content');
+      if (!printableElement) {
+        throw new Error('Document element not found');
+      }
 
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>${invoice.invoiceNo}</title>
-          <script src="https://cdn.tailwindcss.com"></script>
-          ${styles}
-          <style>
-            * {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-            @page {
-              size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
-              margin: ${template === 'POS' ? '0' : '8mm 10mm'};
-            }
-            body {
-              background: white !important;
-              color: black !important;
-              padding: ${template === 'POS' ? '0' : '20px'};
-              font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            }
-            .a4-page-sheet {
-              min-height: 297mm;
-              display: flex !important;
-              flex-direction: column !important;
-              justify-content: space-between !important;
-              box-sizing: border-box !important;
-            }
-            .a4-page-content {
-              flex: 1 0 auto !important;
-            }
-            .a4-page-footer {
-              margin-top: auto !important;
-            }
-            @media print {
-              body { padding: 0 !important; }
-              .a4-page-sheet {
-                min-height: calc(297mm - 16mm) !important;
-                border: none !important;
-                box-shadow: none !important;
-                padding: 0 !important;
-              }
-              table {
-                border-collapse: collapse !important;
-                width: 100% !important;
-              }
-              ${template === 'POS' ? `
-                * {
-                  color: #000000 !important;
-                  border-color: #000000 !important;
-                }
-                .pos-thermal-sheet {
-                  width: 78mm !important;
-                  max-width: 78mm !important;
-                  margin: 0 auto !important;
-                  padding: 1mm 1mm !important;
-                  border: none !important;
-                  box-shadow: none !important;
-                  border-radius: 0 !important;
-                }
-              ` : ''}
-              ${isPadMode ? `
-                .pad-header-branding { display: none !important; }
-                .pad-header-spacer { display: block !important; height: ${padTopMarginMm}mm !important; }
-                .pad-footer-credit { display: none !important; }
-              ` : ''}
-            }
-          </style>
-        </head>
-        <body onload="window.print()">
-          <div style="max-width: ${template === 'POS' ? '80mm' : '210mm'}; margin: 0 auto;">
-            ${printableContent.innerHTML}
-          </div>
-        </body>
-      </html>
-    `;
+      // Temporarily remove CSS scale transform for true 1:1 capture
+      const prevTransform = printableElement.style.transform;
+      const prevTransformOrigin = printableElement.style.transformOrigin;
+      printableElement.style.transform = 'none';
 
-    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${invoice?.invoiceNo || 'document'}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const canvas = await html2canvas(printableElement, {
+        scale: 2, // 2x for sharp print quality
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 1024,
+      });
+
+      // Restore transform immediately
+      printableElement.style.transform = prevTransform;
+      printableElement.style.transformOrigin = prevTransformOrigin;
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+
+      const pdfWidth = 210;
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      if (pdfHeight <= 297) {
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      } else {
+        let position = 0;
+        let heightLeft = pdfHeight;
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= 297;
+
+        while (heightLeft > 0) {
+          position = heightLeft - pdfHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+          heightLeft -= 297;
+        }
+      }
+
+      const filename = `${invoice.invoiceNo || 'invoice'}.pdf`;
+      pdf.save(filename);
+    } catch (err: any) {
+      console.error('PDF generation error:', err);
+      const printableElement = document.getElementById('a4-document-sheet');
+      if (printableElement && isMobile && isMobileFit) {
+        printableElement.style.transform = `scale(${scale})`;
+        printableElement.style.transformOrigin = 'top center';
+      }
+      setPrintError(
+        language === 'bn'
+          ? 'পিডিএফ তৈরিতে সমস্যা হয়েছে। অনুগ্রহ করে "প্রিন্ট" বাটনে ক্লিক করে "Save as PDF" নির্বাচন করুন।'
+          : 'Failed to generate PDF. Please click "Print" and choose "Save as PDF".'
+      );
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   if (!invoiceId) return null;
@@ -901,180 +901,291 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
         
         {/* Top Control Bar (Hidden when printing via CSS @media print) */}
         <div className="print:hidden p-3 sm:p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50 rounded-t-2xl">
-          {/* Template Switcher & Pad Mode Toggle */}
-          <div className="flex flex-wrap items-center gap-2">
-            {isQuote ? (
-              <div className="text-slate-800 text-sm font-black flex items-center gap-2 px-1">
-                <FileText className="w-5 h-5 text-amber-500" />
-                <span>{language === 'bn' ? 'কোটেশন ও প্রাক্কলন প্রিন্ট ভিউ' : 'Quotation Print & View'}</span>
+          {isPublicView ? (
+            <div className="flex items-center justify-between w-full gap-2">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-black rounded-xl text-white shadow-2xs">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-slate-900 tracking-wider uppercase">
+                    {language === 'bn' ? 'সেলস ইনভয়েস' : 'SALES INVOICE'}
+                  </div>
+                  <div className="text-[11px] font-mono font-bold text-slate-600">
+                    #{invoice.invoiceNo}
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => setTemplate('A4')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    template === 'A4' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  A4 বিল ও ইনভয়েস
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTemplate('WORK_ORDER')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    template === 'WORK_ORDER' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  ফ্যাক্টরি ওয়ার্ক অর্ডার
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTemplate('CHALLAN')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    template === 'CHALLAN' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  ডেলিভারি চালান
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTemplate('POS')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    template === 'POS' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  80mm থার্মাল স্লিপ
-                </button>
-              </div>
-            )}
 
-            {/* Quick Pad View Toggle */}
-            {template !== 'POS' && (
-              <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-xl p-0.5 shadow-2xs text-xs">
-                <button
-                  type="button"
-                  onClick={() => setIsPadMode(false)}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                    !isPadMode ? 'bg-slate-900 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                  title="সম্পূর্ণ ইনভয়েস প্রিভিউ"
-                >
-                  নরমাল ভিউ
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsPadMode(true)}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                    isPadMode ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-600 hover:text-indigo-600'
-                  }`}
-                  title="লেটারহেড প্যাড প্রিভিউ"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                  <span>প্যাড ভিউ</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Action buttons (Right side: user mark 1 area) */}
-          <div className="flex items-center gap-2">
-            {/* Direct Hardware Thermal Print Button for 80mm POS Slip */}
-            {template === 'POS' && (
-              <button
-                type="button"
-                onClick={handleHardwarePrint}
-                disabled={isHardwarePrinting}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all ${
-                  hardwareAgentStatus.isOnline
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300'
-                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                }`}
-                title={
-                  hardwareAgentStatus.isOnline
-                    ? `৮০মিমি প্রিন্টারে সরাসরি হার্ডওয়্যার প্রিন্ট (${hardwareAgentStatus.activePrinter || '80 Printer'})`
-                    : '৮০মিমি থার্মাল প্রিন্টারে সরাসরি প্রিন্ট (এজেন্ট রানিং না থাকলে সেটআপ ডায়ালগ ওপেন হবে)'
-                }
-              >
-                <Printer className="w-4 h-4 text-emerald-200" />
-                <span>
-                  {isHardwarePrinting
-                    ? (language === 'bn' ? 'প্রিন্ট হচ্ছে...' : 'Printing...')
-                    : (language === 'bn' ? 'থার্মাল প্রিন্টার (Agent)' : 'Thermal Printer (Agent)')}
-                </span>
-                {hardwareAgentStatus.isOnline ? (
-                  <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" title="Agent Online" />
-                ) : (
-                  <span className="text-[10px] px-1 bg-white/20 rounded font-normal">Setup</span>
+              <div className="flex items-center gap-2">
+                {/* Mobile Fit vs 100% Zoom Toggle */}
+                {isMobile && template !== 'POS' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFit((prev) => !prev)}
+                    className="px-2.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs"
+                    title={isMobileFit ? 'বড় করে দেখতে ১০০% জুম করুন' : 'পুরো পেজ এক স্ক্রিনে দেখতে ফিট করুন'}
+                  >
+                    {isMobileFit ? (
+                      <>
+                        <ZoomIn className="w-4 h-4" />
+                        <span className="hidden sm:inline">100% জুম</span>
+                      </>
+                    ) : (
+                      <>
+                        <Maximize2 className="w-4 h-4" />
+                        <span className="hidden sm:inline">ফিট পেজ</span>
+                      </>
+                    )}
+                  </button>
                 )}
-              </button>
-            )}
 
-            {template === 'POS' && (
-              <button
-                type="button"
-                onClick={() => setIsPrinterBridgeOpen(true)}
-                className="p-2 text-slate-600 hover:text-slate-900 bg-slate-200/80 hover:bg-slate-300 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
-                title={language === 'bn' ? 'প্রিন্টার এজেন্ট স্ট্যাটাস ও সেটআপ' : 'Printer Agent Status & Setup'}
-              >
-                <Settings className="w-4 h-4 text-slate-700" />
-              </button>
-            )}
+                {/* Print Document */}
+                <button
+                  type="button"
+                  onClick={() => handlePrint(false)}
+                  disabled={isPrinting}
+                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+                  title="প্রিন্ট করুন বা Save as PDF করুন"
+                >
+                  <Printer className="w-4 h-4 text-amber-400" />
+                  <span>{isPrinting ? (language === 'bn' ? 'প্রিন্ট হচ্ছে...' : 'Printing...') : (language === 'bn' ? 'প্রিন্ট' : 'Print')}</span>
+                </button>
 
-            {/* Standard Full Print */}
-            <button
-              type="button"
-              onClick={() => handlePrint(false)}
-              disabled={isPrinting}
-              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
-              title={language === 'bn' ? 'সম্পূর্ণ ইনভয়েস লোগো ও ফুটারসহ প্রিন্ট করুন' : 'Print complete document with header and footer'}
-            >
-              <Printer className="w-4 h-4 text-amber-400" />
-              <span>{isPrinting ? (language === 'bn' ? 'প্রিন্ট হচ্ছে...' : 'Printing...') : (language === 'bn' ? 'প্রিন্ট করুন (Print)' : 'Print Document')}</span>
-            </button>
+                {/* Direct PDF Download */}
+                <button
+                  type="button"
+                  onClick={handleDownloadPDF}
+                  disabled={isDownloadingPdf}
+                  className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+                  title="সরাসরি PDF ফাইল ডাউনলোড করুন (.pdf)"
+                >
+                  {isDownloadingPdf ? (
+                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span>{isDownloadingPdf ? (language === 'bn' ? 'তৈরি হচ্ছে...' : 'Generating...') : (language === 'bn' ? 'ডাউনলোড PDF' : 'Download PDF')}</span>
+                </button>
 
-            {/* Pad Print Button (User request at mark 1) */}
-            {template !== 'POS' && (
-              <button
-                type="button"
-                onClick={handlePadPrint}
-                disabled={isPrinting}
-                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all ring-2 ring-indigo-300"
-                title={language === 'bn' ? 'কোম্পানি প্যাডের জন্য হেডার ও ফুটার ছাড়া সরাসরি প্রিন্ট করুন' : 'Print for pre-printed letterhead pad without header & footer'}
-              >
-                <FileSpreadsheet className="w-4 h-4 text-indigo-200" />
-                <span>{language === 'bn' ? 'প্যাড প্রিন্ট (Pad Print)' : 'Pad Print'}</span>
-              </button>
-            )}
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-200 cursor-pointer"
+                  title="বন্ধ করুন"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Template Switcher & Pad Mode Toggle */}
+              <div className="flex flex-wrap items-center gap-2">
+                {isQuote ? (
+                  <div className="text-slate-800 text-sm font-black flex items-center gap-2 px-1">
+                    <FileText className="w-5 h-5 text-amber-500" />
+                    <span>{language === 'bn' ? 'কোটেশন ও প্রাক্কলন প্রিন্ট ভিউ' : 'Quotation Print & View'}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setTemplate('A4')}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        template === 'A4' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      A4 বিল ও ইনভয়েস
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTemplate('WORK_ORDER')}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        template === 'WORK_ORDER' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      ফ্যাক্টরি ওয়ার্ক অর্ডার
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTemplate('CHALLAN')}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        template === 'CHALLAN' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      ডেলিভারি চালান
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTemplate('POS')}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        template === 'POS' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      80mm থার্মাল স্লিপ
+                    </button>
+                  </div>
+                )}
 
-            {/* Open in New Tab */}
-            <button
-              type="button"
-              onClick={handleOpenInNewTab}
-              className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all"
-              title={language === 'bn' ? 'আলাদা ট্যাবে খুলে সরাসরি প্রিন্ট করুন' : 'Open document in a new browser tab to print'}
-            >
-              <ExternalLink className="w-4 h-4 text-slate-950" />
-              <span>{language === 'bn' ? 'নতুন ট্যাবে' : 'Open in New Tab'}</span>
-            </button>
+                {/* Quick Pad View Toggle */}
+                {template !== 'POS' && (
+                  <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-xl p-0.5 shadow-2xs text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setIsPadMode(false)}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                        !isPadMode ? 'bg-slate-900 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                      title="সম্পূর্ণ ইনভয়েস প্রিভিউ"
+                    >
+                      নরমাল ভিউ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsPadMode(true)}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                        isPadMode ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-600 hover:text-indigo-600'
+                      }`}
+                      title="লেটারহেড প্যাড প্রিভিউ"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                      <span>প্যাড ভিউ</span>
+                    </button>
+                  </div>
+                )}
+              </div>
 
-            <button
-              type="button"
-              onClick={handleDownloadHTML}
-              className="p-2 text-slate-600 hover:text-slate-900 bg-slate-200/80 hover:bg-slate-300 rounded-xl transition-all cursor-pointer"
-              title={language === 'bn' ? 'অফলাইন এইচটিএমএল হিসেবে ডাউনলোড করুন' : 'Download standalone HTML file'}
-            >
-              <Download className="w-4 h-4" />
-            </button>
+              {/* Action buttons (Right side: user mark 1 area) */}
+              <div className="flex items-center gap-2">
+                {/* Mobile Fit vs 100% Zoom Toggle for Admin */}
+                {isMobile && template !== 'POS' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFit((prev) => !prev)}
+                    className="px-2.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs"
+                    title={isMobileFit ? 'বড় করে দেখতে ১০০% জুম করুন' : 'পুরো পেজ এক স্ক্রিনে দেখতে ফিট করুন'}
+                  >
+                    {isMobileFit ? (
+                      <>
+                        <ZoomIn className="w-4 h-4" />
+                        <span className="hidden sm:inline">100% জুম</span>
+                      </>
+                    ) : (
+                      <>
+                        <Maximize2 className="w-4 h-4" />
+                        <span className="hidden sm:inline">ফিট পেজ</span>
+                      </>
+                    )}
+                  </button>
+                )}
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-200 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+                {/* Direct Hardware Thermal Print Button for 80mm POS Slip */}
+                {template === 'POS' && (
+                  <button
+                    type="button"
+                    onClick={handleHardwarePrint}
+                    disabled={isHardwarePrinting}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all ${
+                      hardwareAgentStatus.isOnline
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300'
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    }`}
+                    title={
+                      hardwareAgentStatus.isOnline
+                        ? `৮০মিমি প্রিন্টারে সরাসরি হার্ডওয়্যার প্রিন্ট (${hardwareAgentStatus.activePrinter || '80 Printer'})`
+                        : '৮০মিমি থার্মাল প্রিন্টারে সরাসরি প্রিন্ট (এজেন্ট রানিং না থাকলে সেটআপ ডায়ালগ ওপেন হবে)'
+                    }
+                  >
+                    <Printer className="w-4 h-4 text-emerald-200" />
+                    <span>
+                      {isHardwarePrinting
+                        ? (language === 'bn' ? 'প্রিন্ট হচ্ছে...' : 'Printing...')
+                        : (language === 'bn' ? 'থার্মাল প্রিন্টার (Agent)' : 'Thermal Printer (Agent)')}
+                    </span>
+                    {hardwareAgentStatus.isOnline ? (
+                      <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" title="Agent Online" />
+                    ) : (
+                      <span className="text-[10px] px-1 bg-white/20 rounded font-normal">Setup</span>
+                    )}
+                  </button>
+                )}
+
+                {template === 'POS' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsPrinterBridgeOpen(true)}
+                    className="p-2 text-slate-600 hover:text-slate-900 bg-slate-200/80 hover:bg-slate-300 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
+                    title={language === 'bn' ? 'প্রিন্টার এজেন্ট স্ট্যাটাস ও সেটআপ' : 'Printer Agent Status & Setup'}
+                  >
+                    <Settings className="w-4 h-4 text-slate-700" />
+                  </button>
+                )}
+
+                {/* Standard Full Print */}
+                <button
+                  type="button"
+                  onClick={() => handlePrint(false)}
+                  disabled={isPrinting}
+                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+                  title={language === 'bn' ? 'সম্পূর্ণ ইনভয়েস লোগো ও ফুটারসহ প্রিন্ট করুন' : 'Print complete document with header and footer'}
+                >
+                  <Printer className="w-4 h-4 text-amber-400" />
+                  <span>{isPrinting ? (language === 'bn' ? 'প্রিন্ট হচ্ছে...' : 'Printing...') : (language === 'bn' ? 'প্রিন্ট করুন (Print)' : 'Print Document')}</span>
+                </button>
+
+                {/* Pad Print Button (User request at mark 1) */}
+                {template !== 'POS' && (
+                  <button
+                    type="button"
+                    onClick={handlePadPrint}
+                    disabled={isPrinting}
+                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all ring-2 ring-indigo-300"
+                    title={language === 'bn' ? 'কোম্পানি প্যাডের জন্য হেডার ও ফুটার ছাড়া সরাসরি প্রিন্ট করুন' : 'Print for pre-printed letterhead pad without header & footer'}
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-indigo-200" />
+                    <span>{language === 'bn' ? 'প্যাড প্রিন্ট (Pad Print)' : 'Pad Print'}</span>
+                  </button>
+                )}
+
+                {/* Open in New Tab */}
+                <button
+                  type="button"
+                  onClick={handleOpenInNewTab}
+                  className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all"
+                  title={language === 'bn' ? 'আলাদা ট্যাবে খুলে সরাসরি প্রিন্ট করুন' : 'Open document in a new browser tab to print'}
+                >
+                  <ExternalLink className="w-4 h-4 text-slate-950" />
+                  <span>{language === 'bn' ? 'নতুন ট্যাবে' : 'Open in New Tab'}</span>
+                </button>
+
+                {/* Direct PDF Download Button */}
+                <button
+                  type="button"
+                  onClick={handleDownloadPDF}
+                  disabled={isDownloadingPdf}
+                  className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+                  title={language === 'bn' ? 'PDF ফাইল হিসেবে ডাউনলোড করুন (.pdf)' : 'Download PDF file (.pdf)'}
+                >
+                  {isDownloadingPdf ? (
+                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span>{isDownloadingPdf ? 'তৈরি হচ্ছে...' : 'PDF ডাউনলোড'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-200 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Hardware Print Feedback Message */}
@@ -1156,105 +1267,128 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
         )}
 
         {/* Printable Document Body */}
-        <div id="printable-invoice-content" className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-100/60 print:bg-white print:p-0 print:overflow-visible print:max-h-none">
+        <div id="printable-invoice-content" className="flex-1 overflow-x-auto overflow-y-auto p-2 sm:p-6 bg-slate-200/50 print:bg-white print:p-0 print:overflow-visible print:max-h-none flex justify-center">
           
           {/* ============================================================== */}
           {/* 1. STANDARD A4 TAX / SALES INVOICE */}
           {/* ============================================================== */}
           {template === 'A4' && (
-            <div className="a4-page-sheet bg-white max-w-[210mm] min-h-[297mm] mx-auto p-8 rounded-xl shadow-xs print:shadow-none print:p-0 border border-black print:border-none flex flex-col justify-between text-black text-xs">
-              <div className="a4-page-content space-y-6 flex-1">
-              
-              {/* Header: Company Logo on Left, Scannable Invoice QR on Right */}
-              <DocumentHeader
-                documentTitle={
-                  (invoice as any).isQuote
-                    ? (language === 'bn' ? 'কোটেশন ও প্রাক্কলন' : 'QUOTATION / ESTIMATION')
-                    : (language === 'bn' ? 'সেলস ইনভয়েস / বিল' : 'INVOICE')
+            <div
+              className="w-full flex justify-center"
+              style={
+                isMobile && isMobileFit
+                  ? {
+                      height: `${Math.ceil((sheetHeight || 1123) * scale)}px`,
+                      overflow: 'hidden',
+                    }
+                  : undefined
+              }
+            >
+              <div
+                ref={sheetRef}
+                id="a4-document-sheet"
+                style={
+                  isMobile && isMobileFit
+                    ? {
+                        transform: `scale(${scale})`,
+                        transformOrigin: 'top center',
+                      }
+                    : undefined
                 }
-                documentNo={invoice.invoiceNo}
-                documentDate={invoice.date}
-                referenceNo={invoice.referenceNo}
-                invoiceId={invoice.id}
-                isPadMode={isPadMode}
-                padTopMarginMm={padTopMarginMm}
-              />
+                className="a4-page-sheet bg-white w-[794px] min-w-[794px] min-h-[1123px] mx-auto p-8 rounded-xl shadow-md print:shadow-none print:p-0 border-2 border-black print:border-none flex flex-col justify-between text-black text-xs shrink-0"
+              >
+                <div className="a4-page-content space-y-6 flex-1">
+                
+                {/* Header: Company Logo on Left, Scannable Invoice QR on Right */}
+                <DocumentHeader
+                  documentTitle={
+                    (invoice as any).isQuote
+                      ? (language === 'bn' ? 'কোটেশন ও প্রাক্কলন' : 'QUOTATION / ESTIMATION')
+                      : (language === 'bn' ? 'সেলস ইনভয়েস / বিল' : 'INVOICE')
+                  }
+                  documentNo={invoice.invoiceNo}
+                  documentDate={invoice.date}
+                  referenceNo={invoice.referenceNo}
+                  invoiceId={invoice.id}
+                  isPadMode={isPadMode}
+                  padTopMarginMm={padTopMarginMm}
+                />
 
-              {/* Bill To & Invoice Meta Box */}
-              <div className="bg-white p-4 rounded-xl border-2 border-black shadow-2xs grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                {/* Left Column: BILL TO */}
-                <div className="space-y-1.5">
-                  <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
-                    BILL TO:
-                  </span>
-                  <div className="space-y-1 text-black">
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-black font-bold">Customer Name :</span>
-                      <span className="font-black text-black text-sm">{invoice.customerName}</span>
-                    </div>
-                    {invoice.customerCompany && (
+                {/* Bill To & Invoice Meta Box: 2 Columns Side-by-Side (Image 2 format) */}
+                <div className="bg-white p-4 rounded-xl border-2 border-black shadow-2xs grid grid-cols-2 gap-4 text-xs">
+                  {/* Left Column: BILL TO */}
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
+                      BILL TO:
+                    </span>
+                    <div className="space-y-1 text-black">
                       <div className="flex items-baseline">
-                        <span className="w-28 shrink-0 text-black font-bold">Company / Org :</span>
-                        <span className="font-bold text-black">{invoice.customerCompany}</span>
+                        <span className="w-28 shrink-0 text-black font-bold">Customer Name :</span>
+                        <span className="font-black text-black text-sm">{invoice.customerName}</span>
                       </div>
-                    )}
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-black font-bold">Address :</span>
-                      <span className="text-black font-medium">
-                        {invoice.customerAddress || 'Chattogram, Bangladesh'}
-                      </span>
+                      {invoice.customerCompany && (
+                        <div className="flex items-baseline">
+                          <span className="w-28 shrink-0 text-black font-bold">Company / Org :</span>
+                          <span className="font-bold text-black">{invoice.customerCompany}</span>
+                        </div>
+                      )}
+                      <div className="flex items-baseline">
+                        <span className="w-28 shrink-0 text-black font-bold">Address :</span>
+                        <span className="text-black font-medium">
+                          {invoice.customerAddress || 'Chattogram, Bangladesh'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Invoice Details with Mark 2 QR Code */}
+                  <div className="space-y-1.5 border-l-2 border-black pl-4 flex flex-col justify-between">
+                    <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
+                      DOCUMENT DETAILS:
+                    </span>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="space-y-1 text-black flex-1">
+                        <div className="flex items-baseline">
+                          <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Invoice Date :</span>
+                          <span className="font-black text-black">{invoice.date}</span>
+                        </div>
+                        <div className="flex items-baseline">
+                          <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Invoice # :</span>
+                          <span className="font-black text-black font-mono">#{invoice.invoiceNo}</span>
+                        </div>
+                        {invoice.referenceNo && !['nill', 'nil', 'none', 'null', '-'].includes(invoice.referenceNo.trim().toLowerCase()) && (
+                          <div className="flex items-baseline">
+                            <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Ref/PO # :</span>
+                            <span className="font-black text-black font-mono">{invoice.referenceNo}</span>
+                          </div>
+                        )}
+                        {invoice.deliveryDate && (
+                          <div className="flex items-baseline">
+                            <span className="w-24 sm:w-28 shrink-0 text-black font-bold">
+                              {(invoice as any).isQuote ? 'Valid Until :' : 'Delivery Target :'}
+                            </span>
+                            <span className="font-black text-black">{invoice.deliveryDate}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Mark 2: Scannable Invoice QR Code */}
+                      <div className="shrink-0 p-1 bg-white rounded-lg border-2 border-black flex items-center justify-center shadow-2xs">
+                        {a4QrDataUrl ? (
+                          <img
+                            src={a4QrDataUrl}
+                            alt={`Invoice QR #${invoice.invoiceNo}`}
+                            className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 flex items-center justify-center text-[9px] text-black font-bold">
+                            QR
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Right Column: Invoice Details with Mark 2 QR Code */}
-                <div className="space-y-1.5 sm:border-l-2 sm:border-black sm:pl-4 flex flex-col justify-between">
-                  <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
-                    DOCUMENT DETAILS:
-                  </span>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="space-y-1 text-black flex-1">
-                      <div className="flex items-baseline">
-                        <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Invoice Date :</span>
-                        <span className="font-black text-black">{invoice.date}</span>
-                      </div>
-                      <div className="flex items-baseline">
-                        <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Invoice # :</span>
-                        <span className="font-black text-black font-mono">#{invoice.invoiceNo}</span>
-                      </div>
-                      {invoice.referenceNo && !['nill', 'nil', 'none', 'null', '-'].includes(invoice.referenceNo.trim().toLowerCase()) && (
-                        <div className="flex items-baseline">
-                          <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Ref/PO # :</span>
-                          <span className="font-black text-black font-mono">{invoice.referenceNo}</span>
-                        </div>
-                      )}
-                      {invoice.deliveryDate && (
-                        <div className="flex items-baseline">
-                          <span className="w-24 sm:w-28 shrink-0 text-black font-bold">
-                            {(invoice as any).isQuote ? 'Valid Until :' : 'Delivery Target :'}
-                          </span>
-                          <span className="font-black text-black">{invoice.deliveryDate}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Mark 2: Scannable Invoice QR Code */}
-                    <div className="shrink-0 p-1 bg-white rounded-lg border-2 border-black flex items-center justify-center shadow-2xs">
-                      {a4QrDataUrl ? (
-                        <img
-                          src={a4QrDataUrl}
-                          alt={`Invoice QR #${invoice.invoiceNo}`}
-                          className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 flex items-center justify-center text-[9px] text-black font-bold">
-                          QR
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {/* Items Table Container */}
               <div className="rounded-xl border-2 border-black overflow-hidden bg-white shadow-2xs">
@@ -1439,13 +1573,37 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* ============================================================== */}
-          {/* 2. FACTORY WORK ORDER / JOB CARD */}
-          {/* ============================================================== */}
-          {template === 'WORK_ORDER' && (
-            <div className="a4-page-sheet bg-white max-w-[210mm] min-h-[297mm] mx-auto p-8 rounded-xl shadow-xs print:shadow-none print:p-0 border border-amber-300 print:border-none flex flex-col justify-between text-xs text-slate-900">
+        {/* ============================================================== */}
+        {/* 2. FACTORY WORK ORDER / JOB CARD */}
+        {/* ============================================================== */}
+        {template === 'WORK_ORDER' && (
+          <div
+            className="w-full flex justify-center"
+            style={
+              isMobile && isMobileFit
+                ? {
+                    height: `${Math.ceil((sheetHeight || 1123) * scale)}px`,
+                    overflow: 'hidden',
+                  }
+                : undefined
+            }
+          >
+            <div
+              ref={sheetRef}
+              id="a4-document-sheet"
+              style={
+                isMobile && isMobileFit
+                  ? {
+                      transform: `scale(${scale})`,
+                      transformOrigin: 'top center',
+                    }
+                  : undefined
+              }
+              className="a4-page-sheet bg-white w-[794px] min-w-[794px] min-h-[1123px] mx-auto p-8 rounded-xl shadow-md print:shadow-none print:p-0 border-2 border-amber-400 print:border-none flex flex-col justify-between text-xs text-slate-900 shrink-0"
+            >
               <div className="a4-page-content space-y-6 flex-1">
               {/* Header with Brand Logo on Left, QR Banner on Right */}
               <DocumentHeader
@@ -1459,7 +1617,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               />
 
               {/* Order Meta Box */}
-              <div className="bg-white p-4 rounded-xl border-2 border-amber-400 print:border-slate-600 shadow-2xs grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="bg-white p-4 rounded-xl border-2 border-amber-400 print:border-slate-600 shadow-2xs grid grid-cols-2 gap-4 text-xs">
                 <div className="space-y-1.5">
                   <span className="text-[11px] font-black uppercase text-amber-900 tracking-wider block mb-1">
                     CLIENT DETAILS:
@@ -1482,7 +1640,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   </div>
                 </div>
 
-                <div className="space-y-1.5 sm:border-l-2 sm:border-amber-300 print:sm:border-slate-400 sm:pl-4">
+                <div className="space-y-1.5 border-l-2 border-amber-300 print:border-slate-400 pl-4">
                   <span className="text-[11px] font-black uppercase text-amber-900 tracking-wider block mb-1">
                     PRODUCTION DEADLINE & STATUS:
                   </span>
@@ -1574,73 +1732,97 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
           {/* ============================================================== */}
           {/* 3. DELIVERY CHALLAN */}
           {/* ============================================================== */}
           {template === 'CHALLAN' && (
-            <div className="a4-page-sheet bg-white max-w-[210mm] min-h-[297mm] mx-auto p-8 rounded-xl shadow-xs print:shadow-none print:p-0 border border-slate-200 print:border-none flex flex-col justify-between text-xs text-slate-900">
-              <div className="a4-page-content space-y-6 flex-1">
-              {/* Header with Brand Logo on Left, QR Banner on Right */}
-              <DocumentHeader
-                documentTitle="DELIVERY CHALLAN / চালান"
-                documentSubtitle={`${profile.name || 'DotColorCommunication'} • Official Goods & Services Delivery Note`}
-                documentNo={`CH-${invoice.invoiceNo}`}
-                documentDate={invoice.date}
-                referenceNo={invoice.referenceNo}
-                isPadMode={isPadMode}
-                padTopMarginMm={padTopMarginMm}
-              />
+            <div
+              className="w-full flex justify-center"
+              style={
+                isMobile && isMobileFit
+                  ? {
+                      height: `${Math.ceil((sheetHeight || 1123) * scale)}px`,
+                      overflow: 'hidden',
+                    }
+                  : undefined
+              }
+            >
+              <div
+                ref={sheetRef}
+                id="a4-document-sheet"
+                style={
+                  isMobile && isMobileFit
+                    ? {
+                        transform: `scale(${scale})`,
+                        transformOrigin: 'top center',
+                      }
+                    : undefined
+                }
+                className="a4-page-sheet bg-white w-[794px] min-w-[794px] min-h-[1123px] mx-auto p-8 rounded-xl shadow-md print:shadow-none print:p-0 border-2 border-slate-400 print:border-none flex flex-col justify-between text-black text-xs shrink-0"
+              >
+                <div className="a4-page-content space-y-6 flex-1">
+                {/* Header with Brand Logo on Left, QR Banner on Right */}
+                <DocumentHeader
+                  documentTitle="DELIVERY CHALLAN / চালান"
+                  documentSubtitle={`${profile.name || 'DotColorCommunication'} • Official Goods & Services Delivery Note`}
+                  documentNo={`CH-${invoice.invoiceNo}`}
+                  documentDate={invoice.date}
+                  referenceNo={invoice.referenceNo}
+                  isPadMode={isPadMode}
+                  padTopMarginMm={padTopMarginMm}
+                />
 
-              {/* Delivery Meta Box */}
-              <div className="bg-white p-4 rounded-xl border-2 border-slate-400 print:border-slate-600 shadow-2xs grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div className="space-y-1.5">
-                  <span className="text-[11px] font-black uppercase text-slate-900 tracking-wider block mb-1">
-                    DELIVER TO:
-                  </span>
-                  <div className="space-y-1 text-slate-700">
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Receiver Name :</span>
-                      <span className="font-extrabold text-slate-950 text-sm">{invoice.customerName}</span>
-                    </div>
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Phone :</span>
-                      <span className="font-bold text-slate-900">{invoice.customerPhone}</span>
-                    </div>
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Delivery Address :</span>
-                      <span className="font-medium text-slate-800">{invoice.customerAddress || 'Chattogram'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 sm:border-l-2 sm:border-slate-300 print:sm:border-slate-400 sm:pl-4">
-                  <span className="text-[11px] font-black uppercase text-slate-900 tracking-wider block mb-1">
-                    DISPATCH DETAILS:
-                  </span>
-                  <div className="space-y-1 text-slate-700">
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Challan Ref # :</span>
-                      <span className="font-black text-slate-950 font-mono">CH-#{invoice.invoiceNo}</span>
-                    </div>
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Challan Date :</span>
-                      <span className="font-bold text-slate-900">{invoice.date}</span>
-                    </div>
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Dispatch Unit :</span>
-                      <span className="font-bold text-slate-900">{invoice.warehouseLocation}</span>
-                    </div>
-                    {invoice.referenceNo && !['nill', 'nil', 'none', 'null', '-'].includes(invoice.referenceNo.trim().toLowerCase()) && (
+                {/* Delivery Meta Box */}
+                <div className="bg-white p-4 rounded-xl border-2 border-slate-400 print:border-slate-600 shadow-2xs grid grid-cols-2 gap-4 text-xs">
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-black uppercase text-slate-900 tracking-wider block mb-1">
+                      DELIVER TO:
+                    </span>
+                    <div className="space-y-1 text-slate-700">
                       <div className="flex items-baseline">
-                        <span className="w-28 shrink-0 text-slate-500 font-semibold">Ref/PO # :</span>
-                        <span className="font-bold text-amber-700 font-mono">{invoice.referenceNo}</span>
+                        <span className="w-28 shrink-0 text-slate-500 font-semibold">Receiver Name :</span>
+                        <span className="font-extrabold text-slate-950 text-sm">{invoice.customerName}</span>
                       </div>
-                    )}
+                      <div className="flex items-baseline">
+                        <span className="w-28 shrink-0 text-slate-500 font-semibold">Phone :</span>
+                        <span className="font-bold text-slate-900">{invoice.customerPhone}</span>
+                      </div>
+                      <div className="flex items-baseline">
+                        <span className="w-28 shrink-0 text-slate-500 font-semibold">Delivery Address :</span>
+                        <span className="font-medium text-slate-800">{invoice.customerAddress || 'Chattogram'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 border-l-2 border-slate-300 print:border-slate-400 pl-4">
+                    <span className="text-[11px] font-black uppercase text-slate-900 tracking-wider block mb-1">
+                      DISPATCH DETAILS:
+                    </span>
+                    <div className="space-y-1 text-slate-700">
+                      <div className="flex items-baseline">
+                        <span className="w-28 shrink-0 text-slate-500 font-semibold">Challan Ref # :</span>
+                        <span className="font-black text-slate-950 font-mono">CH-#{invoice.invoiceNo}</span>
+                      </div>
+                      <div className="flex items-baseline">
+                        <span className="w-28 shrink-0 text-slate-500 font-semibold">Challan Date :</span>
+                        <span className="font-bold text-slate-900">{invoice.date}</span>
+                      </div>
+                      <div className="flex items-baseline">
+                        <span className="w-28 shrink-0 text-slate-500 font-semibold">Dispatch Unit :</span>
+                        <span className="font-bold text-slate-900">{invoice.warehouseLocation}</span>
+                      </div>
+                      {invoice.referenceNo && !['nill', 'nil', 'none', 'null', '-'].includes(invoice.referenceNo.trim().toLowerCase()) && (
+                        <div className="flex items-baseline">
+                          <span className="w-28 shrink-0 text-slate-500 font-semibold">Ref/PO # :</span>
+                          <span className="font-bold text-amber-700 font-mono">{invoice.referenceNo}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
               {/* Challan Table Container */}
               <div className="rounded-xl border-2 border-slate-400 print:border-slate-600 overflow-hidden bg-white shadow-2xs">
@@ -1697,7 +1879,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
           {/* ============================================================== */}
           {/* 4. POS THERMAL 80MM SLIP */}
