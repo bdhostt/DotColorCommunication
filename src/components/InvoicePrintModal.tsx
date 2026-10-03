@@ -1007,22 +1007,12 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                       <span className="w-28 shrink-0 text-slate-500 font-semibold">Customer Name :</span>
                       <span className="font-extrabold text-slate-950 text-sm">{invoice.customerName}</span>
                     </div>
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Mobile :</span>
-                      <span className="font-bold text-slate-900">{invoice.customerPhone}</span>
-                    </div>
                     {invoice.customerCompany && (
                       <div className="flex items-baseline">
                         <span className="w-28 shrink-0 text-slate-500 font-semibold">Company / Org :</span>
                         <span className="font-medium text-slate-800">{invoice.customerCompany}</span>
                       </div>
                     )}
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Order Type :</span>
-                      <span className="font-bold text-slate-800">
-                        {invoice.warehouseLocation === 'Factory' ? 'Factory Dispatch' : 'Store Delivery'}
-                      </span>
-                    </div>
                     <div className="flex items-baseline">
                       <span className="w-28 shrink-0 text-slate-500 font-semibold">Address :</span>
                       <span className="text-slate-700 font-medium">
@@ -1046,22 +1036,12 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                       <span className="w-28 shrink-0 text-slate-500 font-semibold">Invoice # :</span>
                       <span className="font-black text-slate-950 font-mono">#{invoice.invoiceNo}</span>
                     </div>
-                    {invoice.referenceNo && (
-                      <div className="flex items-baseline">
-                        <span className="w-28 shrink-0 text-slate-500 font-semibold">Ref / PO # :</span>
-                        <span className="font-bold text-amber-700 font-mono">{invoice.referenceNo}</span>
-                      </div>
-                    )}
                     <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Fulfillment :</span>
-                      <span className="font-bold text-blue-700 uppercase tracking-wide">
-                        {invoice.warehouseLocation === 'Factory' ? 'FACTORY PRODUCTION' : 'OFFICE DISPATCH'}
-                      </span>
-                    </div>
-                    <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Payment :</span>
-                      <span className="font-bold text-emerald-700 uppercase">
-                        {invoice.paymentMethod || 'CASH'} ({invoice.paymentStatus})
+                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Ref/PO # :</span>
+                      <span className="font-bold text-amber-700 font-mono">
+                        {invoice.referenceNo && !['nill', 'nil', 'none', 'null', '-'].includes(invoice.referenceNo.trim().toLowerCase())
+                          ? invoice.referenceNo
+                          : ''}
                       </span>
                     </div>
                     {invoice.deliveryDate && (
@@ -1128,15 +1108,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     </div>
                   )}
 
-                  <div className="bg-slate-50/80 p-3.5 rounded-xl border-2 border-slate-400 print:border-slate-600 text-[11px] space-y-1.5 shadow-2xs">
-                    <strong className="text-slate-900 font-extrabold block border-b border-slate-300 print:border-slate-400 pb-1 mb-1">
-                      Bank Account for Payment:
-                    </strong>
-                    <div className="text-slate-700"><span className="font-semibold text-slate-900">Bank:</span> {profile.bankName}</div>
-                    <div className="text-slate-700"><span className="font-semibold text-slate-900">Account:</span> {profile.bankAccount}</div>
-                    <div className="text-slate-700"><span className="font-semibold text-slate-900">Branch:</span> {profile.bankBranch}</div>
-                    <div className="text-slate-700"><span className="font-semibold text-slate-900">bKash / Nagad:</span> {profile.phone}</div>
-                  </div>
                 </div>
 
                 <div className="col-span-5 space-y-1.5 text-xs">
@@ -1258,13 +1229,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   </div>
                 </div>
 
-                {/* IT Firm Partner Advertising Footer */}
-                <div className={`pad-footer-credit pt-4 border-t border-slate-200 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1 ${isPadMode ? 'hidden print:hidden' : ''}`}>
-                  <span>DotColorCommunication Sales, POS &amp; ERP</span>
-                  <span className="font-semibold text-slate-600">
-                    Software Developed by <strong className="text-blue-700 font-bold">BD HOSTT</strong> (www.bdhost.com • Hotline: 01846100900)
-                  </span>
-                </div>
               </div>
             </div>
           )}
@@ -1460,9 +1424,9 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                       <span className="w-28 shrink-0 text-slate-500 font-semibold">Dispatch Unit :</span>
                       <span className="font-bold text-slate-900">{invoice.warehouseLocation}</span>
                     </div>
-                    {invoice.referenceNo && (
+                    {invoice.referenceNo && !['nill', 'nil', 'none', 'null', '-'].includes(invoice.referenceNo.trim().toLowerCase()) && (
                       <div className="flex items-baseline">
-                        <span className="w-28 shrink-0 text-slate-500 font-semibold">Ref / PO # :</span>
+                        <span className="w-28 shrink-0 text-slate-500 font-semibold">Ref/PO # :</span>
                         <span className="font-bold text-amber-700 font-mono">{invoice.referenceNo}</span>
                       </div>
                     )}
