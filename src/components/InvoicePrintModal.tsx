@@ -27,7 +27,7 @@ import {
   Maximize2,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
+import * as htmlToImage from 'html-to-image';
 
 interface InvoicePrintModalProps {
   invoiceId: string | null;
@@ -79,7 +79,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   }, []);
 
   const isMobile = viewportWidth < 820;
-  const scale = isMobile && isMobileFit ? Math.max(0.35, Math.min(1, (viewportWidth - 20) / 794)) : 1;
+  const scale =
+    isMobile && isMobileFit
+      ? Math.max(0.3, Math.min(1, (viewportWidth - 32) / 794))
+      : 1;
 
   useEffect(() => {
     if (sheetRef.current) {
@@ -648,17 +651,17 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
       </html>
     `;
 
-    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-    const blobUrl = URL.createObjectURL(blob);
-    const newWindow = window.open(blobUrl, '_blank');
-    if (!newWindow) {
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+    try {
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(blob);
+      const newWindow = window.open(blobUrl, '_blank');
+      if (!newWindow) {
+        // Mobile popup blocker blocked window.open.
+        // Instead of downloading raw .html via an anchor click, trigger genuine PDF download!
+        handleDownloadPDF();
+      }
+    } catch {
+      handleDownloadPDF();
     }
   };
 
@@ -667,67 +670,109 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
     setIsDownloadingPdf(true);
     setPrintError(null);
 
+    const printableElement =
+      document.getElementById('a4-document-sheet') ||
+      (document.querySelector('.a4-page-sheet') as HTMLElement) ||
+      document.getElementById('printable-invoice-content');
+
+    if (!printableElement) {
+      setPrintError(
+        language === 'bn'
+          ? 'ডকুমেন্ট খুঁজে পাওয়া যায়নি। অনুগ্রহ করে পৃষ্ঠাটি রিলোড দিন।'
+          : 'Document element not found. Please reload the page.'
+      );
+      setIsDownloadingPdf(false);
+      return;
+    }
+
+    // Temporarily remove CSS scale transform & parent height constraint for true 1:1 crisp capture
+    const prevTransform = printableElement.style.transform;
+    const prevTransformOrigin = printableElement.style.transformOrigin;
+    const parentElem = printableElement.parentElement;
+    const prevParentHeight = parentElem?.style.height || '';
+    const prevParentOverflow = parentElem?.style.overflow || '';
+
     try {
-      const printableElement =
-        document.getElementById('a4-document-sheet') ||
-        document.getElementById('printable-invoice-content');
-      if (!printableElement) {
-        throw new Error('Document element not found');
+      printableElement.style.transform = 'none';
+      printableElement.style.transformOrigin = 'initial';
+      if (parentElem) {
+        parentElem.style.height = 'auto';
+        parentElem.style.overflow = 'visible';
       }
 
-      // Temporarily remove CSS scale transform for true 1:1 capture
-      const prevTransform = printableElement.style.transform;
-      const prevTransformOrigin = printableElement.style.transformOrigin;
-      printableElement.style.transform = 'none';
+      let imgData = '';
+      try {
+        imgData = await htmlToImage.toPng(printableElement, {
+          quality: 1,
+          backgroundColor: '#ffffff',
+          pixelRatio: 2,
+          skipFonts: true,
+          cacheBust: false,
+        });
+      } catch (pngErr) {
+        console.warn('htmlToImage toPng error, falling back to toJpeg:', pngErr);
+        imgData = await htmlToImage.toJpeg(printableElement, {
+          quality: 0.95,
+          backgroundColor: '#ffffff',
+          pixelRatio: 2,
+          skipFonts: true,
+          cacheBust: false,
+        });
+      }
 
-      const canvas = await html2canvas(printableElement, {
-        scale: 2, // 2x for sharp print quality
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 1024,
-      });
-
-      // Restore transform immediately
+      // Restore transform and parent styles immediately
       printableElement.style.transform = prevTransform;
       printableElement.style.transformOrigin = prevTransformOrigin;
+      if (parentElem) {
+        parentElem.style.height = prevParentHeight;
+        parentElem.style.overflow = prevParentOverflow;
+      }
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const isPos = template === 'POS';
+      const pdfWidth = isPos ? 80 : 210;
+      const elemWidth = printableElement.offsetWidth || (isPos ? 300 : 794);
+      const elemHeight = printableElement.offsetHeight || (isPos ? 600 : 1123);
+      const pdfHeight = (elemHeight * pdfWidth) / elemWidth;
 
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4',
+        format: isPos ? [80, Math.max(100, pdfHeight + 5)] : 'a4',
         compress: true,
       });
 
-      const pdfWidth = 210;
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const imgFormat = imgData.startsWith('data:image/png') ? 'PNG' : 'JPEG';
 
-      if (pdfHeight <= 297) {
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      if (isPos || pdfHeight <= 297.5) {
+        pdf.addImage(imgData, imgFormat, 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
       } else {
         let position = 0;
         let heightLeft = pdfHeight;
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= 297;
+        const pageHeight = 297;
+
+        pdf.addImage(imgData, imgFormat, 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
+        heightLeft -= pageHeight;
 
         while (heightLeft > 0) {
-          position = heightLeft - pdfHeight;
+          position -= pageHeight;
           pdf.addPage();
-          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-          heightLeft -= 297;
+          pdf.addImage(imgData, imgFormat, 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
+          heightLeft -= pageHeight;
         }
       }
 
-      const filename = `${invoice.invoiceNo || 'invoice'}.pdf`;
+      const rawNo = (invoice.invoiceNo || 'invoice').trim().replace(/^#/, '');
+      const safeDocNo = rawNo.replace(/[/\\?%*:|"<>]/g, '-');
+      const filename = `${safeDocNo}.pdf`;
       pdf.save(filename);
     } catch (err: any) {
       console.error('PDF generation error:', err);
-      const printableElement = document.getElementById('a4-document-sheet');
-      if (printableElement && isMobile && isMobileFit) {
-        printableElement.style.transform = `scale(${scale})`;
-        printableElement.style.transformOrigin = 'top center';
+      // Ensure styles are restored on failure
+      printableElement.style.transform = prevTransform;
+      printableElement.style.transformOrigin = prevTransformOrigin;
+      if (parentElem) {
+        parentElem.style.height = prevParentHeight;
+        parentElem.style.overflow = prevParentOverflow;
       }
       setPrintError(
         language === 'bn'
@@ -1276,7 +1321,12 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
         )}
 
         {/* Printable Document Body */}
-        <div id="printable-invoice-content" className="flex-1 overflow-x-auto overflow-y-auto p-2 sm:p-6 bg-slate-200/50 print:bg-white print:p-0 print:overflow-visible print:max-h-none flex justify-center">
+        <div
+          id="printable-invoice-content"
+          className={`flex-1 ${
+            isMobile && isMobileFit ? 'overflow-x-hidden' : 'overflow-x-auto'
+          } overflow-y-auto p-1 sm:p-6 bg-slate-200/50 print:bg-white print:p-0 print:overflow-visible print:max-h-none flex justify-center`}
+        >
           
           {/* ============================================================== */}
           {/* 1. STANDARD A4 TAX / SALES INVOICE */}
