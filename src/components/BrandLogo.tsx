@@ -36,6 +36,9 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
 
   const isRightAligned = className.includes('items-end') || className.includes('text-right');
 
+  const effectiveTagline = tagline !== undefined ? tagline : profile?.tagline;
+  const shouldRenderTagline = showTagline && Boolean(effectiveTagline && effectiveTagline.trim() !== '');
+
   // If custom logo image URL is uploaded and loads without error, render the image
   if (hasValidCustomLogo) {
     return (
@@ -43,7 +46,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
         <div className={`flex items-center gap-2 ${isRightAligned ? 'justify-end' : ''}`}>
           <img
             src={activeLogoUrl}
-            alt={profile?.name || 'Company Logo'}
+            alt={profile?.name || 'Dot Color'}
             onError={() => setImageError(true)}
             style={{ maxHeight: `${imgHeight}px` }}
             className={`w-auto object-contain shrink-0 ${
@@ -51,23 +54,23 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
             }`}
           />
         </div>
-        {showTagline && (
+        {shouldRenderTagline && (
           <span className={taglineClassName || defaultTaglineClass}>
-            {tagline || profile?.tagline || 'YOUR VISION, OUR CREATION!'}
+            {effectiveTagline}
           </span>
         )}
       </div>
     );
   }
 
-  // Default Brand Logo (Vector DotColorCommunication Logo)
+  // Default Brand Logo (Vector Dot Color Logo)
   const logoHeight =
     size === 'sm'
-      ? 'h-6 sm:h-7'
+      ? 'h-7 sm:h-8'
       : size === 'md'
-      ? 'h-9 sm:h-10'
+      ? 'h-10 sm:h-11'
       : size === 'lg'
-      ? 'h-12 sm:h-14'
+      ? 'h-14 sm:h-15'
       : 'h-16 sm:h-20';
 
   const hasAlignment =
@@ -81,14 +84,16 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
         hasAlignment ? '' : 'items-center justify-center text-center'
       } select-none ${className}`}
     >
-      <img
-        src="/dotcolor-logo.svg"
-        alt="DotColorCommunication Logo"
-        className={`${logoHeight} w-auto object-contain shrink-0`}
-      />
-      {showTagline && (
+      <div className={`flex items-center gap-2 ${isRightAligned ? 'justify-end' : ''}`}>
+        <img
+          src="/dotcolor-logo.svg"
+          alt={profile?.name || 'Dot Color Logo'}
+          className={`${logoHeight} w-auto object-contain shrink-0`}
+        />
+      </div>
+      {shouldRenderTagline && (
         <span className={taglineClassName || defaultTaglineClass}>
-          {tagline || profile?.tagline || 'YOUR VISION, OUR CREATION!'}
+          {effectiveTagline}
         </span>
       )}
     </div>

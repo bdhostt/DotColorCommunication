@@ -13,8 +13,8 @@ import {
 } from '../types';
 
 export const INITIAL_COMPANY_PROFILE: CompanyProfile = {
-  name: 'DotColorCommunication Sales, POS & ERP',
-  nameBn: 'ডট কালার কমিউনিকেশন সেলস, পিওএস ও ইআরপি',
+  name: 'Dot Color',
+  nameBn: 'ডট কালার',
   tagline: 'YOUR VISION, OUR CREATION!',
   taglineBn: 'আপনার বিশ্বস্ত প্রিন্টিং, সাইনেজ, পিওএস ও ইআরপি পার্টনার!',
   category: 'Printing, Packaging, Advertising & Brand Promotions',
