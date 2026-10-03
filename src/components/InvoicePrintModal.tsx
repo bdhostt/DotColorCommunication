@@ -78,6 +78,15 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const isMobile = viewportWidth < 820;
+  const scale = isMobile && isMobileFit ? Math.max(0.35, Math.min(1, (viewportWidth - 20) / 794)) : 1;
+
+  useEffect(() => {
+    if (sheetRef.current) {
+      setSheetHeight(sheetRef.current.offsetHeight || 1123);
+    }
+  }, [template, invoiceId, isPadMode, viewportWidth]);
+
   useEffect(() => {
     if (template === 'POS') {
       checkHardwareAgentStatus().then((st) => setHardwareAgentStatus(st));
