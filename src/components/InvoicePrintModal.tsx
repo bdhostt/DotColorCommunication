@@ -308,6 +308,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   };
 
   const handlePrint = (padModeOverride?: boolean) => {
+    if (!invoice) return;
     const activePadMode = padModeOverride !== undefined ? padModeOverride : isPadMode;
     setPrintError(null);
     setIsPrinting(true);
@@ -341,7 +342,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             <html>
               <head>
                 <meta charset="utf-8" />
-                <title>${invoice.invoiceNo} - Print</title>
+                <title>${invoice.invoiceNo || 'Document'} - Print</title>
                 ${styles}
                 <style>
                   * {
