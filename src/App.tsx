@@ -42,7 +42,14 @@ const getInitialTab = (): string => {
 
 const MainLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>(getInitialTab);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('invoiceId') || params.get('invoiceNo') || params.get('inv');
+    } catch {
+      return null;
+    }
+  });
   const [modalMode, setModalMode] = useState<'invoice' | 'challan' | 'pos'>('invoice');
   const [directPrintOptions, setDirectPrintOptions] = useState<{ autoPrint: boolean; isPadMode: boolean }>({
     autoPrint: false,
@@ -146,6 +153,13 @@ const MainLayout: React.FC = () => {
           autoPrint={directPrintOptions.autoPrint}
           initialPadMode={directPrintOptions.isPadMode}
           onClose={() => {
+            try {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('invoiceId');
+              url.searchParams.delete('invoiceNo');
+              url.searchParams.delete('inv');
+              window.history.replaceState({}, '', url.toString());
+            } catch {}
             setSelectedInvoiceId(null);
             setDirectPrintOptions({ autoPrint: false, isPadMode: false });
           }}
@@ -225,6 +239,35 @@ const MainLayout: React.FC = () => {
 
 const AppContent: React.FC = () => {
   const { isAuthenticated } = useApp();
+  const [publicInvoiceId, setPublicInvoiceId] = useState<string | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('invoiceId') || params.get('invoiceNo') || params.get('inv');
+    } catch {
+      return null;
+    }
+  });
+
+  if (!isAuthenticated && publicInvoiceId) {
+    return (
+      <div className="min-h-screen bg-slate-900/60 flex items-center justify-center p-2 sm:p-4">
+        <InvoicePrintModal
+          invoiceId={publicInvoiceId}
+          mode="invoice"
+          onClose={() => {
+            try {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('invoiceId');
+              url.searchParams.delete('invoiceNo');
+              url.searchParams.delete('inv');
+              window.history.replaceState({}, '', url.toString());
+            } catch {}
+            setPublicInvoiceId(null);
+          }}
+        />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Login />;

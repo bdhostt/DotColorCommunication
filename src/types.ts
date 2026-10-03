@@ -53,6 +53,8 @@ export interface CompanyProfile {
   tagline: string;
   taglineBn: string;
   category: string;
+  showTagline?: boolean;
+  showCategory?: boolean;
   experienceYears: number;
   phone: string;
   emails: string[];

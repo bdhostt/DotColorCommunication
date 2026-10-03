@@ -63,8 +63,17 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   if (!invoiceId) return null;
   
   const isQuote = invoiceId.startsWith('qt-') || invoiceId.startsWith('q-');
-  const quote = isQuote ? (quotations || []).find((q) => q.id === invoiceId) : null;
-  const realInvoice = isQuote ? null : invoices.find((inv) => inv.id === invoiceId);
+  const quote = isQuote
+    ? (quotations || []).find((q) => q.id === invoiceId || q.quoteNo.toLowerCase() === invoiceId.toLowerCase())
+    : null;
+  const realInvoice = isQuote
+    ? null
+    : invoices.find(
+        (inv) =>
+          inv.id === invoiceId ||
+          inv.invoiceNo.toLowerCase() === invoiceId.toLowerCase() ||
+          inv.invoiceNo.toLowerCase() === invoiceId.replace(/^#/, '').toLowerCase()
+      );
 
   if (!realInvoice && !quote) return null;
 
@@ -978,10 +987,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           {/* 1. STANDARD A4 TAX / SALES INVOICE */}
           {/* ============================================================== */}
           {template === 'A4' && (
-            <div className="a4-page-sheet bg-white max-w-[210mm] min-h-[297mm] mx-auto p-8 rounded-xl shadow-xs print:shadow-none print:p-0 border border-slate-200 print:border-none flex flex-col justify-between text-slate-900 text-xs">
+            <div className="a4-page-sheet bg-white max-w-[210mm] min-h-[297mm] mx-auto p-8 rounded-xl shadow-xs print:shadow-none print:p-0 border border-black print:border-none flex flex-col justify-between text-black text-xs">
               <div className="a4-page-content space-y-6 flex-1">
               
-              {/* Header: Company Logo on Left, QR Banner on Right (as per Screenshot) */}
+              {/* Header: Company Logo on Left, Scannable Invoice QR on Right */}
               <DocumentHeader
                 documentTitle={
                   (invoice as any).isQuote
@@ -991,31 +1000,32 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 documentNo={invoice.invoiceNo}
                 documentDate={invoice.date}
                 referenceNo={invoice.referenceNo}
+                invoiceId={invoice.id}
                 isPadMode={isPadMode}
                 padTopMarginMm={padTopMarginMm}
               />
 
-              {/* Bill To & Invoice Meta Box (Screenshot Layout: Left BILL TO, Right INVOICE DETAILS) */}
-              <div className="bg-white p-4 rounded-xl border-2 border-slate-400 print:border-slate-600 shadow-2xs grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              {/* Bill To & Invoice Meta Box */}
+              <div className="bg-white p-4 rounded-xl border-2 border-black shadow-2xs grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 {/* Left Column: BILL TO */}
                 <div className="space-y-1.5">
-                  <span className="text-[11px] font-black uppercase text-slate-900 tracking-wider block mb-1">
+                  <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
                     BILL TO:
                   </span>
-                  <div className="space-y-1 text-slate-700">
+                  <div className="space-y-1 text-black">
                     <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Customer Name :</span>
-                      <span className="font-extrabold text-slate-950 text-sm">{invoice.customerName}</span>
+                      <span className="w-28 shrink-0 text-black font-bold">Customer Name :</span>
+                      <span className="font-black text-black text-sm">{invoice.customerName}</span>
                     </div>
                     {invoice.customerCompany && (
                       <div className="flex items-baseline">
-                        <span className="w-28 shrink-0 text-slate-500 font-semibold">Company / Org :</span>
-                        <span className="font-medium text-slate-800">{invoice.customerCompany}</span>
+                        <span className="w-28 shrink-0 text-black font-bold">Company / Org :</span>
+                        <span className="font-bold text-black">{invoice.customerCompany}</span>
                       </div>
                     )}
                     <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Address :</span>
-                      <span className="text-slate-700 font-medium">
+                      <span className="w-28 shrink-0 text-black font-bold">Address :</span>
+                      <span className="text-black font-medium">
                         {invoice.customerAddress || 'Chattogram, Bangladesh'}
                       </span>
                     </div>
@@ -1023,22 +1033,22 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </div>
 
                 {/* Right Column: Invoice Details */}
-                <div className="space-y-1.5 sm:border-l-2 sm:border-slate-300 print:sm:border-slate-400 sm:pl-4">
-                  <span className="text-[11px] font-black uppercase text-slate-900 tracking-wider block mb-1">
+                <div className="space-y-1.5 sm:border-l-2 sm:border-black sm:pl-4">
+                  <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
                     DOCUMENT DETAILS:
                   </span>
-                  <div className="space-y-1 text-slate-700">
+                  <div className="space-y-1 text-black">
                     <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Invoice Date :</span>
-                      <span className="font-bold text-slate-900">{invoice.date}</span>
+                      <span className="w-28 shrink-0 text-black font-bold">Invoice Date :</span>
+                      <span className="font-black text-black">{invoice.date}</span>
                     </div>
                     <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Invoice # :</span>
-                      <span className="font-black text-slate-950 font-mono">#{invoice.invoiceNo}</span>
+                      <span className="w-28 shrink-0 text-black font-bold">Invoice # :</span>
+                      <span className="font-black text-black font-mono">#{invoice.invoiceNo}</span>
                     </div>
                     <div className="flex items-baseline">
-                      <span className="w-28 shrink-0 text-slate-500 font-semibold">Ref/PO # :</span>
-                      <span className="font-bold text-amber-700 font-mono">
+                      <span className="w-28 shrink-0 text-black font-bold">Ref/PO # :</span>
+                      <span className="font-black text-black font-mono">
                         {invoice.referenceNo && !['nill', 'nil', 'none', 'null', '-'].includes(invoice.referenceNo.trim().toLowerCase())
                           ? invoice.referenceNo
                           : ''}
@@ -1046,10 +1056,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     </div>
                     {invoice.deliveryDate && (
                       <div className="flex items-baseline">
-                        <span className="w-28 shrink-0 text-slate-500 font-semibold">
+                        <span className="w-28 shrink-0 text-black font-bold">
                           {(invoice as any).isQuote ? 'Valid Until :' : 'Delivery Target :'}
                         </span>
-                        <span className="font-bold text-slate-900">{invoice.deliveryDate}</span>
+                        <span className="font-black text-black">{invoice.deliveryDate}</span>
                       </div>
                     )}
                   </div>
@@ -1057,48 +1067,48 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               </div>
 
               {/* Items Table Container */}
-              <div className="rounded-xl border-2 border-slate-400 print:border-slate-600 overflow-hidden bg-white shadow-2xs">
+              <div className="rounded-xl border-2 border-black overflow-hidden bg-white shadow-2xs">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider border-b-2 border-slate-900">
-                      <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold w-12">SL</th>
-                      <th className="py-2.5 px-3 text-left border-r border-slate-700 font-bold">Service / Item Description</th>
-                      <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold w-16">Unit</th>
-                      <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold w-24">Qty / SqFt</th>
-                      <th className="py-2.5 px-3 text-right border-r border-slate-700 font-bold w-24">Rate (৳)</th>
-                      <th className="py-2.5 px-3 text-right font-bold w-28">Total (৳)</th>
+                    <tr className="bg-black text-white text-[11px] font-black uppercase tracking-wider border-b-2 border-black">
+                      <th className="py-2.5 px-3 text-center border-r border-black font-black w-12 text-white">SL</th>
+                      <th className="py-2.5 px-3 text-left border-r border-black font-black text-white">Service / Item Description</th>
+                      <th className="py-2.5 px-3 text-center border-r border-black font-black w-16 text-white">Unit</th>
+                      <th className="py-2.5 px-3 text-center border-r border-black font-black w-24 text-white">Qty / SqFt</th>
+                      <th className="py-2.5 px-3 text-right border-r border-black font-black w-24 text-white">Rate (৳)</th>
+                      <th className="py-2.5 px-3 text-right font-black w-28 text-white">Total (৳)</th>
                     </tr>
                   </thead>
-                  <tbody className="text-xs bg-white">
+                  <tbody className="text-xs bg-white text-black">
                     {invoice.items.map((item, idx) => (
                       <tr 
                         key={idx} 
-                        className={`border-b border-slate-300 print:border-slate-400 last:border-b-0 hover:bg-slate-50/60 ${idx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'}`}
+                        className={`border-b border-black last:border-b-0 hover:bg-slate-50/60 ${idx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'}`}
                       >
-                        <td className="py-2.5 px-3 font-bold text-slate-700 border-r border-slate-300 print:border-slate-400 text-center">
+                        <td className="py-2.5 px-3 font-bold text-black border-r border-black text-center">
                           {idx + 1}
                         </td>
-                        <td className="py-2.5 px-3 border-r border-slate-300 print:border-slate-400">
-                          <div className="font-bold text-slate-950 text-xs">{item.name}</div>
+                        <td className="py-2.5 px-3 border-r border-black">
+                          <div className="font-black text-black text-xs">{item.name}</div>
                           {Boolean(item.totalSqft && item.width && item.height) && (
-                            <div className="text-[11px] text-amber-800 font-semibold mt-0.5">
+                            <div className="text-[11px] text-black font-bold mt-0.5">
                               Dimensions: {item.width}' × {item.height}' = {item.totalSqft} SqFt
                             </div>
                           )}
                           {item.notes && (
-                            <div className="text-[10px] text-slate-600 italic mt-0.5">{item.notes}</div>
+                            <div className="text-[10px] text-black italic font-medium mt-0.5">{item.notes}</div>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 text-center font-medium text-slate-800 border-r border-slate-300 print:border-slate-400">
+                        <td className="py-2.5 px-3 text-center font-bold text-black border-r border-black">
                           {item.unit}
                         </td>
-                        <td className="py-2.5 px-3 text-center font-black text-slate-950 border-r border-slate-300 print:border-slate-400">
+                        <td className="py-2.5 px-3 text-center font-black text-black border-r border-black">
                           {item.totalSqft ? item.totalSqft : item.qty}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-bold text-slate-900 border-r border-slate-300 print:border-slate-400">
+                        <td className="py-2.5 px-3 text-right font-black text-black border-r border-black">
                           {Number(item.unitPrice).toLocaleString()}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-black text-slate-950">
+                        <td className="py-2.5 px-3 text-right font-black text-black">
                           {Number(item.totalPrice).toLocaleString()}
                         </td>
                       </tr>
@@ -1111,27 +1121,26 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               <div className="grid grid-cols-12 gap-6 pt-2">
                 <div className="col-span-7 space-y-3">
                   {invoice.jobSpecs && (
-                    <div className="bg-amber-50/80 p-3 rounded-xl border border-amber-300 print:border-amber-400 text-xs shadow-2xs">
-                      <strong className="text-amber-950 font-bold block mb-0.5">Job Instructions:</strong>
-                      <span className="text-slate-800">{invoice.jobSpecs}</span>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-black text-xs shadow-2xs">
+                      <strong className="text-black font-black block mb-0.5">Job Instructions:</strong>
+                      <span className="text-black font-medium">{invoice.jobSpecs}</span>
                     </div>
                   )}
-
                 </div>
 
-                <div className="col-span-5 space-y-1.5 text-xs">
-                  <div className="flex justify-between text-slate-600">
+                <div className="col-span-5 space-y-1.5 text-xs text-black">
+                  <div className="flex justify-between text-black font-bold">
                     <span>Subtotal:</span>
-                    <span className="font-bold text-slate-900">
+                    <span className="font-black text-black">
                       {profile.currencySymbol}
                       {invoice.subtotal.toLocaleString()}
                     </span>
                   </div>
 
                   {invoice.discount > 0 && (
-                    <div className="flex justify-between text-slate-600">
+                    <div className="flex justify-between text-black font-bold">
                       <span>Discount:</span>
-                      <span className="font-bold text-rose-600">
+                      <span className="font-black text-black">
                         -{profile.currencySymbol}
                         {invoice.discount.toLocaleString()}
                       </span>
@@ -1139,18 +1148,18 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   )}
 
                   {invoice.vatAmount > 0 && (
-                    <div className="flex justify-between text-slate-600">
+                    <div className="flex justify-between text-black font-bold">
                       <span>VAT ({invoice.vatRate}%):</span>
-                      <span className="font-bold text-slate-900">
+                      <span className="font-black text-black">
                         +{profile.currencySymbol}
                         {invoice.vatAmount.toLocaleString()}
                       </span>
                     </div>
                   )}
 
-                  <div className="flex justify-between text-sm font-black pt-2 border-t-2 border-slate-900 text-slate-900">
+                  <div className="flex justify-between text-sm font-black pt-2 border-t-2 border-black text-black">
                     <span>Grand Total:</span>
-                    <span className="text-amber-600">
+                    <span className="text-black font-black text-base">
                       {profile.currencySymbol}
                       {invoice.grandTotal.toLocaleString()}
                     </span>
@@ -1159,60 +1168,60 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   {!(invoice as any).isQuote && (
                     <>
                       {invoice.splitPayments ? (
-                        <div className="space-y-1 text-[11px] pt-1.5 border-t border-slate-100">
+                        <div className="space-y-1 text-[11px] pt-1.5 border-t border-black text-black">
                           {(invoice.splitPayments.cash ?? 0) > 0 && (
-                            <div className="flex justify-between text-slate-500">
+                            <div className="flex justify-between text-black">
                               <span>Paid Cash:</span>
-                              <span className="font-medium text-slate-700">
+                              <span className="font-black text-black">
                                 {profile.currencySymbol}{(invoice.splitPayments.cash ?? 0).toLocaleString()}
                               </span>
                             </div>
                           )}
                           {(invoice.splitPayments.card ?? 0) > 0 && (
-                            <div className="flex justify-between text-slate-500">
+                            <div className="flex justify-between text-black">
                               <span>Paid Card / Bank:</span>
-                              <span className="font-medium text-slate-700">
+                              <span className="font-black text-black">
                                 {profile.currencySymbol}{(invoice.splitPayments.card ?? 0).toLocaleString()}
                               </span>
                             </div>
                           )}
                           {(invoice.splitPayments.bkash ?? 0) > 0 && (
-                            <div className="flex justify-between text-slate-500">
+                            <div className="flex justify-between text-black">
                               <span>Paid bKash:</span>
-                              <span className="font-medium text-slate-700">
+                              <span className="font-black text-black">
                                 {profile.currencySymbol}{(invoice.splitPayments.bkash ?? 0).toLocaleString()}
                               </span>
                             </div>
                           )}
                           {(invoice.splitPayments.nagad ?? 0) > 0 && (
-                            <div className="flex justify-between text-slate-500">
+                            <div className="flex justify-between text-black">
                               <span>Paid Nagad:</span>
-                              <span className="font-medium text-slate-700">
+                              <span className="font-black text-black">
                                 {profile.currencySymbol}{(invoice.splitPayments.nagad ?? 0).toLocaleString()}
                               </span>
                             </div>
                           )}
-                          <div className="flex justify-between text-xs pt-1 border-t border-slate-200">
-                            <span className="font-bold text-slate-700">Total Paid:</span>
-                            <span className="font-extrabold text-emerald-700">
+                          <div className="flex justify-between text-xs pt-1 border-t border-black text-black">
+                            <span className="font-bold text-black">Total Paid:</span>
+                            <span className="font-black text-black">
                               {profile.currencySymbol}
                               {invoice.paidAmount.toLocaleString()}
                             </span>
                           </div>
                         </div>
                       ) : (
-                        <div className="flex justify-between text-xs pt-1 border-t border-slate-200">
-                          <span className="text-slate-600">Paid Amount ({invoice.paymentMethod}):</span>
-                          <span className="font-bold text-emerald-700">
+                        <div className="flex justify-between text-xs pt-1 border-t border-black text-black">
+                          <span className="font-bold text-black">Paid Amount ({invoice.paymentMethod}):</span>
+                          <span className="font-black text-black">
                             {profile.currencySymbol}
                             {invoice.paidAmount.toLocaleString()}
                           </span>
                         </div>
                       )}
 
-                      <div className="flex justify-between text-xs font-black text-rose-600">
+                      <div className="flex justify-between text-xs font-black text-black pt-1 border-t border-black">
                         <span>Balance Due:</span>
-                        <span>
+                        <span className="font-black text-black">
                           {profile.currencySymbol}
                           {invoice.dueAmount.toLocaleString()}
                         </span>
@@ -1227,14 +1236,14 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               {/* Signatures & Footer pinned to bottom */}
               <div className="a4-page-footer mt-auto pt-8 space-y-6">
                 {/* Signatures */}
-                <div className="flex justify-between items-end text-center text-xs text-slate-600">
+                <div className="flex justify-between items-end text-center text-xs text-black">
                   <div>
-                    <div className="w-36 border-t border-slate-400 mx-auto mb-1" />
-                    <span>Customer's Signature</span>
+                    <div className="w-36 border-t border-black mx-auto mb-1" />
+                    <span className="font-bold text-black">Customer's Signature</span>
                   </div>
                   <div>
-                    <div className="w-44 border-t border-slate-400 mx-auto mb-1" />
-                    <span className="font-bold text-slate-900">For {profile.name}</span>
+                    <div className="w-44 border-t border-black mx-auto mb-1" />
+                    <span className="font-black text-black">For {profile.name}</span>
                   </div>
                 </div>
 

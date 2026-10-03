@@ -218,6 +218,8 @@ export const CompanyProfileModule: React.FC = () => {
     tagline: profile.tagline || '',
     taglineBn: profile.taglineBn || '',
     category: profile.category || '',
+    showTagline: profile.showTagline !== false,
+    showCategory: profile.showCategory !== false,
     experienceYears: profile.experienceYears || 6,
     phone: profile.phone || '',
     emails: (profile.emails || []).join(', '),
@@ -306,6 +308,8 @@ export const CompanyProfileModule: React.FC = () => {
       tagline: profile.tagline || '',
       taglineBn: profile.taglineBn || '',
       category: profile.category || '',
+      showTagline: profile.showTagline !== false,
+      showCategory: profile.showCategory !== false,
       experienceYears: profile.experienceYears || 6,
       phone: profile.phone || '',
       emails: (profile.emails || []).join(', '),
@@ -383,6 +387,8 @@ export const CompanyProfileModule: React.FC = () => {
       tagline: formData.tagline,
       taglineBn: formData.taglineBn,
       category: formData.category,
+      showTagline: formData.showTagline,
+      showCategory: formData.showCategory,
       experienceYears: Number(formData.experienceYears) || 6,
       phone: formData.phone,
       emails: emailsArray.length > 0 ? emailsArray : ['info@dotcolorcommunication.com'],
@@ -1344,7 +1350,18 @@ export const CompanyProfileModule: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">Tagline / Slogan (English)</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="font-bold text-slate-700 block">Tagline / Slogan (English)</label>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 bg-amber-50/80 border border-amber-200 px-2.5 py-0.5 rounded-lg hover:bg-amber-100/80 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={formData.showTagline !== false}
+                            onChange={(e) => setFormData({ ...formData, showTagline: e.target.checked })}
+                            className="rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                          />
+                          <span>{language === 'bn' ? 'ইনভয়েসে প্রদর্শন করুন' : 'Show on Invoice'}</span>
+                        </label>
+                      </div>
                       <input
                         type="text"
                         value={formData.tagline}
@@ -1363,7 +1380,18 @@ export const CompanyProfileModule: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">Industry / Category</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="font-bold text-slate-700 block">Industry / Category (Subtitle)</label>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 bg-amber-50/80 border border-amber-200 px-2.5 py-0.5 rounded-lg hover:bg-amber-100/80 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={formData.showCategory !== false}
+                            onChange={(e) => setFormData({ ...formData, showCategory: e.target.checked })}
+                            className="rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                          />
+                          <span>{language === 'bn' ? 'ইনভয়েসে প্রদর্শন করুন' : 'Show on Invoice'}</span>
+                        </label>
+                      </div>
                       <input
                         type="text"
                         value={formData.category}
