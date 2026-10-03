@@ -452,6 +452,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   };
 
   const handleHardwarePrint = async () => {
+    if (!invoice) return;
     setIsHardwarePrinting(true);
     setHardwarePrintMsg(null);
 
@@ -517,6 +518,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   };
 
   const handleOpenInNewTab = () => {
+    if (!invoice) return;
     const printableContent = document.getElementById('printable-invoice-content');
     if (!printableContent) return;
 
