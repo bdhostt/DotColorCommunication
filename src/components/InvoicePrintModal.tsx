@@ -1056,47 +1056,56 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </div>
               </div>
 
-              {/* Items Table */}
-              <table className="w-full text-left border-collapse border border-slate-300 print:border-slate-500 rounded-lg overflow-hidden">
-                <thead>
-                  <tr className="bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider border-b border-slate-900">
-                    <th className="py-2.5 px-3 border-r border-slate-700 font-bold">SL</th>
-                    <th className="py-2.5 px-3 border-r border-slate-700 font-bold">Service / Item Description</th>
-                    <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold">Unit</th>
-                    <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold">Qty / SqFt</th>
-                    <th className="py-2.5 px-3 text-right border-r border-slate-700 font-bold">Rate (৳)</th>
-                    <th className="py-2.5 px-3 text-right font-bold">Total (৳)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-300 print:divide-slate-400 text-xs">
-                  {invoice.items.map((item, idx) => (
-                    <tr key={idx} className="border-b border-slate-300 print:border-slate-400 hover:bg-slate-50/50">
-                      <td className="py-2.5 px-3 font-bold text-slate-700 border-r border-slate-300 print:border-slate-400 text-center">{idx + 1}</td>
-                      <td className="py-2.5 px-3 border-r border-slate-300 print:border-slate-400">
-                        <div className="font-bold text-slate-950 text-xs">{item.name}</div>
-                        {item.totalSqft && (
-                          <div className="text-[11px] text-amber-800 font-semibold mt-0.5">
-                            Dimensions: {item.width}' × {item.height}' = {item.totalSqft} SqFt
-                          </div>
-                        )}
-                        {item.notes && (
-                          <div className="text-[10px] text-slate-600 italic mt-0.5">{item.notes}</div>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-medium text-slate-800 border-r border-slate-300 print:border-slate-400">{item.unit}</td>
-                      <td className="py-2.5 px-3 text-center font-black text-slate-950 border-r border-slate-300 print:border-slate-400">
-                        {item.totalSqft ? item.totalSqft : item.qty}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-bold text-slate-900 border-r border-slate-300 print:border-slate-400">
-                        {item.unitPrice.toLocaleString()}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-black text-slate-950">
-                        {item.totalPrice.toLocaleString()}
-                      </td>
+              {/* Items Table Container */}
+              <div className="rounded-xl border-2 border-slate-400 print:border-slate-600 overflow-hidden bg-white shadow-2xs">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider border-b-2 border-slate-900">
+                      <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold w-12">SL</th>
+                      <th className="py-2.5 px-3 text-left border-r border-slate-700 font-bold">Service / Item Description</th>
+                      <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold w-16">Unit</th>
+                      <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold w-24">Qty / SqFt</th>
+                      <th className="py-2.5 px-3 text-right border-r border-slate-700 font-bold w-24">Rate (৳)</th>
+                      <th className="py-2.5 px-3 text-right font-bold w-28">Total (৳)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="text-xs bg-white">
+                    {invoice.items.map((item, idx) => (
+                      <tr 
+                        key={idx} 
+                        className={`border-b border-slate-300 print:border-slate-400 last:border-b-0 hover:bg-slate-50/60 ${idx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'}`}
+                      >
+                        <td className="py-2.5 px-3 font-bold text-slate-700 border-r border-slate-300 print:border-slate-400 text-center">
+                          {idx + 1}
+                        </td>
+                        <td className="py-2.5 px-3 border-r border-slate-300 print:border-slate-400">
+                          <div className="font-bold text-slate-950 text-xs">{item.name}</div>
+                          {Boolean(item.totalSqft && item.width && item.height) && (
+                            <div className="text-[11px] text-amber-800 font-semibold mt-0.5">
+                              Dimensions: {item.width}' × {item.height}' = {item.totalSqft} SqFt
+                            </div>
+                          )}
+                          {item.notes && (
+                            <div className="text-[10px] text-slate-600 italic mt-0.5">{item.notes}</div>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-medium text-slate-800 border-r border-slate-300 print:border-slate-400">
+                          {item.unit}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-black text-slate-950 border-r border-slate-300 print:border-slate-400">
+                          {item.totalSqft ? item.totalSqft : item.qty}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold text-slate-900 border-r border-slate-300 print:border-slate-400">
+                          {Number(item.unitPrice).toLocaleString()}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-black text-slate-950">
+                          {Number(item.totalPrice).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               {/* Totals & Financials */}
               <div className="grid grid-cols-12 gap-6 pt-2">
@@ -1434,28 +1443,31 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </div>
               </div>
 
-              <table className="w-full text-left border-collapse border border-slate-300 print:border-slate-500 rounded-lg overflow-hidden">
-                <thead>
-                  <tr className="bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider border-b border-slate-900">
-                    <th className="py-2.5 px-3 border-r border-slate-700 font-bold">SL</th>
-                    <th className="py-2.5 px-3 border-r border-slate-700 font-bold">Description of Goods Delivered</th>
-                    <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold">Unit</th>
-                    <th className="py-2.5 px-3 text-right font-bold">Delivered Quantity</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-300 print:divide-slate-400 text-xs">
-                  {invoice.items.map((i, idx) => (
-                    <tr key={idx} className="border-b border-slate-300 print:border-slate-400 hover:bg-slate-50/50">
-                      <td className="py-2.5 px-3 text-slate-700 font-bold text-center border-r border-slate-300 print:border-slate-400">{idx + 1}</td>
-                      <td className="py-2.5 px-3 font-bold text-slate-950 border-r border-slate-300 print:border-slate-400">{i.name}</td>
-                      <td className="py-2.5 px-3 text-center font-medium text-slate-800 border-r border-slate-300 print:border-slate-400">{i.unit}</td>
-                      <td className="py-2.5 px-3 text-right font-black text-sm text-slate-950">
-                        {i.qty} {i.unit}
-                      </td>
+              {/* Challan Table Container */}
+              <div className="rounded-xl border-2 border-slate-400 print:border-slate-600 overflow-hidden bg-white shadow-2xs">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider border-b-2 border-slate-900">
+                      <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold w-12">SL</th>
+                      <th className="py-2.5 px-3 text-left border-r border-slate-700 font-bold">Description of Goods Delivered</th>
+                      <th className="py-2.5 px-3 text-center border-r border-slate-700 font-bold w-20">Unit</th>
+                      <th className="py-2.5 px-3 text-right font-bold w-36">Delivered Quantity</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="text-xs bg-white">
+                    {invoice.items.map((i, idx) => (
+                      <tr key={idx} className={`border-b border-slate-300 print:border-slate-400 last:border-b-0 hover:bg-slate-50/60 ${idx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'}`}>
+                        <td className="py-2.5 px-3 text-slate-700 font-bold text-center border-r border-slate-300 print:border-slate-400">{idx + 1}</td>
+                        <td className="py-2.5 px-3 font-bold text-slate-950 border-r border-slate-300 print:border-slate-400">{i.name}</td>
+                        <td className="py-2.5 px-3 text-center font-medium text-slate-800 border-r border-slate-300 print:border-slate-400">{i.unit}</td>
+                        <td className="py-2.5 px-3 text-right font-black text-sm text-slate-950">
+                          {i.qty} {i.unit}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               <div className="bg-slate-50/80 p-4 rounded-xl border-2 border-slate-400 print:border-slate-600 text-[11px] text-slate-800 leading-relaxed shadow-2xs">
                 <p>
