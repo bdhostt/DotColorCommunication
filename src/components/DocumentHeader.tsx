@@ -14,6 +14,7 @@ export interface DocumentHeaderProps {
   isPadMode?: boolean;
   padTopMarginMm?: number;
   invoiceId?: string;
+  badgeStyle?: boolean; // For Image 2 style: pill badge directly under top-right logo
 }
 
 export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
@@ -25,6 +26,7 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
   padTopMarginMm = 42,
   invoiceId,
   documentNo,
+  badgeStyle = false,
 }) => {
   const { profile } = useApp();
   const [posQrDataUrl, setPosQrDataUrl] = useState<string>('');
@@ -116,44 +118,62 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
         )}
       </div>
 
-      {/* Top Header Row: Company Brand Logo moved to Mark 1 (Top-Right as annotated by user) */}
+      {/* Top Header Row: Company Brand Logo */}
       <div
-        className={`pad-header-branding flex items-center justify-end pb-3 ${
+        className={`pad-header-branding flex items-center justify-end pb-2 ${
           isPadMode ? 'hidden print:hidden' : ''
         }`}
       >
-        {/* Mark 1: Top-Right Company Brand Logo */}
-        <div className="flex flex-col items-end text-right">
-          <BrandLogo
-            size="xl"
-            className="items-end text-right"
-            showTagline={profile.showTagline !== false}
-            tagline={profile.tagline || 'YOUR VISION, OUR CREATION!'}
-            taglineClassName="text-[11px] sm:text-[12px] uppercase font-black tracking-widest text-black mt-1 text-right"
-          />
-          {profile.showCategory !== false && (
-            <div className="text-xs sm:text-[13px] font-black text-black tracking-wide mt-1 text-right">
-              ({profile.category || 'Printing, Packaging, Advertising & Brand Promotions'})
+        {badgeStyle ? (
+          /* Image 2 style: Top-Right Company Logo with BILL/Invoice pill badge directly below */
+          <div className="flex flex-col items-end text-right">
+            <BrandLogo
+              size="xl"
+              className="items-end text-right"
+              showTagline={false}
+            />
+            <div className="bg-[#18181B] text-white px-5 py-1 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider mt-1.5 shadow-2xs inline-block">
+              {documentTitle}
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          /* Standard Full Layout */
+          <div className="flex flex-col items-end text-right">
+            <BrandLogo
+              size="xl"
+              className="items-end text-right"
+              showTagline={profile.showTagline !== false}
+              tagline={profile.tagline || 'YOUR VISION, OUR CREATION!'}
+              taglineClassName="text-[11px] sm:text-[12px] uppercase font-black tracking-widest text-black mt-1 text-right"
+            />
+            {profile.showCategory !== false && (
+              <div className="text-xs sm:text-[13px] font-black text-black tracking-wide mt-1 text-right">
+                ({profile.category || 'Printing, Packaging, Advertising & Brand Promotions'})
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Centered Document Title with clean black divider */}
-      <div className="relative my-3">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t-2 border-black" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-white px-5 py-0.5 text-base sm:text-lg font-black uppercase tracking-widest text-black border-2 border-black rounded-lg shadow-2xs">
-            {documentTitle}
-          </span>
-        </div>
-      </div>
-      {documentSubtitle && (
-        <div className="text-center text-xs font-bold text-black -mt-1 mb-2">
-          {documentSubtitle}
-        </div>
+      {/* Centered Document Title with clean black divider (omitted if badgeStyle is active) */}
+      {!badgeStyle && (
+        <>
+          <div className="relative my-3">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t-2 border-black" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-white px-5 py-0.5 text-base sm:text-lg font-black uppercase tracking-widest text-black border-2 border-black rounded-lg shadow-2xs">
+                {documentTitle}
+              </span>
+            </div>
+          </div>
+          {documentSubtitle && (
+            <div className="text-center text-xs font-bold text-black -mt-1 mb-2">
+              {documentSubtitle}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -746,8 +746,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
       const imgFormat = imgData.startsWith('data:image/png') ? 'PNG' : 'JPEG';
 
-      if (isPos || pdfHeight <= 297.5) {
-        pdf.addImage(imgData, imgFormat, 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+      if (isPos || pdfHeight <= 300) {
+        pdf.addImage(imgData, imgFormat, 0, 0, pdfWidth, isPos ? pdfHeight : Math.min(297, pdfHeight), undefined, 'FAST');
       } else {
         let position = 0;
         let heightLeft = pdfHeight;
@@ -926,6 +926,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           ` : `
             .a4-page-sheet {
               min-height: calc(297mm - 16mm) !important;
+              max-height: calc(297mm - 16mm) !important;
               display: flex !important;
               flex-direction: column !important;
               justify-content: space-between !important;
@@ -1361,12 +1362,12 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               >
                 <div className="a4-page-content space-y-6 flex-1">
                 
-                {/* Header: Company Logo on Left, Scannable Invoice QR on Right */}
+                {/* Header: Company Logo on Right, Centered INVOICE Title Banner */}
                 <DocumentHeader
                   documentTitle={
                     (invoice as any).isQuote
-                      ? (language === 'bn' ? 'কোটেশন ও প্রাক্কলন' : 'QUOTATION / ESTIMATION')
-                      : (language === 'bn' ? 'সেলস ইনভয়েস / বিল' : 'INVOICE')
+                      ? 'QUOTATION'
+                      : 'INVOICE'
                   }
                   documentNo={invoice.invoiceNo}
                   documentDate={invoice.date}
@@ -1458,11 +1459,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   <thead>
                     <tr className="bg-black text-white text-[11px] font-black uppercase tracking-wider border-b-2 border-black">
                       <th className="py-2.5 px-3 text-center border-r border-black font-black w-12 text-white">SL</th>
-                      <th className="py-2.5 px-3 text-left border-r border-black font-black text-white">Service / Item Description</th>
-                      <th className="py-2.5 px-3 text-center border-r border-black font-black w-16 text-white">Unit</th>
-                      <th className="py-2.5 px-3 text-center border-r border-black font-black w-24 text-white">Qty / SqFt</th>
-                      <th className="py-2.5 px-3 text-right border-r border-black font-black w-24 text-white">Rate (৳)</th>
-                      <th className="py-2.5 px-3 text-right font-black w-28 text-white">Total (৳)</th>
+                      <th className="py-2.5 px-3 text-left border-r border-black font-black text-white">SERVICE / ITEM DESCRIPTION</th>
+                      <th className="py-2.5 px-3 text-center border-r border-black font-black w-16 text-white">UNIT</th>
+                      <th className="py-2.5 px-3 text-center border-r border-black font-black w-24 text-white">QTY / SQFT</th>
+                      <th className="py-2.5 px-3 text-right border-r border-black font-black w-24 text-white">RATE (৳)</th>
+                      <th className="py-2.5 px-3 text-right font-black w-28 text-white">TOTAL (৳)</th>
                     </tr>
                   </thead>
                   <tbody className="text-xs bg-white text-black">
@@ -1507,26 +1508,26 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               <div className="grid grid-cols-12 gap-6 pt-2">
                 <div className="col-span-7 space-y-3">
                   {invoice.jobSpecs && (
-                    <div className="bg-slate-50 p-3 rounded-xl border border-black text-xs shadow-2xs">
+                    <div className="bg-white p-3 rounded-xl border-2 border-black text-xs shadow-2xs">
                       <strong className="text-black font-black block mb-0.5">Job Instructions:</strong>
                       <span className="text-black font-medium">{invoice.jobSpecs}</span>
                     </div>
                   )}
                 </div>
 
-                <div className="col-span-5 space-y-1.5 text-xs text-black">
-                  <div className="flex justify-between text-black font-bold">
+                <div className="col-span-5 space-y-1 text-xs text-black">
+                  <div className="flex justify-between text-black font-bold pb-1">
                     <span>Subtotal:</span>
-                    <span className="font-black text-black">
+                    <span className="font-bold text-black">
                       {profile.currencySymbol}
                       {invoice.subtotal.toLocaleString()}
                     </span>
                   </div>
 
                   {invoice.discount > 0 && (
-                    <div className="flex justify-between text-black font-bold">
+                    <div className="flex justify-between text-black font-bold pb-1">
                       <span>Discount:</span>
-                      <span className="font-black text-black">
+                      <span className="font-bold text-black">
                         -{profile.currencySymbol}
                         {invoice.discount.toLocaleString()}
                       </span>
@@ -1534,16 +1535,16 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   )}
 
                   {invoice.vatAmount > 0 && (
-                    <div className="flex justify-between text-black font-bold">
+                    <div className="flex justify-between text-black font-bold pb-1">
                       <span>VAT ({invoice.vatRate}%):</span>
-                      <span className="font-black text-black">
+                      <span className="font-bold text-black">
                         +{profile.currencySymbol}
                         {invoice.vatAmount.toLocaleString()}
                       </span>
                     </div>
                   )}
 
-                  <div className="flex justify-between text-sm font-black pt-2 border-t-2 border-black text-black">
+                  <div className="flex justify-between text-sm font-black py-1.5 border-t border-black text-black">
                     <span>Grand Total:</span>
                     <span className="text-black font-black text-base">
                       {profile.currencySymbol}
@@ -1554,11 +1555,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   {!(invoice as any).isQuote && (
                     <>
                       {invoice.splitPayments ? (
-                        <div className="space-y-1 text-[11px] pt-1.5 border-t border-black text-black">
+                        <div className="space-y-1 text-[11px] pt-1 border-t-2 border-double border-black text-black">
                           {(invoice.splitPayments.cash ?? 0) > 0 && (
                             <div className="flex justify-between text-black">
                               <span>Paid Cash:</span>
-                              <span className="font-black text-black">
+                              <span className="font-bold text-black">
                                 {profile.currencySymbol}{(invoice.splitPayments.cash ?? 0).toLocaleString()}
                               </span>
                             </div>
@@ -1566,7 +1567,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                           {(invoice.splitPayments.card ?? 0) > 0 && (
                             <div className="flex justify-between text-black">
                               <span>Paid Card / Bank:</span>
-                              <span className="font-black text-black">
+                              <span className="font-bold text-black">
                                 {profile.currencySymbol}{(invoice.splitPayments.card ?? 0).toLocaleString()}
                               </span>
                             </div>
@@ -1574,7 +1575,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                           {(invoice.splitPayments.bkash ?? 0) > 0 && (
                             <div className="flex justify-between text-black">
                               <span>Paid bKash:</span>
-                              <span className="font-black text-black">
+                              <span className="font-bold text-black">
                                 {profile.currencySymbol}{(invoice.splitPayments.bkash ?? 0).toLocaleString()}
                               </span>
                             </div>
@@ -1582,23 +1583,23 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                           {(invoice.splitPayments.nagad ?? 0) > 0 && (
                             <div className="flex justify-between text-black">
                               <span>Paid Nagad:</span>
-                              <span className="font-black text-black">
+                              <span className="font-bold text-black">
                                 {profile.currencySymbol}{(invoice.splitPayments.nagad ?? 0).toLocaleString()}
                               </span>
                             </div>
                           )}
-                          <div className="flex justify-between text-xs pt-1 border-t border-black text-black">
+                          <div className="flex justify-between text-xs py-1 border-t border-black text-black">
                             <span className="font-bold text-black">Total Paid:</span>
-                            <span className="font-black text-black">
+                            <span className="font-bold text-black">
                               {profile.currencySymbol}
                               {invoice.paidAmount.toLocaleString()}
                             </span>
                           </div>
                         </div>
                       ) : (
-                        <div className="flex justify-between text-xs pt-1 border-t border-black text-black">
-                          <span className="font-bold text-black">Paid Amount ({invoice.paymentMethod}):</span>
-                          <span className="font-black text-black">
+                        <div className="flex justify-between text-xs py-1 border-t-2 border-double border-black text-black">
+                          <span className="font-bold text-black">Total Paid:</span>
+                          <span className="font-bold text-black">
                             {profile.currencySymbol}
                             {invoice.paidAmount.toLocaleString()}
                           </span>
@@ -1619,20 +1620,31 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
               </div>
 
-              {/* Signatures & Footer pinned to bottom */}
-              <div className="a4-page-footer mt-auto pt-8 space-y-6">
-                {/* Signatures */}
-                <div className="flex justify-between items-end text-center text-xs text-black">
+              {/* Signatures & Footer pinned to bottom (Mark 1 & Mark 2) */}
+              <div className="a4-page-footer mt-auto pt-10 sm:pt-14 space-y-4">
+                {/* Signatures (Mark 2) */}
+                <div className="flex justify-between items-end text-center text-xs text-black px-2">
                   <div>
-                    <div className="w-36 border-t border-black mx-auto mb-1" />
-                    <span className="font-bold text-black">Customer's Signature</span>
+                    <div className="w-40 border-t border-black mx-auto mb-1.5" />
+                    <span className="font-bold text-black text-xs">Customer's Signature</span>
                   </div>
                   <div>
-                    <div className="w-44 border-t border-black mx-auto mb-1" />
-                    <span className="font-black text-black">For {profile.name}</span>
+                    <div className="w-48 border-t border-black mx-auto mb-1.5" />
+                    <span className="font-black text-black text-xs">For Dot Color Communication</span>
                   </div>
                 </div>
 
+                {/* Company Address & Contact Details Footer (Mark 1) */}
+                <div className={`text-center text-[10.5px] sm:text-[11px] text-black font-medium leading-relaxed pt-2 ${isPadMode ? 'hidden print:hidden' : ''}`}>
+                  <div>
+                    {profile.officeAddress && !profile.officeAddress.includes('South Noya Para')
+                      ? profile.officeAddress
+                      : 'Nazir Ahmed Chowdhury Road Raja Pukur By lane, G A Bhaban Mat, Chattogram, Bangladesh.'}
+                  </div>
+                  <div>
+                    Call-{profile.phone && !profile.phone.includes('01846100900') ? profile.phone : '01730581687'}, E-mail : {(profile.emails && profile.emails[0] && !profile.emails[0].includes('info@dotcolorcommunication.com')) ? profile.emails[0] : 'info.dotcolor@gmail.com'}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

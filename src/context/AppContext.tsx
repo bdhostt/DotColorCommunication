@@ -210,11 +210,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ) {
             parsed.logoUrl = '/dotcolor-logo.svg';
           }
-          if (parsed.name === 'DotColorCommunication Sales, POS & ERP') {
-            parsed.name = 'Dot Color';
+          if (parsed.name === 'DotColorCommunication Sales, POS & ERP' || parsed.name === 'Dot Color') {
+            parsed.name = 'Dot Color Communication';
           }
           if (parsed.footerBrandText === 'DotColorCommunication Sales, POS & ERP') {
-            parsed.footerBrandText = 'Dot Color';
+            parsed.footerBrandText = 'Dot Color Communication';
+          }
+          if (!parsed.officeAddress || parsed.officeAddress.includes('South Noya Para')) {
+            parsed.officeAddress = 'Nazir Ahmed Chowdhury Road Raja Pukur By lane, G A Bhaban Mat, Chattogram, Bangladesh.';
+          }
+          if (!parsed.phone || parsed.phone.includes('01846100900')) {
+            parsed.phone = '01730581687';
+          }
+          if (!parsed.emails || (parsed.emails.length === 1 && parsed.emails[0] === 'info@dotcolorcommunication.com')) {
+            parsed.emails = ['info.dotcolor@gmail.com'];
           }
           return {
             ...INITIAL_COMPANY_PROFILE,
