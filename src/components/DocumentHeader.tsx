@@ -118,16 +118,16 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
         )}
       </div>
 
-      {/* Top Header Row: Company Brand Logo */}
-      <div
-        className={`pad-header-branding flex items-center justify-end pb-2 ${
-          isPadMode ? 'hidden print:hidden' : ''
-        }`}
-      >
-        {badgeStyle ? (
-          /* Image 2 style: Top-Right Company Logo with BILL/Invoice pill badge directly below, matching width */
+      {badgeStyle ? (
+        /* Image 2 style: Top-Right Company Logo with BILL/Invoice pill badge directly below, matching width */
+        <div className="flex items-center justify-end pb-2">
           <div className="inline-flex flex-col items-stretch w-[170px] sm:w-[180px]">
-            <div className="w-full flex items-center justify-center">
+            {/* Company Logo: hidden in pad mode */}
+            <div
+              className={`pad-header-branding w-full flex items-center justify-center ${
+                isPadMode ? 'hidden print:hidden' : ''
+              }`}
+            >
               <img
                 src={
                   profile?.logoUrl &&
@@ -140,12 +140,23 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
                 className="w-full h-auto block select-none"
               />
             </div>
-            <div className="w-full bg-[#18181B] text-white py-1.5 rounded-lg text-xs sm:text-[13px] font-black tracking-wider mt-2.5 shadow-2xs text-center flex items-center justify-center select-none">
+            {/* Document Title Badge (e.g. BILL/Invoice or BILL/Quotation): Visible in BOTH normal and pad mode */}
+            <div
+              className={`w-full bg-[#18181B] text-white py-1.5 rounded-lg text-xs sm:text-[13px] font-black tracking-wider shadow-2xs text-center flex items-center justify-center select-none ${
+                !isPadMode ? 'mt-2.5' : 'mt-2'
+              }`}
+            >
               {documentTitle}
             </div>
           </div>
-        ) : (
-          /* Standard Full Layout */
+        </div>
+      ) : (
+        /* Standard Full Layout */
+        <div
+          className={`pad-header-branding flex items-center justify-end pb-2 ${
+            isPadMode ? 'hidden print:hidden' : ''
+          }`}
+        >
           <div className="flex flex-col items-end text-right">
             <BrandLogo
               size="xl"
@@ -160,8 +171,8 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
               </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Centered Document Title with clean black divider (omitted if badgeStyle is active) */}
       {!badgeStyle && (
