@@ -1362,12 +1362,13 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               >
                 <div className="a4-page-content space-y-6 flex-1">
                 
-                {/* Header: Company Logo on Right, Centered INVOICE Title Banner */}
+                {/* Header: Company Logo & BILL/Invoice pill badge on Right (matching Image 2) */}
                 <DocumentHeader
+                  badgeStyle={true}
                   documentTitle={
                     (invoice as any).isQuote
-                      ? 'QUOTATION'
-                      : 'INVOICE'
+                      ? 'BILL/Quotation'
+                      : 'BILL/Invoice'
                   }
                   documentNo={invoice.invoiceNo}
                   documentDate={invoice.date}
