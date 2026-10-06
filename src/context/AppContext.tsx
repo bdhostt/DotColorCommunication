@@ -326,13 +326,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => {
-    const list = safeGetLocalStorage<StaffMember[]>(`${STORAGE_KEY}_STAFF`, INITIAL_STAFF_MEMBERS);
-    return list.map((s) => {
-      if (s.id === 'staff-01' || (s.name && s.name.includes('Javed'))) {
-        return { ...s, name: 'Md. Ali Jowel', nameBn: 'মোঃ আলী জয়েল' };
-      }
-      return s;
-    });
+    return safeGetLocalStorage<StaffMember[]>(`${STORAGE_KEY}_STAFF`, INITIAL_STAFF_MEMBERS);
   });
 
   const [userRoles, setUserRoles] = useState<UserRole[]>(() => {
@@ -364,13 +358,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem(`${STORAGE_KEY}_ACTIVE_STAFF`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.id) {
-          const found = INITIAL_STAFF_MEMBERS.find((s) => s.id === parsed.id);
-          if (found) return found;
+        if (parsed && parsed.id && parsed.name) {
+          const savedStaff = safeGetLocalStorage<StaffMember[]>(`${STORAGE_KEY}_STAFF`, INITIAL_STAFF_MEMBERS);
+          const matched = savedStaff.find((s) => s.id === parsed.id);
+          return matched || parsed;
         }
       }
     } catch {}
-    return INITIAL_STAFF_MEMBERS[1]; // Default to Tanvir Ahmed (Senior Accountant)
+    const defaultStaffList = safeGetLocalStorage<StaffMember[]>(`${STORAGE_KEY}_STAFF`, INITIAL_STAFF_MEMBERS);
+    return defaultStaffList[0] || INITIAL_STAFF_MEMBERS[0];
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -454,6 +450,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_ACTIVE_STAFF`, JSON.stringify(activeStaff));
   }, [activeStaff]);
+
+  // Keep activeStaff synchronized whenever staffMembers list changes (e.g. from Cloud sync or edit)
+  useEffect(() => {
+    if (activeStaff?.id && staffMembers && staffMembers.length > 0) {
+      const current = staffMembers.find((s) => s.id === activeStaff.id);
+      if (current) {
+        if (
+          current.name !== activeStaff.name ||
+          current.nameBn !== activeStaff.nameBn ||
+          current.role !== activeStaff.role ||
+          current.roleBn !== activeStaff.roleBn ||
+          current.avatarColor !== activeStaff.avatarColor ||
+          current.password !== activeStaff.password ||
+          current.phone !== activeStaff.phone ||
+          current.email !== activeStaff.email ||
+          current.location !== activeStaff.location ||
+          current.isActive !== activeStaff.isActive
+        ) {
+          setActiveStaff(current);
+        }
+      }
+    }
+  }, [staffMembers, activeStaff?.id]);
 
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_IS_AUTHENTICATED`, String(isAuthenticated));
@@ -1750,21 +1769,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateStaffMember = (id: string, updates: Partial<StaffMember>) => {
+    let updatedActiveMember: StaffMember | null = null;
     setStaffMembers((prev) =>
       prev.map((s) => {
         if (s.id === id) {
           const updated = { ...s, ...updates };
-          if (activeStaff.id === id) {
-            setActiveStaff(updated);
+          if (activeStaff?.id === id) {
+            updatedActiveMember = updated;
           }
           return updated;
         }
         return s;
       })
     );
+
+    if (updatedActiveMember) {
+      setActiveStaff(updatedActiveMember);
+    }
+
     addAuditLog({
       staffId: activeStaff.id,
-      staffName: activeStaff.name,
+      staffName: activeStaff.id === id && updates.name ? updates.name : activeStaff.name,
       staffRole: activeStaff.role,
       location: 'All',
       actionType: 'USER_UPDATED',
@@ -2204,6 +2229,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStockMovements(INITIAL_STOCK_MOVEMENTS);
     setAuditLogs(INITIAL_AUDIT_LOGS);
     setStaffMembers(INITIAL_STAFF_MEMBERS);
+    setActiveStaff(INITIAL_STAFF_MEMBERS[0]);
     setUserRoles(INITIAL_USER_ROLES);
     setChartOfAccounts(INITIAL_CHART_OF_ACCOUNTS);
     setExpenseHeads(INITIAL_EXPENSE_HEADS);
@@ -2266,7 +2292,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.transactions) setTransactions(ensureUniqueTransactions(data.transactions));
       if (data.stockMovements) setStockMovements(data.stockMovements);
       if (data.auditLogs) setAuditLogs(data.auditLogs);
-      if (data.staffMembers) setStaffMembers(data.staffMembers);
+      if (data.staffMembers && Array.isArray(data.staffMembers) && data.staffMembers.length > 0) {
+        setStaffMembers(data.staffMembers);
+        setActiveStaff((prev) => {
+          if (prev?.id) {
+            const found = data.staffMembers.find((s: StaffMember) => s.id === prev.id);
+            if (found) return found;
+          }
+          return prev;
+        });
+      }
       if (data.userRoles) setUserRoles(data.userRoles);
       if (data.chartOfAccounts) setChartOfAccounts(data.chartOfAccounts);
       if (data.expenseHeads) setExpenseHeads(data.expenseHeads);

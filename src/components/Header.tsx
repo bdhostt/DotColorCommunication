@@ -23,6 +23,10 @@ import {
   CloudOff,
   RefreshCw,
   Printer,
+  User,
+  KeyRound,
+  Shield,
+  Save,
 } from 'lucide-react';
 import { PrinterBridgeModal } from './PrinterBridgeModal';
 import { checkHardwareAgentStatus, HardwareAgentStatus } from '../utils/hardwarePrint';
@@ -51,11 +55,21 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
     isCloudConnected,
     lastSyncedAt,
     syncWithCloud,
+    updateStaffMember,
   } = useApp();
 
   const [showBackupModal, setShowBackupModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showPrinterModal, setShowPrinterModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileFormData, setProfileFormData] = useState({
+    name: '',
+    nameBn: '',
+    phone: '',
+    email: '',
+    password: '',
+  });
+  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
   const [printerStatus, setPrinterStatus] = useState<HardwareAgentStatus>({ isOnline: false });
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
@@ -280,21 +294,41 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               {/* User Session & Logout */}
               {activeStaff && (
                 <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-                  <div className="hidden sm:flex flex-col text-right">
-                    <span className="text-xs font-bold text-slate-800 leading-tight">
-                      {language === 'bn' && activeStaff.nameBn ? activeStaff.nameBn : activeStaff.name}
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-medium leading-none mt-0.5">
-                      {language === 'bn' && activeStaff.roleBn ? activeStaff.roleBn.split(' ')[0] : activeStaff.role}
-                    </span>
-                  </div>
-                  <div className={`w-8 h-8 rounded-lg ${activeStaff.avatarColor} flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-xs`} title={activeStaff.role}>
-                    {activeStaff.name.charAt(0)}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileFormData({
+                        name: activeStaff.name || '',
+                        nameBn: activeStaff.nameBn || '',
+                        phone: activeStaff.phone || '',
+                        email: activeStaff.email || '',
+                        password: activeStaff.password || '1234',
+                      });
+                      setProfileSaveSuccess(false);
+                      setShowProfileModal(true);
+                    }}
+                    className="flex items-center gap-2 p-1 -m-1 rounded-xl hover:bg-slate-100 transition-colors text-left cursor-pointer group"
+                    title={language === 'bn' ? 'ইউজার প্রোফাইল ও নাম সম্পাদনা করুন' : 'View & Edit User Profile'}
+                  >
+                    <div className="hidden sm:flex flex-col text-right">
+                      <span className="text-xs font-bold text-slate-800 leading-tight group-hover:text-amber-700 transition-colors">
+                        {language === 'bn' && activeStaff.nameBn ? activeStaff.nameBn : activeStaff.name}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-medium leading-none mt-0.5">
+                        {language === 'bn' && activeStaff.roleBn ? activeStaff.roleBn.split(' ')[0] : activeStaff.role}
+                      </span>
+                    </div>
+                    <div
+                      className={`w-8 h-8 rounded-lg ${activeStaff.avatarColor || 'bg-purple-600'} flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-xs ring-2 ring-transparent group-hover:ring-amber-500/40 transition-all`}
+                      title={activeStaff.role}
+                    >
+                      {(activeStaff.name || 'U').charAt(0)}
+                    </div>
+                  </button>
                   <button
                     type="button"
                     onClick={logout}
-                    className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
+                    className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors shrink-0 cursor-pointer"
                     title={language === 'bn' ? 'লগ আউট করুন' : 'Log Out'}
                   >
                     <LogOut className="w-4 h-4" />
@@ -601,6 +635,166 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
           checkHardwareAgentStatus().then(setPrinterStatus).catch(() => {});
         }}
       />
+
+      {/* User Profile Edit Modal */}
+      {showProfileModal && activeStaff && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-2xl ${activeStaff.avatarColor || 'bg-purple-600'} flex items-center justify-center text-white text-base font-bold shadow-xs`}>
+                  {(activeStaff.name || 'U').charAt(0)}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base">
+                    {language === 'bn' ? 'আমার প্রোফাইল ও ইউজার সেটিংস' : 'My Profile & User Settings'}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {language === 'bn' && activeStaff.roleBn ? activeStaff.roleBn : activeStaff.role} • {activeStaff.location}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!profileFormData.name.trim()) return;
+                updateStaffMember(activeStaff.id, {
+                  name: profileFormData.name.trim(),
+                  nameBn: profileFormData.nameBn.trim(),
+                  phone: profileFormData.phone.trim(),
+                  email: profileFormData.email.trim(),
+                  password: profileFormData.password.trim() || '1234',
+                });
+                setProfileSaveSuccess(true);
+                setTimeout(() => {
+                  setProfileSaveSuccess(false);
+                  setShowProfileModal(false);
+                }, 900);
+              }}
+              className="py-4 space-y-4"
+            >
+              {profileSaveSuccess && (
+                <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-800 rounded-2xl text-xs font-bold border border-emerald-200">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{language === 'bn' ? 'প্রোফাইল তথ্য সফলভাবে সংরক্ষিত হয়েছে!' : 'Profile updated successfully!'}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    {language === 'bn' ? 'পূর্ণ নাম (ইংরেজি) *' : 'Full Name (English) *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profileFormData.name}
+                    onChange={(e) => setProfileFormData({ ...profileFormData, name: e.target.value })}
+                    placeholder="e.g. Javed Reza"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    {language === 'bn' ? 'পূর্ণ নাম (বাংলা)' : 'Full Name (Bangla)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={profileFormData.nameBn}
+                    onChange={(e) => setProfileFormData({ ...profileFormData, nameBn: e.target.value })}
+                    placeholder="যেমন: জাভেদ রেজা"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    {language === 'bn' ? 'মোবাইল নম্বর' : 'Phone Number'}
+                  </label>
+                  <input
+                    type="text"
+                    value={profileFormData.phone}
+                    onChange={(e) => setProfileFormData({ ...profileFormData, phone: e.target.value })}
+                    placeholder="01730-XXXXXX"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    {language === 'bn' ? 'ইমেইল অ্যাড্রেস' : 'Email Address'}
+                  </label>
+                  <input
+                    type="email"
+                    value={profileFormData.email}
+                    onChange={(e) => setProfileFormData({ ...profileFormData, email: e.target.value })}
+                    placeholder="info.dotcolor@gmail.com"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  {language === 'bn' ? 'লগইন পিন / পাসওয়ার্ড' : 'Login PIN / Password'}
+                </label>
+                <input
+                  type="text"
+                  value={profileFormData.password}
+                  onChange={(e) => setProfileFormData({ ...profileFormData, password: e.target.value })}
+                  placeholder="ডিফল্ট: 1234"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  {language === 'bn' ? 'সিস্টেমে লগইনের জন্য ব্যবহৃত ৪-সংখ্যার পিন বা পাসওয়ার্ড।' : 'Used for PIN-based login verification.'}
+                </p>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('settings');
+                    setShowProfileModal(false);
+                  }}
+                  className="text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                >
+                  {language === 'bn' ? 'সকল ইউজার ম্যানেজমেন্ট ↗' : 'All Users Management ↗'}
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowProfileModal(false)}
+                    className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  >
+                    {language === 'bn' ? 'বাতিল' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{language === 'bn' ? 'সংরক্ষণ করুন' : 'Save Changes'}</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 };

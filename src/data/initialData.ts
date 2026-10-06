@@ -998,8 +998,8 @@ export const INITIAL_STOCK_MOVEMENTS: StockMovement[] = [
 export const INITIAL_STAFF_MEMBERS: StaffMember[] = [
   {
     id: 'staff-01',
-    name: 'Md. Ali Jowel',
-    nameBn: 'মোঃ আলী জয়েল',
+    name: 'Javed Reza',
+    nameBn: 'জাভেদ রেজা',
     role: 'Managing Director',
     roleBn: 'ব্যবস্থাপনা পরিচালক (ম্যানেজমেন্ট)',
     location: 'Both',
