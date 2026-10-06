@@ -1339,17 +1339,17 @@ export const CompanyProfileModule: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              setFormData((prev) => ({ ...prev, logoUrl: '/dotcolor-logo.svg' }));
-                              updateProfile({ logoUrl: '/dotcolor-logo.svg' });
+                              setFormData((prev) => ({ ...prev, logoUrl: '/dotcolor-official-logo.png' }));
+                              updateProfile({ logoUrl: '/dotcolor-official-logo.png' });
                               setSaveNotification(
-                                language === 'bn' ? 'অফিসিয়াল ডট কালার ভেক্টর লোগো সেট করা হয়েছে!' : 'Official Dot Color vector logo set!'
+                                language === 'bn' ? 'অফিসিয়াল ডট কালার কমিউনিকেশন লোগো সেট করা হয়েছে!' : 'Official Dot Color Communication logo set!'
                               );
                               setTimeout(() => setSaveNotification(null), 3000);
                             }}
                             className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-                            title="Communication ছাড়া অফিশিয়াল DOT COLOR ভেক্টর লোগো সেট করুন"
+                            title="অফিশিয়াল DOT COLOR Communication লোগো সেট করুন"
                           >
-                            <span>🎨 {language === 'bn' ? 'অফিসিয়াল DOT COLOR লোগো সেট করুন' : 'Use Official DOT COLOR Logo'}</span>
+                            <span>🎨 {language === 'bn' ? 'অফিসিয়াল DOT COLOR Communication লোগো সেট করুন' : 'Use Official Dot Color Logo'}</span>
                           </button>
                         </div>
                       </div>

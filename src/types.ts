@@ -463,7 +463,67 @@ export type AuditActionType =
   | 'CATEGORY_CREATED'
   | 'CATEGORY_UPDATED'
   | 'CATEGORY_DELETED'
-  | 'JOURNAL_ENTRY_CREATED';
+  | 'JOURNAL_ENTRY_CREATED'
+  | 'PROJECT_CREATED'
+  | 'PROJECT_UPDATED'
+  | 'PROJECT_DELETED'
+  | 'PROJECT_SALES_ADDED'
+  | 'PROJECT_EXPENSE_ADDED';
+
+export interface ProjectExpenseItem {
+  id: string;
+  category: 'Conveyance' | 'Labor Charge' | 'Entertainment' | 'Raw Materials Purchase' | 'Subcontract' | 'Utility / Others' | string;
+  categoryBn?: string;
+  amount: number;
+  date: string;
+  note?: string;
+  linkedExpenseHeadId?: string;
+  linkedAccountId?: string;
+  breakdownBatchId?: string;
+}
+
+export interface ProjectSalesPaymentBreakdown {
+  id: string;
+  method: string;
+  amount: number;
+  note?: string;
+  referenceNo?: string;
+}
+
+export interface ProjectSalesItem {
+  id: string;
+  invoiceNo?: string;
+  description: string;
+  amount: number;
+  date: string;
+  clientName?: string;
+  note?: string;
+  paymentMethod?: string;
+  paymentBreakdown?: ProjectSalesPaymentBreakdown[];
+  linkedAccountId?: string;
+}
+
+export interface Project {
+  id: string;
+  code: string;
+  name: string;
+  nameBn?: string;
+  clientName: string;
+  clientPhone?: string;
+  startDate: string;
+  endDate?: string;
+  status: 'Planning' | 'In Progress' | 'Completed' | 'On Hold';
+  statusBn?: string;
+  budget: number;
+  salesItems: ProjectSalesItem[];
+  expenseItems: ProjectExpenseItem[];
+  totalSales: number;
+  totalExpenses: number;
+  netProfit: number;
+  profitMargin: number;
+  notes?: string;
+  chartOfAccountId?: string;
+}
 
 export interface AuditLogEntry {
   id: string;
@@ -473,7 +533,7 @@ export interface AuditLogEntry {
   staffRole: StaffRole;
   location: 'Office' | 'Factory' | 'Both' | 'All';
   actionType: AuditActionType;
-  entityType: 'Accounting' | 'Sales' | 'POS' | 'Inventory' | 'Supply Chain' | 'System' | 'Configuration';
+  entityType: 'Accounting' | 'Sales' | 'POS' | 'Inventory' | 'Supply Chain' | 'System' | 'Configuration' | 'Projects';
   refNo?: string;
   details: string;
   detailsBn?: string;

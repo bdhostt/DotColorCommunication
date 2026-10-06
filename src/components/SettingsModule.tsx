@@ -282,6 +282,8 @@ export const SettingsModule: React.FC = () => {
       mappedKey = 'TRANSACTIONS';
       // Clear journals too for a complete accounting ledger wipe
       cleanModuleData('JOURNALS');
+    } else if (moduleKey === 'projects') {
+      mappedKey = 'PROJECTS';
     } else if (moduleKey === 'WIPE_ALL_EXCEPT_PRODUCTS') {
       mappedKey = 'WIPE_ALL_EXCEPT_PRODUCTS';
     }
@@ -844,10 +846,33 @@ export const SettingsModule: React.FC = () => {
               </button>
             </div>
 
+            {/* Projects Data Purge */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 text-sm">
+                  {language === 'bn' ? '৫. প্রজেক্টস ডাটা পার্জ (Projects Data Purge)' : '5. Projects Data Purge'}
+                </span>
+                <span className="text-xs font-mono text-slate-500">Projects & Sales</span>
+              </div>
+              <p className="text-xs text-slate-500">
+                {language === 'bn'
+                  ? 'সমস্ত প্রজেক্ট, প্রজেক্টের আয়/বিক্রয় এবং খরচের আইটেমাইজড ব্রেকডাউন হিসাব রেকর্ড মুছে ফেলবে।'
+                  : 'Purge all project profiles, sales income records, and expense breakdown logs.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => setCleanConfirmModule('projects')}
+                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{language === 'bn' ? 'প্রজেক্ট ডাটা মুছে ফেলুন' : 'Purge Projects Data'}</span>
+              </button>
+            </div>
+
             {/* Wipe All Except Products */}
             <div className="bg-rose-50/60 p-5 rounded-2xl border-2 border-dashed border-rose-200 shadow-2xs space-y-3 col-span-1 md:col-span-2">
               <div className="flex items-center justify-between">
-                <span className="font-extrabold text-rose-950 text-sm">৫. সম্পূর্ণ সিস্টেম ডাটা রিসেট (প্রোডাক্ট বাদে)</span>
+                <span className="font-extrabold text-rose-950 text-sm">৬. সম্পূর্ণ সিস্টেম ডাটা রিসেট (প্রোডাক্ট বাদে)</span>
                 <span className="text-xs font-mono font-bold text-rose-600 bg-rose-100/60 px-2.5 py-0.5 rounded-full">RECOMMENDED START</span>
               </div>
               <p className="text-xs text-rose-800 leading-relaxed font-medium">

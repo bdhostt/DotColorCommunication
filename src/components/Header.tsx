@@ -313,6 +313,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               { id: 'sales', labelEn: 'Sales & Orders', labelBn: 'সেলস ও ওয়ার্ক অর্ডার' },
               { id: 'inventory', labelEn: 'Inventory', labelBn: 'ইনভেন্টরি ও স্টক' },
               { id: 'supply', labelEn: 'Supply & Purchase', labelBn: 'সাপ্লাই চেইন ও পারচেস' },
+              { id: 'projects', labelEn: 'Projects', labelBn: 'প্রজেক্টস' },
               { id: 'accounting', labelEn: 'Accounting', labelBn: 'অ্যাকাউন্টিং ও অর্থ' },
               { id: 'reports', labelEn: 'Reports', labelBn: 'রিপোর্ট ও বিশ্লেষণ' },
               { id: 'settings', labelEn: 'Settings & Admin', labelBn: 'সেটিংস ও অ্যাডমিন' },

@@ -20,6 +20,9 @@ import {
   UserRole,
   RolePermission,
   JournalEntry,
+  Project,
+  ProjectExpenseItem,
+  ProjectSalesItem,
 } from '../types';
 import {
   INITIAL_COMPANY_PROFILE,
@@ -40,6 +43,7 @@ import {
   INITIAL_PRODUCT_CATEGORIES,
   INITIAL_USER_ROLES,
   INITIAL_JOURNAL_ENTRIES,
+  INITIAL_PROJECTS,
   ALL_SYSTEM_PERMISSIONS,
 } from '../data/accountingAndConfigData';
 
@@ -151,8 +155,19 @@ interface AppContextType {
   updateTransaction: (id: string, updates: Partial<AccountingTransaction>) => void;
   deleteTransaction: (id: string) => void;
 
+  // Projects Management
+  projects: Project[];
+  addProject: (proj: Omit<Project, 'id' | 'code' | 'totalSales' | 'totalExpenses' | 'netProfit' | 'profitMargin'>) => Project;
+  updateProject: (id: string, updates: Partial<Project>) => void;
+  deleteProject: (id: string) => void;
+  addProjectSales: (projectId: string, sales: Omit<ProjectSalesItem, 'id'>) => void;
+  addProjectExpense: (projectId: string, expense: Omit<ProjectExpenseItem, 'id'>) => void;
+  addProjectExpenses: (projectId: string, expenses: Omit<ProjectExpenseItem, 'id'>[]) => void;
+  deleteProjectSales: (projectId: string, salesId: string) => void;
+  deleteProjectExpense: (projectId: string, expenseId: string) => void;
+
   // Utilities & Module Data Cleanup
-  cleanModuleData: (moduleKey: 'SALES' | 'QUOTATIONS' | 'PURCHASES' | 'INVENTORY_STOCK' | 'CUSTOM_PRODUCTS' | 'TRANSACTIONS' | 'JOURNALS' | 'AUDIT_LOGS' | 'ALL' | 'WIPE_ALL_EXCEPT_PRODUCTS') => void;
+  cleanModuleData: (moduleKey: 'SALES' | 'QUOTATIONS' | 'PURCHASES' | 'INVENTORY_STOCK' | 'CUSTOM_PRODUCTS' | 'TRANSACTIONS' | 'JOURNALS' | 'AUDIT_LOGS' | 'PROJECTS' | 'ALL' | 'WIPE_ALL_EXCEPT_PRODUCTS') => void;
   resetToDefaultData: () => void;
   exportDatabase: () => string;
   importDatabase: (jsonString: string) => boolean;
@@ -340,6 +355,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return safeGetLocalStorage<JournalEntry[]>(`${STORAGE_KEY}_JOURNALS`, INITIAL_JOURNAL_ENTRIES);
   });
 
+  const [projects, setProjects] = useState<Project[]>(() => {
+    return safeGetLocalStorage<Project[]>(`${STORAGE_KEY}_PROJECTS`, INITIAL_PROJECTS);
+  });
+
   const [activeStaff, setActiveStaff] = useState<StaffMember>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_ACTIVE_STAFF`);
@@ -427,6 +446,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_JOURNALS`, JSON.stringify(journalEntries));
   }, [journalEntries]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY}_PROJECTS`, JSON.stringify(projects));
+  }, [projects]);
 
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_ACTIVE_STAFF`, JSON.stringify(activeStaff));
@@ -1924,8 +1947,136 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  // Projects Management
+  const recalculateProject = (p: Project): Project => {
+    const totalSales = (p.salesItems || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const totalExpenses = (p.expenseItems || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const netProfit = totalSales - totalExpenses;
+    const profitMargin = totalSales > 0 ? Number(((netProfit / totalSales) * 100).toFixed(2)) : 0;
+    return { ...p, totalSales, totalExpenses, netProfit, profitMargin };
+  };
+
+  const addProject = (
+    proj: Omit<Project, 'id' | 'code' | 'totalSales' | 'totalExpenses' | 'netProfit' | 'profitMargin'>
+  ): Project => {
+    const newId = `prj-${Date.now()}`;
+    const code = `PRJ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const baseProject: Project = {
+      ...proj,
+      id: newId,
+      code,
+      salesItems: proj.salesItems || [],
+      expenseItems: proj.expenseItems || [],
+      totalSales: 0,
+      totalExpenses: 0,
+      netProfit: 0,
+      profitMargin: 0,
+    };
+    const calculated = recalculateProject(baseProject);
+    setProjects((prev) => [calculated, ...prev]);
+
+    addAuditLog({
+      staffId: activeStaff?.id || 'staff-admin',
+      staffName: activeStaff?.name || 'Staff',
+      staffRole: activeStaff?.role || 'Managing Director',
+      location: 'Office',
+      actionType: 'PROJECT_CREATED',
+      entityType: 'Projects',
+      refNo: code,
+      details: `Created new project: ${calculated.name} for ${calculated.clientName}`,
+      detailsBn: `নতুন প্রজেক্ট তৈরি করা হয়েছে: ${calculated.nameBn || calculated.name} (${calculated.clientName})`,
+      severity: 'info',
+    });
+
+    return calculated;
+  };
+
+  const updateProject = (id: string, updates: Partial<Project>) => {
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id === id) {
+          const updated = recalculateProject({ ...p, ...updates });
+          return updated;
+        }
+        return p;
+      })
+    );
+  };
+
+  const deleteProject = (id: string) => {
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const addProjectSales = (projectId: string, sales: Omit<ProjectSalesItem, 'id'>) => {
+    const newItem: ProjectSalesItem = { ...sales, id: `ps-${Date.now()}` };
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id === projectId) {
+          const updatedSales = [...p.salesItems, newItem];
+          return recalculateProject({ ...p, salesItems: updatedSales });
+        }
+        return p;
+      })
+    );
+  };
+
+  const addProjectExpense = (projectId: string, expense: Omit<ProjectExpenseItem, 'id'>) => {
+    const newItem: ProjectExpenseItem = { ...expense, id: `pe-${Date.now()}` };
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id === projectId) {
+          const updatedExpenses = [...p.expenseItems, newItem];
+          return recalculateProject({ ...p, expenseItems: updatedExpenses });
+        }
+        return p;
+      })
+    );
+  };
+
+  const addProjectExpenses = (projectId: string, expenses: Omit<ProjectExpenseItem, 'id'>[]) => {
+    if (!expenses || expenses.length === 0) return;
+    const timestamp = Date.now();
+    const newItems: ProjectExpenseItem[] = expenses.map((exp, idx) => ({
+      ...exp,
+      id: `pe-${timestamp}-${idx}`,
+    }));
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id === projectId) {
+          const updatedExpenses = [...p.expenseItems, ...newItems];
+          return recalculateProject({ ...p, expenseItems: updatedExpenses });
+        }
+        return p;
+      })
+    );
+  };
+
+  const deleteProjectSales = (projectId: string, salesId: string) => {
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id === projectId) {
+          const updatedSales = p.salesItems.filter((item) => item.id !== salesId);
+          return recalculateProject({ ...p, salesItems: updatedSales });
+        }
+        return p;
+      })
+    );
+  };
+
+  const deleteProjectExpense = (projectId: string, expenseId: string) => {
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id === projectId) {
+          const updatedExpenses = p.expenseItems.filter((item) => item.id !== expenseId);
+          return recalculateProject({ ...p, expenseItems: updatedExpenses });
+        }
+        return p;
+      })
+    );
+  };
+
   // Module Data Clean & Purge
-  const cleanModuleData = (moduleKey: 'SALES' | 'QUOTATIONS' | 'PURCHASES' | 'INVENTORY_STOCK' | 'CUSTOM_PRODUCTS' | 'TRANSACTIONS' | 'JOURNALS' | 'AUDIT_LOGS' | 'ALL' | 'WIPE_ALL_EXCEPT_PRODUCTS') => {
+  const cleanModuleData = (moduleKey: 'SALES' | 'QUOTATIONS' | 'PURCHASES' | 'INVENTORY_STOCK' | 'CUSTOM_PRODUCTS' | 'TRANSACTIONS' | 'JOURNALS' | 'AUDIT_LOGS' | 'PROJECTS' | 'ALL' | 'WIPE_ALL_EXCEPT_PRODUCTS') => {
     if (moduleKey === 'SALES') {
       setInvoices([]);
       addAuditLog({
@@ -2009,6 +2160,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setJournalEntries([]);
     } else if (moduleKey === 'AUDIT_LOGS') {
       setAuditLogs([]);
+    } else if (moduleKey === 'PROJECTS') {
+      setProjects([]);
+      addAuditLog({
+        staffId: activeStaff.id,
+        staffName: activeStaff.name,
+        staffRole: activeStaff.role,
+        location: 'All',
+        actionType: 'DATA_CLEANED',
+        entityType: 'Projects',
+        details: 'Purged/cleaned all project sales, expense, and profitability records.',
+        detailsBn: 'সমস্ত প্রজেক্ট হিসাব, সেলস ও খরচের বিবরণী সিস্টেম থেকে মুছে ফেলা হয়েছে।',
+        severity: 'critical',
+      });
     } else if (moduleKey === 'ALL') {
       resetToDefaultData();
     } else if (moduleKey === 'WIPE_ALL_EXCEPT_PRODUCTS') {
@@ -2018,6 +2182,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setTransactions([]);
       setStockMovements([]);
       setJournalEntries([]);
+      setProjects([]);
       setCustomers([]);
       setSuppliers([]);
       setAuditLogs([]);
@@ -2044,6 +2209,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setExpenseHeads(INITIAL_EXPENSE_HEADS);
     setProductCategories(INITIAL_PRODUCT_CATEGORIES);
     setJournalEntries(INITIAL_JOURNAL_ENTRIES);
+    setProjects(INITIAL_PROJECTS);
     localStorage.clear();
   };
 
@@ -2065,6 +2231,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       expenseHeads,
       productCategories,
       journalEntries,
+      projects,
       exportedAt: new Date().toISOString(),
       version: '2.0',
     };
@@ -2105,6 +2272,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.expenseHeads) setExpenseHeads(data.expenseHeads);
       if (data.productCategories) setProductCategories(data.productCategories);
       if (data.journalEntries) setJournalEntries(data.journalEntries);
+      if (data.projects) setProjects(data.projects);
       return true;
     } catch (e) {
       console.error('Import error', e);
@@ -2234,6 +2402,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     expenseHeads,
     productCategories,
     journalEntries,
+    projects,
   ]);
 
   const accountBalances: AccountBalances = useMemo(() => {
@@ -2347,6 +2516,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addTransaction,
         updateTransaction,
         deleteTransaction,
+        projects,
+        addProject,
+        updateProject,
+        deleteProject,
+        addProjectSales,
+        addProjectExpense,
+        addProjectExpenses,
+        deleteProjectSales,
+        deleteProjectExpense,
         cleanModuleData,
         resetToDefaultData,
         exportDatabase,

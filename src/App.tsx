@@ -5,6 +5,7 @@ import { POSModule } from './components/POSModule';
 import { SalesModule } from './components/SalesModule';
 import { InventoryModule } from './components/InventoryModule';
 import { SupplyChainModule } from './components/SupplyChainModule';
+import { ProjectManagementModule } from './components/ProjectManagementModule';
 import { AccountingModule } from './components/AccountingModule';
 import { ReportModule } from './components/ReportModule';
 import { CompanyProfileModule } from './components/CompanyProfileModule';
@@ -14,7 +15,7 @@ import { Login } from './components/Login';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SlidersHorizontal } from 'lucide-react';
 
-const VALID_TABS = ['pos', 'sales', 'inventory', 'supply', 'accounting', 'reports', 'settings', 'profile'];
+const VALID_TABS = ['pos', 'sales', 'inventory', 'supply', 'projects', 'accounting', 'reports', 'settings', 'profile'];
 const TAB_STORAGE_KEY = 'DOT_COLOR_ERP_ACTIVE_TAB';
 
 const getInitialTab = (): string => {
@@ -138,6 +139,7 @@ const MainLayout: React.FC = () => {
         )}
         {activeTab === 'inventory' && <InventoryModule />}
         {activeTab === 'supply' && <SupplyChainModule />}
+        {activeTab === 'projects' && <ProjectManagementModule />}
         {activeTab === 'accounting' && <AccountingModule />}
         {activeTab === 'reports' && <ReportModule />}
         {activeTab === 'settings' && <SettingsModule />}

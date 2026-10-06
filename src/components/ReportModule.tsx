@@ -27,6 +27,7 @@ import {
   Wallet,
   Scale,
   DollarSign,
+  FolderKanban,
 } from 'lucide-react';
 
 export type ReportCategory = 'sales' | 'purchases' | 'inventory' | 'accounting' | 'ifrs';
@@ -215,6 +216,17 @@ export const REPORT_REGISTRY: ReportDefinition[] = [
     descEn: 'Period cash & bank opening, operational inflows, outflows, and liquid closing balances.',
     descBn: 'নগদ ও ব্যাংক তহবিলের প্রারম্ভিক উদ্বৃত্ত, মোট নগদ আগমন, পরিশোধ ও সমাপনী ব্যালেন্স।',
     icon: Scale,
+  },
+  {
+    id: 'project-profitability',
+    category: 'accounting',
+    titleEn: 'Projects Report',
+    titleBn: 'প্রজেক্টস রিপোর্ট',
+    categoryEn: 'Accounting & Ledger',
+    categoryBn: 'একাউন্টিং ও খতিয়ান',
+    descEn: 'Project-wise sales, expense breakdown, and net profit report.',
+    descBn: 'প্রজেক্ট ভিত্তিক বিক্রয়, খরচ ও নিট লাভের হিসাব রিপোর্ট।',
+    icon: FolderKanban,
   },
 
   // 5. IFRS STATEMENTS

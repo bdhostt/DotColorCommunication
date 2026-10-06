@@ -39,6 +39,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     !imageError &&
     activeLogoUrl.trim() !== '' &&
     activeLogoUrl !== '/dotcolor-logo.svg' &&
+    activeLogoUrl !== '/dotcolor-official-logo.png' &&
     !isLegacyCommunicationImage
   );
   const imgHeight =
@@ -99,7 +100,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     >
       <div className={`flex items-center gap-2 ${isRightAligned ? 'justify-end' : ''}`}>
         <img
-          src="/dotcolor-logo.svg"
+          src="/dotcolor-official-logo.png"
           alt={profile?.name || 'Dot Color Logo'}
           className={`${logoHeight} w-auto object-contain shrink-0`}
         />

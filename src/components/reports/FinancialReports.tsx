@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useApp } from '../../context/AppContext';
 import {
   AccountingTransaction,
   ChartOfAccount,
@@ -14,6 +15,9 @@ import {
   ArrowUpRight,
   Wallet,
   Building,
+  FolderKanban,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 
 interface FinancialReportsProps {
@@ -31,6 +35,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
   profile,
   language,
 }) => {
+  const { projects } = useApp();
   const isBn = language === 'bn';
   const currency = profile.currencySymbol || '৳';
   const [selectedAccount, setSelectedAccount] = useState('ALL');
@@ -546,6 +551,131 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                   {currency} {receiptsAndPaymentsData.grandTotalPayments.toLocaleString()}
                 </span>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 16. PROJECT-WISE SALES & EXPENSE PROFITABILITY REPORT */}
+      {/* ------------------------------------------------------------- */}
+      {reportId === 'project-profitability' && (
+        <div className="space-y-6">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <FolderKanban className="w-5 h-5 text-amber-600" />
+                <h3 className="font-bold text-slate-900 text-base">
+                  {isBn ? 'প্রজেক্ট ওয়াইজ সেলস ও এক্সপেন্স লাভ-ক্ষতি বিবরণী' : 'Project-Wise Sales & Expense Profitability Statement'}
+                </h3>
+              </div>
+              <span className="text-xs font-bold text-slate-500">
+                {isBn ? `মোট প্রজেক্ট: ${(projects || []).length} টি` : `Total Projects: ${(projects || []).length}`}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase border-b border-slate-200">
+                    <th className="py-3 px-4">প্রজেক্ট কোড ও নাম</th>
+                    <th className="py-3 px-4">কাস্টমার / ক্লায়েন্ট</th>
+                    <th className="py-3 px-4 text-right">সেলস (Income ৳)</th>
+                    <th className="py-3 px-4">খরচের খাতভিত্তিক বিবরণ (Expense Breakdown)</th>
+                    <th className="py-3 px-4 text-right">মোট খরচ (Total Exp)</th>
+                    <th className="py-3 px-4 text-right">নিট লাভ (Net Profit)</th>
+                    <th className="py-3 px-4 text-center">মার্জিন (%)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {(projects || []).map((p) => {
+                    const breakdown = p.expenseItems.reduce((acc, exp) => {
+                      const catName = exp.categoryBn || exp.category;
+                      acc[catName] = (acc[catName] || 0) + Number(exp.amount || 0);
+                      return acc;
+                    }, {} as Record<string, number>);
+
+                    return (
+                      <tr key={p.id} className="hover:bg-slate-50/70">
+                        <td className="py-3 px-4">
+                          <div className="font-mono text-[10px] font-bold text-slate-500">{p.code}</div>
+                          <div className="font-bold text-slate-900">{isBn && p.nameBn ? p.nameBn : p.name}</div>
+                        </td>
+                        <td className="py-3 px-4 font-semibold text-slate-700">{p.clientName}</td>
+                        <td className="py-3 px-4 text-right font-black text-emerald-700 font-mono">
+                          {currency} {p.totalSales.toLocaleString()}
+                        </td>
+                        <td className="py-3 px-4">
+                          {Object.keys(breakdown).length === 0 ? (
+                            <span className="text-[11px] text-slate-400 italic">কোনো খরচ নেই</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1.5">
+                              {Object.entries(breakdown).map(([cName, amt]) => (
+                                <span
+                                  key={cName}
+                                  className="inline-flex items-center gap-1 bg-slate-100 text-slate-800 text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-200"
+                                >
+                                  <span>{cName}:</span>
+                                  <span className="font-bold text-rose-700 font-mono">
+                                    {currency}{amt.toLocaleString()}
+                                  </span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right font-extrabold text-rose-600 font-mono">
+                          {currency} {p.totalExpenses.toLocaleString()}
+                        </td>
+                        <td
+                          className={`py-3 px-4 text-right font-black font-mono text-sm ${
+                            p.netProfit >= 0 ? 'text-emerald-700 bg-emerald-50/50' : 'text-rose-700 bg-rose-50/50'
+                          }`}
+                        >
+                          {currency} {p.netProfit.toLocaleString()}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[11px]">
+                            {p.profitMargin.toFixed(1)}%
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-100/80 font-black text-slate-900 text-xs border-t-2 border-slate-300">
+                    <td colSpan={2} className="py-3 px-4">
+                      {isBn ? 'সর্বমোট (Grand Total All Projects):' : 'Grand Total (All Projects):'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-emerald-800">
+                      {currency}{' '}
+                      {(projects || []).reduce((sum, p) => sum + p.totalSales, 0).toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-slate-500 font-normal italic text-[11px]">
+                      {isBn ? 'কাস্টম ও অন্যান্য সকল খাতের খরচসহ' : 'All custom expense breakdown categories included'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-rose-700">
+                      {currency}{' '}
+                      {(projects || []).reduce((sum, p) => sum + p.totalExpenses, 0).toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-emerald-900 text-sm">
+                      {currency}{' '}
+                      {(projects || []).reduce((sum, p) => sum + p.netProfit, 0).toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-center font-mono text-amber-800">
+                      {((projects || []).reduce((sum, p) => sum + p.totalSales, 0) > 0
+                        ? (
+                            ((projects || []).reduce((sum, p) => sum + p.netProfit, 0) /
+                              (projects || []).reduce((sum, p) => sum + p.totalSales, 0)) *
+                            100
+                          ).toFixed(1)
+                        : '0.0')}
+                      %
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
         </div>
