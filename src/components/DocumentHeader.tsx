@@ -125,14 +125,16 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
         }`}
       >
         {badgeStyle ? (
-          /* Image 2 style: Top-Right Company Logo with BILL/Invoice pill badge directly below */
-          <div className="flex flex-col items-end text-right">
-            <BrandLogo
-              size="xl"
-              className="items-end text-right"
-              showTagline={false}
-            />
-            <div className="bg-[#18181B] text-white px-5 py-1 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider mt-1.5 shadow-2xs inline-block">
+          /* Image 2 style: Top-Right Company Logo with BILL/Invoice pill badge directly below, matching width */
+          <div className="inline-flex flex-col items-stretch w-[165px] sm:w-[180px]">
+            <div className="w-full flex items-center justify-center">
+              <img
+                src={profile?.logoUrl && profile.logoUrl !== '/dotcolor-logo.svg' ? profile.logoUrl : '/dotcolor-logo.svg'}
+                alt={profile?.name || 'Dot Color Communication'}
+                className="w-full h-auto max-h-[85px] object-contain shrink-0 select-none"
+              />
+            </div>
+            <div className="w-full bg-[#18181B] text-white py-1.5 rounded-xl text-xs sm:text-sm font-black tracking-wider mt-2 shadow-2xs text-center flex items-center justify-center select-none">
               {documentTitle}
             </div>
           </div>
