@@ -826,7 +826,7 @@ export const AuditTrailComponent: React.FC<AuditTrailComponentProps> = ({ onOpen
         >
           <div
             id="modal-audit-note-content"
-            className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
           >
             <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">

@@ -331,7 +331,7 @@ export const JournalEntriesManager: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form
             onSubmit={handleFormSubmit}
-            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4"
+            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -376,42 +376,44 @@ export const JournalEntriesManager: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="font-bold text-emerald-700 block mb-1">
-                  {language === 'bn' ? '১. ডেবিট হিসাব খাত (Debit Account Dr.) *' : 'Debit Account (Dr.) *'}
-                </label>
-                <select
-                  value={formData.debitAccountId}
-                  onChange={(e) => setFormData({ ...formData, debitAccountId: e.target.value })}
-                  required
-                  className="w-full px-3 py-2 border border-emerald-300 bg-emerald-50/40 rounded-xl font-semibold text-slate-800"
-                >
-                  <option value="">-- {language === 'bn' ? 'ডেবিট হিসাব নির্বাচন করুন' : 'Select Debit Account'} --</option>
-                  {chartOfAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      [{a.code}] {a.name} ({a.classification} - {a.accountGroup})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-emerald-700 block mb-1">
+                    {language === 'bn' ? '১. ডেবিট হিসাব খাত (Debit Account Dr.) *' : 'Debit Account (Dr.) *'}
+                  </label>
+                  <select
+                    value={formData.debitAccountId}
+                    onChange={(e) => setFormData({ ...formData, debitAccountId: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-emerald-300 bg-emerald-50/40 rounded-xl font-semibold text-slate-800"
+                  >
+                    <option value="">-- {language === 'bn' ? 'ডেবিট হিসাব নির্বাচন করুন' : 'Select Debit Account'} --</option>
+                    {chartOfAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        [{a.code}] {a.name} ({a.classification} - {a.accountGroup})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="font-bold text-blue-700 block mb-1">
-                  {language === 'bn' ? '২. ক্রেডিট হিসাব খাত (Credit Account Cr.) *' : 'Credit Account (Cr.) *'}
-                </label>
-                <select
-                  value={formData.creditAccountId}
-                  onChange={(e) => setFormData({ ...formData, creditAccountId: e.target.value })}
-                  required
-                  className="w-full px-3 py-2 border border-blue-300 bg-blue-50/40 rounded-xl font-semibold text-slate-800"
-                >
-                  <option value="">-- {language === 'bn' ? 'ক্রেডিট হিসাব নির্বাচন করুন' : 'Select Credit Account'} --</option>
-                  {chartOfAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      [{a.code}] {a.name} ({a.classification} - {a.accountGroup})
-                    </option>
-                  ))}
-                </select>
+                <div>
+                  <label className="font-bold text-blue-700 block mb-1">
+                    {language === 'bn' ? '২. ক্রেডিট হিসাব খাত (Credit Account Cr.) *' : 'Credit Account (Cr.) *'}
+                  </label>
+                  <select
+                    value={formData.creditAccountId}
+                    onChange={(e) => setFormData({ ...formData, creditAccountId: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-blue-300 bg-blue-50/40 rounded-xl font-semibold text-slate-800"
+                  >
+                    <option value="">-- {language === 'bn' ? 'ক্রেডিট হিসাব নির্বাচন করুন' : 'Select Credit Account'} --</option>
+                    {chartOfAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        [{a.code}] {a.name} ({a.classification} - {a.accountGroup})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -475,7 +477,7 @@ export const JournalEntriesManager: React.FC = () => {
       {/* Voucher Detail / Print Modal */}
       {normalizedSelectedVoucher && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 print:static print:bg-white print:p-0 print:overflow-visible print:block">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 print:max-w-none print:w-full print:shadow-none print:border-none print:rounded-none print:p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 print:max-w-none print:w-full print:shadow-none print:border-none print:rounded-none print:p-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 print:hidden">
               <span className="text-xs font-bold text-slate-500">
                 {language === 'bn' ? 'ভাউচার প্রিন্ট প্রিভিউ' : 'Voucher Print Preview'}

@@ -1115,7 +1115,7 @@ export const SettingsModule: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form
             onSubmit={handleUserFormSubmit}
-            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -1140,31 +1140,33 @@ export const SettingsModule: React.FC = () => {
             </div>
 
             <div className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'নাম (English) *' : 'Full Name (EN) *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={userFormData.name}
-                  onChange={(e) => setUserFormData({ ...userFormData, name: e.target.value })}
-                  placeholder="e.g. Tanvir Ahmed"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'নাম (English) *' : 'Full Name (EN) *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={userFormData.name}
+                    onChange={(e) => setUserFormData({ ...userFormData, name: e.target.value })}
+                    placeholder="e.g. Tanvir Ahmed"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                  />
+                </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'বাংলা নাম' : 'Bengali Name'}
-                </label>
-                <input
-                  type="text"
-                  value={userFormData.nameBn}
-                  onChange={(e) => setUserFormData({ ...userFormData, nameBn: e.target.value })}
-                  placeholder="যেমন: তানভীর আহমেদ"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                />
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'বাংলা নাম' : 'Bengali Name'}
+                  </label>
+                  <input
+                    type="text"
+                    value={userFormData.nameBn}
+                    onChange={(e) => setUserFormData({ ...userFormData, nameBn: e.target.value })}
+                    placeholder="যেমন: তানভীর আহমেদ"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1319,7 +1321,7 @@ export const SettingsModule: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form
             onSubmit={handleRoleFormSubmit}
-            className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">

@@ -1436,7 +1436,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form
             onSubmit={handleEditInvoiceSubmit}
-            className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] md:max-h-[85vh] flex flex-col p-6 shadow-2xl border border-slate-200"
+            className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] md:max-h-[85vh] flex flex-col p-6 shadow-2xl border border-slate-200"
           >
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 flex-shrink-0">
               <h3 className="font-bold text-slate-900 text-base">
@@ -1832,7 +1832,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form
             onSubmit={handleCreateQuote}
-            className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] md:max-h-[85vh] flex flex-col p-6 shadow-2xl border border-slate-200"
+            className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] md:max-h-[85vh] flex flex-col p-6 shadow-2xl border border-slate-200"
           >
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 flex-shrink-0">
               <h3 className="font-bold text-slate-900 text-base">
@@ -2429,7 +2429,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form
             onSubmit={handleCustomerFormSubmit}
-            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in duration-200"
+            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in duration-200"
           >
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-base">
@@ -2450,21 +2450,20 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
             </div>
 
             <div className="space-y-3.5 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'গ্রাহকের নাম *' : 'Customer Name *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={customerFormData.name}
-                  onChange={(e) => setCustomerFormData({ ...customerFormData, name: e.target.value })}
-                  placeholder={language === 'bn' ? 'যেমন: মোহাম্মদ আব্দুর রহমান' : 'e.g. Md. Abdur Rahman'}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                />
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'গ্রাহকের নাম *' : 'Customer Name *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customerFormData.name}
+                    onChange={(e) => setCustomerFormData({ ...customerFormData, name: e.target.value })}
+                    placeholder={language === 'bn' ? 'যেমন: মোহাম্মদ আব্দুর রহমান' : 'e.g. Md. Abdur Rahman'}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                  />
+                </div>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
                     {language === 'bn' ? 'মোবাইল নম্বর *' : 'Mobile Number *'}
@@ -2478,6 +2477,9 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
                     {language === 'bn' ? 'কোম্পানি/প্রতিষ্ঠান' : 'Company/Business'}
@@ -2490,9 +2492,6 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
                     {language === 'bn' ? 'ইমেইল এড্রেস' : 'Email Address'}
@@ -2505,6 +2504,9 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
                     {language === 'bn' ? 'অগ্রিম জামানত/ব্যালেন্স (৳)' : 'Advance Balance (৳)'}
@@ -2518,19 +2520,18 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'ঠিকানা' : 'Address'}
-                </label>
-                <textarea
-                  rows={2}
-                  value={customerFormData.address}
-                  onChange={(e) => setCustomerFormData({ ...customerFormData, address: e.target.value })}
-                  placeholder={language === 'bn' ? 'যেমন: আন্দরকিল্লা, চট্টগ্রাম' : 'e.g. Anderkilla, Chittogram'}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                />
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'ঠিকানা' : 'Address'}
+                  </label>
+                  <input
+                    type="text"
+                    value={customerFormData.address}
+                    onChange={(e) => setCustomerFormData({ ...customerFormData, address: e.target.value })}
+                    placeholder={language === 'bn' ? 'যেমন: আন্দরকিল্লা, চট্টগ্রাম' : 'e.g. Anderkilla, Chittogram'}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                  />
+                </div>
               </div>
             </div>
 

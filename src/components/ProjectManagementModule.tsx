@@ -986,7 +986,7 @@ export const ProjectManagementModule: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form
             onSubmit={handleCreateProjectSubmit}
-            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4"
+            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-base">
@@ -1008,31 +1008,33 @@ export const ProjectManagementModule: React.FC = () => {
             </div>
 
             <div className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  {isBn ? 'প্রজেক্টের নাম (English) *' : 'Project Name *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newProject.name}
-                  onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-                  placeholder="e.g. Port City Univ 3D Signage Project"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {isBn ? 'প্রজেক্টের নাম (English) *' : 'Project Name *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newProject.name}
+                    onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+                    placeholder="e.g. Port City Univ 3D Signage Project"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                  />
+                </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  {isBn ? 'প্রজেক্টের নাম (বাংলা)' : 'Bengali Name'}
-                </label>
-                <input
-                  type="text"
-                  value={newProject.nameBn}
-                  onChange={(e) => setNewProject({ ...newProject, nameBn: e.target.value })}
-                  placeholder="যেমন: পোর্ট সিটি ইউনিভার্সিটি ৩ডি সাইনবোর্ড কাজ"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                />
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {isBn ? 'প্রজেক্টের নাম (বাংলা)' : 'Bengali Name'}
+                  </label>
+                  <input
+                    type="text"
+                    value={newProject.nameBn}
+                    onChange={(e) => setNewProject({ ...newProject, nameBn: e.target.value })}
+                    placeholder="যেমন: পোর্ট সিটি ইউনিভার্সিটি ৩ডি সাইনবোর্ড কাজ"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1146,7 +1148,7 @@ export const ProjectManagementModule: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <form
             onSubmit={handleAddSalesSubmit}
-            className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 my-8 max-h-[90vh] flex flex-col"
+            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 my-8 max-h-[90vh] flex flex-col"
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
@@ -1358,7 +1360,7 @@ export const ProjectManagementModule: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <form
             onSubmit={handleAddExpenseSubmit}
-            className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 my-8 max-h-[90vh] flex flex-col"
+            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 my-8 max-h-[90vh] flex flex-col"
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">

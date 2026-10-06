@@ -769,7 +769,7 @@ export const AccountingModule: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form
             onSubmit={handleCreateExpense}
-            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4"
+            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-base">
@@ -799,7 +799,7 @@ export const AccountingModule: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
                     {language === 'bn' ? 'খরচের খাত (Category)' : 'Category'}
@@ -844,30 +844,30 @@ export const AccountingModule: React.FC = () => {
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl font-black text-rose-600 text-sm"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'কোন ফান্ড থেকে পরিশোধিত *' : 'Paid From Account *'}
-                </label>
-                <select
-                  value={expenseAccount}
-                  onChange={(e) => setExpenseAccount(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium"
-                >
-                  <option value="Cash in Hand">
-                    Cash in Hand (নগদ তহবিল - বর্তমান: {profile.currencySymbol}
-                    {accountBalances.cash.toLocaleString()})
-                  </option>
-                  <option value="BRAC Bank A/C">
-                    BRAC Bank A/C (ব্যাংক - বর্তমান: {profile.currencySymbol}
-                    {accountBalances.bank.toLocaleString()})
-                  </option>
-                  <option value="bKash / Nagad">
-                    bKash / Nagad (মোবাইল - বর্তমান: {profile.currencySymbol}
-                    {accountBalances.mobile.toLocaleString()})
-                  </option>
-                </select>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'কোন ফান্ড থেকে পরিশোধিত *' : 'Paid From Account *'}
+                  </label>
+                  <select
+                    value={expenseAccount}
+                    onChange={(e) => setExpenseAccount(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium"
+                  >
+                    <option value="Cash in Hand">
+                      Cash in Hand (নগদ তহবিল - বর্তমান: {profile.currencySymbol}
+                      {accountBalances.cash.toLocaleString()})
+                    </option>
+                    <option value="BRAC Bank A/C">
+                      BRAC Bank A/C (ব্যাংক - বর্তমান: {profile.currencySymbol}
+                      {accountBalances.bank.toLocaleString()})
+                    </option>
+                    <option value="bKash / Nagad">
+                      bKash / Nagad (মোবাইল - বর্তমান: {profile.currencySymbol}
+                      {accountBalances.mobile.toLocaleString()})
+                    </option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -918,7 +918,7 @@ export const AccountingModule: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form
             onSubmit={handleCreateIncome}
-            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4"
+            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-base">
@@ -948,7 +948,7 @@ export const AccountingModule: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
                     {language === 'bn' ? 'আয়ের খাত (Category)' : 'Category'}
@@ -980,30 +980,30 @@ export const AccountingModule: React.FC = () => {
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl font-black text-emerald-600 text-sm"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'কোন ফান্ডে জমা হবে *' : 'Deposit Into Account *'}
-                </label>
-                <select
-                  value={incomeAccount}
-                  onChange={(e) => setIncomeAccount(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium"
-                >
-                  <option value="Cash in Hand">
-                    Cash in Hand (নগদ তহবিল - বর্তমান: {profile.currencySymbol}
-                    {accountBalances.cash.toLocaleString()})
-                  </option>
-                  <option value="BRAC Bank A/C">
-                    BRAC Bank A/C (ব্যাংক - বর্তমান: {profile.currencySymbol}
-                    {accountBalances.bank.toLocaleString()})
-                  </option>
-                  <option value="bKash / Nagad">
-                    bKash / Nagad (মোবাইল - বর্তমান: {profile.currencySymbol}
-                    {accountBalances.mobile.toLocaleString()})
-                  </option>
-                </select>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'কোন ফান্ডে জমা হবে *' : 'Deposit Into Account *'}
+                  </label>
+                  <select
+                    value={incomeAccount}
+                    onChange={(e) => setIncomeAccount(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium"
+                  >
+                    <option value="Cash in Hand">
+                      Cash in Hand (নগদ তহবিল - বর্তমান: {profile.currencySymbol}
+                      {accountBalances.cash.toLocaleString()})
+                    </option>
+                    <option value="BRAC Bank A/C">
+                      BRAC Bank A/C (ব্যাংক - বর্তমান: {profile.currencySymbol}
+                      {accountBalances.bank.toLocaleString()})
+                    </option>
+                    <option value="bKash / Nagad">
+                      bKash / Nagad (মোবাইল - বর্তমান: {profile.currencySymbol}
+                      {accountBalances.mobile.toLocaleString()})
+                    </option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -1029,7 +1029,7 @@ export const AccountingModule: React.FC = () => {
       {/* VIEW TRANSACTION DETAILS MODAL */}
       {viewingTransaction && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 text-xs">
+          <div className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
                 <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-extrabold border ${
@@ -1118,7 +1118,7 @@ export const AccountingModule: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form
             onSubmit={handleSaveEditTx}
-            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-fade-in"
+            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-fade-in"
           >
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-base flex items-center gap-1.5">

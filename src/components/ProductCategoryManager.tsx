@@ -280,7 +280,7 @@ export const ProductCategoryManager: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <form
             onSubmit={handleFormSubmit}
-            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4"
+            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4"
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -305,74 +305,78 @@ export const ProductCategoryManager: React.FC = () => {
             </div>
 
             <div className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'ক্যাটাগরি কোড *' : 'Category Code *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  placeholder="e.g. CAT-PRINT"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono font-bold"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'ক্যাটাগরি কোড *' : 'Category Code *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                    placeholder="e.g. CAT-PRINT"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'ক্যাটাগরি ধরণ' : 'Category Type'}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, isRawMaterialGroup: false })}
+                      className={`px-3 py-2 border rounded-xl text-center font-bold text-xs transition-all ${
+                        !formData.isRawMaterialGroup
+                          ? 'bg-slate-950 border-slate-950 text-white shadow-2xs'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {language === 'bn' ? 'ফিনিশড গুডস / সার্ভিস' : 'Finished Goods / Services'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, isRawMaterialGroup: true })}
+                      className={`px-3 py-2 border rounded-xl text-center font-bold text-xs transition-all ${
+                        formData.isRawMaterialGroup
+                          ? 'bg-slate-950 border-slate-950 text-white shadow-2xs'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {language === 'bn' ? 'র মেটেরিয়ালস' : 'Raw Materials'}
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'ক্যাটাগরির নাম (English) *' : 'Category Name (EN) *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. DIGITAL PRINTING"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold uppercase"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'ক্যাটাগরির নাম (English) *' : 'Category Name (EN) *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g. DIGITAL PRINTING"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold uppercase"
+                  />
+                </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'বাংলা নাম' : 'Bengali Name'}
-                </label>
-                <input
-                  type="text"
-                  value={formData.nameBn}
-                  onChange={(e) => setFormData({ ...formData, nameBn: e.target.value })}
-                  placeholder="যেমন: ডিজিটাল প্রিন্টিং সেবা"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'ক্যাটাগরি ধরণ' : 'Category Type'}
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, isRawMaterialGroup: false })}
-                    className={`px-3 py-2 border rounded-xl text-center font-bold text-xs transition-all ${
-                      !formData.isRawMaterialGroup
-                        ? 'bg-slate-950 border-slate-950 text-white shadow-2xs'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {language === 'bn' ? 'ফিনিশড গুডস / সার্ভিস' : 'Finished Goods / Services'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, isRawMaterialGroup: true })}
-                    className={`px-3 py-2 border rounded-xl text-center font-bold text-xs transition-all ${
-                      formData.isRawMaterialGroup
-                        ? 'bg-slate-950 border-slate-950 text-white shadow-2xs'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {language === 'bn' ? 'র মেটেরিয়ালস' : 'Raw Materials'}
-                  </button>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'বাংলা নাম' : 'Bengali Name'}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.nameBn}
+                    onChange={(e) => setFormData({ ...formData, nameBn: e.target.value })}
+                    placeholder="যেমন: ডিজিটাল প্রিন্টিং সেবা"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                  />
                 </div>
               </div>
 
