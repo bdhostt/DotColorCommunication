@@ -954,216 +954,258 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
 
       {/* SUB-TAB 2: QUOTATIONS / ESTIMATES */}
       {activeSubTab === 'quotations' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 sm:p-5 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+          <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h3 className="text-base font-bold text-slate-900">
                 {language === 'bn' ? 'কোটেশন ও প্রাক্কলন তালিকা' : 'Active Quotations & Estimates'}
               </h3>
               <p className="text-xs text-slate-500">
                 {language === 'bn'
-                  ? 'ক্লায়েন্টদের দেওয়া অফারসমূহ এবং সরাসরি ইনভয়েসে কনভার্ট করার সুবিধা'
+                  ? 'ক্লায়েন্টদের দেওয়া অফারসমূহ এবং সরাসরি ইনভয়েসে কনভার্ট করার সুবিধা'
                   : 'Proposals sent to clients with one-click conversion to work order'}
               </p>
             </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                {quotations.length} {language === 'bn' ? 'টি কোটেশন' : 'Quotations'}
+              </span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {quotations.map((q) => (
-              <div
-                key={q.id}
-                className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-3 hover:border-amber-400 transition-all"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                      {q.quoteNo}
-                    </span>
-                    {q.referenceNo && (
-                      <span className="ml-1.5 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                        Ref: {q.referenceNo}
-                      </span>
-                    )}
-                    <span className={`ml-1.5 text-[10px] font-bold px-2 py-0.5 rounded border ${
-                      q.quoteType === 'Custom'
-                        ? 'bg-purple-50 text-purple-700 border-purple-200'
-                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    }`}>
-                      {q.quoteType === 'Custom'
-                        ? (language === 'bn' ? 'কাস্টম কোটেশন' : 'Custom')
-                        : (language === 'bn' ? 'সেল ও সার্ভিস' : 'Sales & Service')}
-                    </span>
-                    <h4 className="font-bold text-slate-900 text-sm mt-1">
-                      {q.customerCompany ? `${q.customerCompany} - ` : ''}
-                      {q.customerName}
-                    </h4>
-                    <span className="text-xs text-slate-500">{q.customerPhone}</span>
-                  </div>
-
-                  <select
-                    value={q.status}
-                    onChange={(e) => updateQuotationStatus(q.id, e.target.value as any)}
-                    className={`text-[10px] font-black px-2.5 py-1 rounded-lg border cursor-pointer focus:outline-hidden transition-all ${
-                      q.status === 'Approved'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                        : q.status === 'Sent'
-                        ? 'bg-amber-50 text-amber-700 border-amber-300'
-                        : q.status === 'Declined'
-                        ? 'bg-rose-50 text-rose-700 border-rose-300'
-                        : 'bg-slate-100 text-slate-700 border-slate-300'
-                    }`}
-                  >
-                    <option value="Sent">{language === 'bn' ? 'Pending / Sent' : 'Pending / Sent'}</option>
-                    <option value="Approved">{language === 'bn' ? 'Approved' : 'Approved'}</option>
-                    <option value="Declined">{language === 'bn' ? 'Declined' : 'Declined'}</option>
-                    <option value="Draft">{language === 'bn' ? 'Draft' : 'Draft'}</option>
-                  </select>
-                </div>
-
-                <div className="bg-white p-2.5 rounded-lg border border-slate-200/70 text-xs space-y-1">
-                  {q.items.map((i, idx) => (
-                    <div key={idx} className="flex justify-between">
-                      <span className="font-medium text-slate-700">
-                        {i.name} (x{i.qty} {i.unit})
-                      </span>
-                      <span className="font-bold text-slate-900">
-                        {profile.currencySymbol}
-                        {i.totalPrice.toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
-                  <div className="pt-2 border-t border-slate-100 flex justify-between font-black text-slate-950">
-                    <span>{language === 'bn' ? 'সর্বমোট কোটেশন' : 'Total Quote:'}</span>
-                    <span className="text-amber-600">
-                      {profile.currencySymbol}
-                      {q.grandTotal.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-
-                {q.notes && <p className="text-[11px] text-slate-500 italic">{q.notes}</p>}
-
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-200/60">
-                  <span className="text-[10px] text-slate-400">
-                    {language === 'bn' ? 'মেয়াদ:' : 'Valid until:'} {q.validUntil}
-                  </span>
-
-                  <div className="flex items-center gap-1.5">
-                    {/* Printer Select Dropdown */}
-                    <select
-                      defaultValue=""
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        e.target.value = '';
-                        if (val === 'pos') {
-                          onOpenInvoiceModal(q.id, 'pos', { autoPrint: true });
-                        } else if (val === 'a4') {
-                          onOpenInvoiceModal(q.id, 'invoice', { autoPrint: true, isPadMode: false });
-                        } else if (val === 'pad') {
-                          onOpenInvoiceModal(q.id, 'invoice', { autoPrint: true, isPadMode: true });
-                        } else if (val === 'preview') {
-                          onOpenInvoiceModal(q.id, 'invoice', { autoPrint: false });
-                        }
-                      }}
-                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100/80 text-amber-950 border border-amber-300 rounded-lg text-[11px] font-bold cursor-pointer transition-colors shadow-2xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
-                      title={language === 'bn' ? 'কোটেশন প্রিন্ট অপশন সিলেক্ট করুন' : 'Select quote print option'}
-                    >
-                      <option value="" disabled>
-                        {language === 'bn' ? '🖨️ প্রিন্ট করুন ▼' : '🖨️ Print ▼'}
-                      </option>
-                      <option value="pos">
-                        {language === 'bn' ? '🧾 ৮০মিমি POS থার্মাল' : '🧾 80mm POS Thermal'}
-                      </option>
-                      <option value="a4">
-                        {language === 'bn' ? '📄 A4 সাধারণ কোটেশন' : '📄 A4 Standard Quote'}
-                      </option>
-                      <option value="pad">
-                        {language === 'bn' ? '📑 লেটারহেড প্যাড প্রিন্ট' : '📑 Letterhead Pad Print'}
-                      </option>
-                      <option value="preview">
-                        {language === 'bn' ? '👁️ কোটেশন প্রিভিউ' : '👁️ Quote Preview'}
-                      </option>
-                    </select>
-
-                    {/* View Preview */}
-                    <button
-                      type="button"
-                      onClick={() => onOpenInvoiceModal(q.id, 'invoice', { autoPrint: false })}
-                      className="p-1.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition-colors cursor-pointer"
-                      title={language === 'bn' ? 'কোটেশন প্রিভিউ দেখুন' : 'View Quote Preview'}
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                    </button>
-
-                    {/* Edit Button if not converted to invoice */}
-                    {!q.isConverted && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingQuotation(q);
-                          setQuoteCustomerName(q.customerName);
-                          setQuoteCustomerPhone(q.customerPhone);
-                          setQuoteCustomerCompany(q.customerCompany || '');
-                          setQuoteReferenceNo(q.referenceNo || '');
-                          setQuoteType(q.quoteType || 'Sales');
-                          setQuoteItemName('');
-                          setQuoteItemQty(1);
-                          setQuoteItemPrice(1000);
-                          setQuoteDiscount(q.discountValue !== undefined ? q.discountValue : (q.discount || 0));
-                          setQuoteDiscountType(q.discountType || 'amount');
-                          setQuoteVatType(q.vatType || 'percent');
-                          setQuoteVatAmountInput(q.vatValue !== undefined ? q.vatValue : (q.vatRate || 0));
-                          setQuoteNotes(q.notes || '');
-                          setSelectedProductId('');
-                          setAddedQuoteItems(q.items || []);
-                          setShowNewQuoteModal(true);
-                        }}
-                        className="flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        <span>{language === 'bn' ? 'সম্পাদনা' : 'Edit'}</span>
-                      </button>
-                    )}
-
-                    {/* Convert to Invoice Button - only shown after Approved and not yet converted */}
-                    {q.status === 'Approved' && !q.isConverted && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const inv = convertQuotationToInvoice(q.id);
-                          if (inv) {
-                            setActiveSubTab('invoices');
-                            onOpenInvoiceModal(inv.id);
-                          }
-                        }}
-                        className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
-                      >
-                        <span>{language === 'bn' ? 'ইনভয়েস তৈরি করুন' : 'Convert to Invoice'}</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    
-                    {/* Delete Quotation Button */}
-                    <button
-                      type="button"
-                      onClick={() => setQuotationToDelete(q)}
-                      className="p-1.5 text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors"
-                      title="Delete Quotation"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                    
-                    {/* Converted Status Indicator */}
-                    {q.status === 'Approved' && q.isConverted && (
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-lg cursor-not-allowed">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>{language === 'bn' ? 'ইনভয়েস কনভার্টেড' : 'Invoice Converted'}</span>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                  <th className="py-3 px-4">{language === 'bn' ? 'কোটেশন নং / মেয়াদ' : 'Quote No / Validity'}</th>
+                  <th className="py-3 px-4">{language === 'bn' ? 'গ্রাহক ও প্রতিষ্ঠান' : 'Customer & Company'}</th>
+                  <th className="py-3 px-4">{language === 'bn' ? 'আইটেম ও বিবরণ' : 'Items & Specs'}</th>
+                  <th className="py-3 px-4 text-right">{language === 'bn' ? 'মোট কোটেশন' : 'Total Quote'}</th>
+                  <th className="py-3 px-4 text-center">{language === 'bn' ? 'স্ট্যাটাস' : 'Status'}</th>
+                  <th className="py-3 px-4 text-center">{language === 'bn' ? 'অ্যাকশন' : 'Actions'}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {quotations.map((q) => (
+                  <tr key={q.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3.5 px-4">
+                      <div className="font-extrabold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                        <span>{q.quoteNo}</span>
+                        {q.referenceNo && (
+                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                            Ref: {q.referenceNo}
+                          </span>
+                        )}
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                            q.quoteType === 'Custom'
+                              ? 'bg-purple-50 text-purple-700 border-purple-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}
+                        >
+                          {q.quoteType === 'Custom'
+                            ? language === 'bn'
+                              ? 'কাস্টম'
+                              : 'Custom'
+                            : language === 'bn'
+                            ? 'সেলস'
+                            : 'Sales'}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+                      <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                        <Calendar className="w-3 h-3 text-slate-400" />
+                        <span>
+                          {language === 'bn' ? 'মেয়াদ:' : 'Valid until:'} {q.validUntil}
+                        </span>
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-slate-900">
+                        {q.customerCompany ? `${q.customerCompany} - ` : ''}
+                        {q.customerName}
+                      </div>
+                      <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                        <Phone className="w-3 h-3 text-slate-400" />
+                        {q.customerPhone}
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 px-4 max-w-xs">
+                      <div
+                        className="font-medium text-slate-800 line-clamp-1"
+                        title={q.items.map((i) => `${i.name} (x${i.qty} ${i.unit || ''})`).join(', ')}
+                      >
+                        {q.items.map((i) => `${i.name} (x${i.qty} ${i.unit || ''})`).join(', ')}
+                      </div>
+                      {q.notes && (
+                        <div className="text-[10px] text-slate-500 italic truncate mt-0.5" title={q.notes}>
+                          {q.notes}
+                        </div>
+                      )}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="font-black text-slate-900 text-sm">
+                        {profile.currencySymbol}
+                        {q.grandTotal.toLocaleString()}
+                      </div>
+                      {q.discountValue || q.discount ? (
+                        <div className="text-[10px] text-slate-500">
+                          {language === 'bn' ? 'ছাড়: ' : 'Disc: '}
+                          {profile.currencySymbol}
+                          {(q.discountValue || q.discount || 0).toLocaleString()}
+                        </div>
+                      ) : null}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-center">
+                      <select
+                        value={q.status}
+                        onChange={(e) => updateQuotationStatus(q.id, e.target.value as any)}
+                        className={`text-[10px] font-black px-2.5 py-1 rounded-lg border cursor-pointer focus:outline-hidden transition-all ${
+                          q.status === 'Approved'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                            : q.status === 'Sent'
+                            ? 'bg-amber-50 text-amber-700 border-amber-300'
+                            : q.status === 'Declined'
+                            ? 'bg-rose-50 text-rose-700 border-rose-300'
+                            : 'bg-slate-100 text-slate-700 border-slate-300'
+                        }`}
+                      >
+                        <option value="Sent">{language === 'bn' ? 'Pending / Sent' : 'Pending / Sent'}</option>
+                        <option value="Approved">{language === 'bn' ? 'Approved' : 'Approved'}</option>
+                        <option value="Declined">{language === 'bn' ? 'Declined' : 'Declined'}</option>
+                        <option value="Draft">{language === 'bn' ? 'Draft' : 'Draft'}</option>
+                      </select>
+                      {q.status === 'Approved' && q.isConverted && (
+                        <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-emerald-600 mt-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>{language === 'bn' ? 'ইনভয়েস কনভার্টেড' : 'Converted'}</span>
+                        </div>
+                      )}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                        {/* Printer Select Dropdown */}
+                        <select
+                          defaultValue=""
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            e.target.value = '';
+                            if (val === 'pos') {
+                              onOpenInvoiceModal(q.id, 'pos', { autoPrint: true });
+                            } else if (val === 'a4') {
+                              onOpenInvoiceModal(q.id, 'invoice', { autoPrint: true, isPadMode: false });
+                            } else if (val === 'pad') {
+                              onOpenInvoiceModal(q.id, 'invoice', { autoPrint: true, isPadMode: true });
+                            } else if (val === 'preview') {
+                              onOpenInvoiceModal(q.id, 'invoice', { autoPrint: false });
+                            }
+                          }}
+                          className="px-2 py-1 bg-amber-50 hover:bg-amber-100/80 text-amber-950 border border-amber-300 rounded-lg text-[11px] font-bold cursor-pointer transition-colors shadow-2xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
+                          title={language === 'bn' ? 'কোটেশন প্রিন্ট অপশন সিলেক্ট করুন' : 'Select quote print option'}
+                        >
+                          <option value="" disabled>
+                            {language === 'bn' ? '🖨️ প্রিন্ট করুন ▼' : '🖨️ Print ▼'}
+                          </option>
+                          <option value="pos">
+                            {language === 'bn' ? '🧾 ৮০মিমি POS থার্মাল' : '🧾 80mm POS Thermal'}
+                          </option>
+                          <option value="a4">
+                            {language === 'bn' ? '📄 A4 সাধারণ কোটেশন' : '📄 A4 Standard Quote'}
+                          </option>
+                          <option value="pad">
+                            {language === 'bn' ? '📑 লেটারহেড প্যাড প্রিন্ট' : '📑 Letterhead Pad Print'}
+                          </option>
+                          <option value="preview">
+                            {language === 'bn' ? '👁️ কোটেশন প্রিভিউ' : '👁️ Quote Preview'}
+                          </option>
+                        </select>
+
+                        {/* View Preview */}
+                        <button
+                          type="button"
+                          onClick={() => onOpenInvoiceModal(q.id, 'invoice', { autoPrint: false })}
+                          className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                          title={language === 'bn' ? 'কোটেশন প্রিভিউ দেখুন' : 'View Quote Preview'}
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Edit Button if not converted to invoice */}
+                        {!q.isConverted && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingQuotation(q);
+                              setQuoteCustomerName(q.customerName);
+                              setQuoteCustomerPhone(q.customerPhone);
+                              setQuoteCustomerCompany(q.customerCompany || '');
+                              setQuoteReferenceNo(q.referenceNo || '');
+                              setQuoteType(q.quoteType || 'Sales');
+                              setQuoteItemName('');
+                              setQuoteItemQty(1);
+                              setQuoteItemPrice(1000);
+                              setQuoteDiscount(q.discountValue !== undefined ? q.discountValue : (q.discount || 0));
+                              setQuoteDiscountType(q.discountType || 'amount');
+                              setQuoteVatType(q.vatType || 'percent');
+                              setQuoteVatAmountInput(q.vatValue !== undefined ? q.vatValue : (q.vatRate || 0));
+                              setQuoteNotes(q.notes || '');
+                              setSelectedProductId('');
+                              setAddedQuoteItems(q.items || []);
+                              setShowNewQuoteModal(true);
+                            }}
+                            className="p-1.5 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                            title={language === 'bn' ? 'কোটেশন সম্পাদনা' : 'Edit Quotation'}
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* Convert to Invoice Button - only shown after Approved and not yet converted */}
+                        {q.status === 'Approved' && !q.isConverted && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const inv = convertQuotationToInvoice(q.id);
+                              if (inv) {
+                                setActiveSubTab('invoices');
+                                onOpenInvoiceModal(inv.id);
+                              }
+                            }}
+                            className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                            title={language === 'bn' ? 'ইনভয়েসে রূপান্তর করুন' : 'Convert to Invoice'}
+                          >
+                            <span>{language === 'bn' ? 'ইনভয়েস' : 'Convert'}</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* Delete Quotation Button */}
+                        <button
+                          type="button"
+                          onClick={() => setQuotationToDelete(q)}
+                          className="p-1.5 text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                          title={language === 'bn' ? 'কোটেশন মুছুন' : 'Delete Quotation'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+
+                {quotations.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-slate-400">
+                      {language === 'bn' ? 'কোন কোটেশন পাওয়া যায়নি' : 'No quotations found'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
