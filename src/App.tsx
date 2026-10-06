@@ -66,15 +66,33 @@ const MainLayout: React.FC = () => {
     }
   }, [profile?.name]);
 
+  // Auto-clean any invoiceId / QR scan query params from the browser address bar
+  // so that future page refreshes or typing domain won't re-trigger the modal indefinitely
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('invoiceId') || url.searchParams.has('invoiceNo') || url.searchParams.has('inv')) {
+        url.searchParams.delete('invoiceId');
+        url.searchParams.delete('invoiceNo');
+        url.searchParams.delete('inv');
+        window.history.replaceState({ tab: activeTab }, '', url.toString());
+      }
+    } catch {}
+  }, []);
+
   // Sync activeTab with URL & localStorage whenever it changes
   useEffect(() => {
     try {
       localStorage.setItem(TAB_STORAGE_KEY, activeTab);
       const url = new URL(window.location.href);
+      // Strip any lingering invoice query params during tab transitions
+      url.searchParams.delete('invoiceId');
+      url.searchParams.delete('invoiceNo');
+      url.searchParams.delete('inv');
       if (url.searchParams.get('tab') !== activeTab) {
         url.searchParams.set('tab', activeTab);
-        window.history.replaceState({ tab: activeTab }, '', url.toString());
       }
+      window.history.replaceState({ tab: activeTab }, '', url.toString());
     } catch {}
   }, [activeTab]);
 
