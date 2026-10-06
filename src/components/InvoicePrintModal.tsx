@@ -336,6 +336,34 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             .map((s) => s.outerHTML)
             .join('\n');
 
+          // Temporarily reset any mobile scale transform & height to avoid print distortion
+          const sheetElem = document.getElementById('a4-document-sheet');
+          const parentWrapper = sheetElem?.parentElement;
+          const prevTransform = sheetElem?.style.transform;
+          const prevTransformOrigin = sheetElem?.style.transformOrigin;
+          const prevParentHeight = parentWrapper?.style.height;
+          const prevParentOverflow = parentWrapper?.style.overflow;
+
+          if (sheetElem) {
+            sheetElem.style.transform = 'none';
+            sheetElem.style.transformOrigin = 'initial';
+          }
+          if (parentWrapper) {
+            parentWrapper.style.height = 'auto';
+            parentWrapper.style.overflow = 'visible';
+          }
+
+          const capturedHtml = printableContent.innerHTML;
+
+          if (sheetElem) {
+            sheetElem.style.transform = prevTransform || '';
+            sheetElem.style.transformOrigin = prevTransformOrigin || '';
+          }
+          if (parentWrapper) {
+            parentWrapper.style.height = prevParentHeight || '';
+            parentWrapper.style.overflow = prevParentOverflow || '';
+          }
+
           doc.open();
           doc.write(`
             <!DOCTYPE html>
@@ -352,17 +380,18 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   }
                   @page {
                     size: ${template === 'POS' ? '80mm auto !important' : 'A4 portrait !important'};
-                    margin: ${template === 'POS' ? '0mm !important' : '8mm 10mm !important'};
+                    margin: ${template === 'POS' ? '0mm !important' : '6mm 8mm !important'};
                   }
                   html, body {
                     background: #ffffff !important;
                     color: #000000 !important;
                     padding: 0 !important;
-                    margin: 0 auto !important;
+                    margin: 0 !important;
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Courier New", monospace !important;
                     height: auto !important;
-                    width: ${template === 'POS' ? '80mm !important' : 'auto !important'};
-                    max-width: ${template === 'POS' ? '80mm !important' : 'none !important'};
+                    width: ${template === 'POS' ? '80mm !important' : '100% !important'};
+                    max-width: ${template === 'POS' ? '80mm !important' : '100% !important'};
+                    overflow: visible !important;
                   }
                   .print\\:hidden { display: none !important; }
                   ${template === 'POS' ? `
@@ -389,6 +418,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     }
                   ` : `
                     .a4-page-sheet {
+                      width: 100% !important;
+                      max-width: 100% !important;
+                      min-width: 0 !important;
+                      transform: none !important;
                       min-height: calc(297mm - 16mm) !important;
                       display: flex !important;
                       flex-direction: column !important;
@@ -401,9 +434,15 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     }
                     .a4-page-content {
                       flex: 1 0 auto !important;
+                      width: 100% !important;
+                      max-width: 100% !important;
+                      box-sizing: border-box !important;
                     }
                     .a4-page-footer {
                       margin-top: auto !important;
+                      width: 100% !important;
+                      max-width: 100% !important;
+                      box-sizing: border-box !important;
                     }
                     table {
                       border-collapse: collapse !important;
@@ -418,7 +457,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </style>
               </head>
               <body>
-                ${printableContent.innerHTML}
+                ${capturedHtml}
               </body>
             </html>
           `);
@@ -527,6 +566,34 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
       .map((s) => s.outerHTML)
       .join('\n');
 
+    // Temporarily reset any mobile scale transform & height to avoid print distortion
+    const sheetElem = document.getElementById('a4-document-sheet');
+    const parentWrapper = sheetElem?.parentElement;
+    const prevTransform = sheetElem?.style.transform;
+    const prevTransformOrigin = sheetElem?.style.transformOrigin;
+    const prevParentHeight = parentWrapper?.style.height;
+    const prevParentOverflow = parentWrapper?.style.overflow;
+
+    if (sheetElem) {
+      sheetElem.style.transform = 'none';
+      sheetElem.style.transformOrigin = 'initial';
+    }
+    if (parentWrapper) {
+      parentWrapper.style.height = 'auto';
+      parentWrapper.style.overflow = 'visible';
+    }
+
+    const capturedHtml = printableContent.innerHTML;
+
+    if (sheetElem) {
+      sheetElem.style.transform = prevTransform || '';
+      sheetElem.style.transformOrigin = prevTransformOrigin || '';
+    }
+    if (parentWrapper) {
+      parentWrapper.style.height = prevParentHeight || '';
+      parentWrapper.style.overflow = prevParentOverflow || '';
+    }
+
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="${language}">
@@ -540,17 +607,21 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             * {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
+              box-sizing: border-box !important;
             }
             @page {
               size: ${template === 'POS' ? '80mm auto' : 'A4 portrait'};
-              margin: ${template === 'POS' ? '0' : '8mm 10mm'};
+              margin: ${template === 'POS' ? '0' : '6mm 8mm'};
             }
             html, body {
               background: white !important;
               color: black !important;
               padding: ${template === 'POS' ? '0' : '15px'};
+              margin: 0 !important;
               font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
               min-height: 100%;
+              width: 100% !important;
+              max-width: 100% !important;
             }
             .print-controls-bar {
               display: flex;
@@ -584,6 +655,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             }
             .a4-page-sheet {
               min-height: 297mm;
+              width: 100% !important;
+              max-width: 100% !important;
               display: flex !important;
               flex-direction: column !important;
               justify-content: space-between !important;
@@ -591,18 +664,40 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             }
             .a4-page-content {
               flex: 1 0 auto !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              box-sizing: border-box !important;
             }
             .a4-page-footer {
               margin-top: auto !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              box-sizing: border-box !important;
             }
             @media print {
               .print-controls-bar { display: none !important; }
-              body { padding: 0 !important; }
+              body { padding: 0 !important; margin: 0 !important; width: 100% !important; }
               .a4-page-sheet {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                transform: none !important;
                 min-height: calc(297mm - 16mm) !important;
                 border: none !important;
                 box-shadow: none !important;
                 padding: 0 !important;
+                margin: 0 !important;
+                box-sizing: border-box !important;
+              }
+              .a4-page-content {
+                width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+              }
+              .a4-page-footer {
+                width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
               }
               table {
                 border-collapse: collapse !important;
@@ -640,8 +735,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               ✕ ${language === 'bn' ? 'বন্ধ করুন (Close)' : 'Close Window'}
             </button>
           </div>
-          <div style="max-width: ${template === 'POS' ? '80mm' : '210mm'}; margin: 0 auto;">
-            ${printableContent.innerHTML}
+          <div style="max-width: ${template === 'POS' ? '80mm' : '100%'}; width: 100%; margin: 0 auto;">
+            ${capturedHtml}
           </div>
           <script>
             window.addEventListener('load', () => {
@@ -899,15 +994,16 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           }
           @page {
             size: ${template === 'POS' ? '80mm auto !important' : 'A4 portrait !important'};
-            margin: ${template === 'POS' ? '0mm !important' : '8mm 10mm !important'};
+            margin: ${template === 'POS' ? '0mm !important' : '6mm 8mm !important'};
           }
           html, body {
             background: #ffffff !important;
             color: #000000 !important;
-            width: ${template === 'POS' ? '80mm !important' : 'auto !important'};
-            max-width: ${template === 'POS' ? '80mm !important' : 'none !important'};
-            margin: 0 auto !important;
+            width: ${template === 'POS' ? '80mm !important' : '100% !important'};
+            max-width: ${template === 'POS' ? '80mm !important' : '100% !important'};
+            margin: 0 !important;
             padding: 0 !important;
+            overflow: visible !important;
           }
           ${template === 'POS' ? `
             * {
@@ -925,8 +1021,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             }
           ` : `
             .a4-page-sheet {
+              width: 100% !important;
+              max-width: 100% !important;
+              min-width: 0 !important;
+              transform: none !important;
               min-height: calc(297mm - 16mm) !important;
-              max-height: calc(297mm - 16mm) !important;
               display: flex !important;
               flex-direction: column !important;
               justify-content: space-between !important;
@@ -938,9 +1037,15 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             }
             .a4-page-content {
               flex: 1 0 auto !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              box-sizing: border-box !important;
             }
             .a4-page-footer {
               margin-top: auto !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              box-sizing: border-box !important;
             }
             table {
               border-collapse: collapse !important;
@@ -1329,7 +1434,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           id="printable-invoice-content"
           className={`flex-1 ${
             isMobile && isMobileFit ? 'overflow-x-hidden' : 'overflow-x-auto'
-          } overflow-y-auto p-1 sm:p-6 bg-slate-200/50 print:bg-white print:p-0 print:overflow-visible print:max-h-none flex justify-center`}
+          } overflow-y-auto p-1 sm:p-6 bg-slate-200/50 print:bg-white print:p-0 print:overflow-visible print:max-h-none print:block print:w-full print:max-w-full flex justify-center`}
         >
           
           {/* ============================================================== */}
@@ -1337,7 +1442,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           {/* ============================================================== */}
           {template === 'A4' && (
             <div
-              className="w-full flex justify-center"
+              className="w-full flex justify-center print:block print:w-full print:max-w-full print:m-0 print:p-0"
               style={
                 isMobile && isMobileFit
                   ? {
@@ -1358,7 +1463,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                       }
                     : undefined
                 }
-                className="a4-page-sheet bg-white w-[794px] min-w-[794px] min-h-[1123px] mx-auto p-8 rounded-xl shadow-md print:shadow-none print:p-0 border-2 border-black print:border-none flex flex-col justify-between text-black text-xs shrink-0"
+                className="a4-page-sheet bg-white w-[794px] min-w-[794px] print:w-full print:min-w-0 print:max-w-full print:shrink min-h-[1123px] print:min-h-0 mx-auto print:mx-0 p-8 print:p-0 rounded-xl print:rounded-none shadow-md print:shadow-none border-2 border-black print:border-none flex flex-col justify-between text-black text-xs shrink-0"
               >
                 <div className="a4-page-content space-y-6 flex-1">
                 
@@ -1656,7 +1761,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
         {/* ============================================================== */}
         {template === 'WORK_ORDER' && (
           <div
-            className="w-full flex justify-center"
+            className="w-full flex justify-center print:block print:w-full print:max-w-full print:m-0 print:p-0"
             style={
               isMobile && isMobileFit
                 ? {
@@ -1677,7 +1782,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     }
                   : undefined
               }
-              className="a4-page-sheet bg-white w-[794px] min-w-[794px] min-h-[1123px] mx-auto p-8 rounded-xl shadow-md print:shadow-none print:p-0 border-2 border-amber-400 print:border-none flex flex-col justify-between text-xs text-slate-900 shrink-0"
+              className="a4-page-sheet bg-white w-[794px] min-w-[794px] print:w-full print:min-w-0 print:max-w-full print:shrink min-h-[1123px] print:min-h-0 mx-auto print:mx-0 p-8 print:p-0 rounded-xl print:rounded-none shadow-md print:shadow-none border-2 border-amber-400 print:border-none flex flex-col justify-between text-xs text-slate-900 shrink-0"
             >
               <div className="a4-page-content space-y-6 flex-1">
               {/* Header with Brand Logo on Left, QR Banner on Right */}
@@ -1815,7 +1920,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           {/* ============================================================== */}
           {template === 'CHALLAN' && (
             <div
-              className="w-full flex justify-center"
+              className="w-full flex justify-center print:block print:w-full print:max-w-full print:m-0 print:p-0"
               style={
                 isMobile && isMobileFit
                   ? {
@@ -1836,7 +1941,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                       }
                     : undefined
                 }
-                className="a4-page-sheet bg-white w-[794px] min-w-[794px] min-h-[1123px] mx-auto p-8 rounded-xl shadow-md print:shadow-none print:p-0 border-2 border-slate-400 print:border-none flex flex-col justify-between text-black text-xs shrink-0"
+                className="a4-page-sheet bg-white w-[794px] min-w-[794px] print:w-full print:min-w-0 print:max-w-full print:shrink min-h-[1123px] print:min-h-0 mx-auto print:mx-0 p-8 print:p-0 rounded-xl print:rounded-none shadow-md print:shadow-none border-2 border-slate-400 print:border-none flex flex-col justify-between text-black text-xs shrink-0"
               >
                 <div className="a4-page-content space-y-6 flex-1">
                 {/* Header with Brand Logo on Left, QR Banner on Right */}
