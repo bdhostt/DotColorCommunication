@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { StaffMember, UserRole, StaffRole } from '../types';
-import { ALL_SYSTEM_PERMISSIONS as SYSTEM_PERMISSIONS } from '../data/accountingAndConfigData';
+import { ALL_SYSTEM_PERMISSIONS, ALL_SYSTEM_PERMISSIONS as SYSTEM_PERMISSIONS } from '../data/accountingAndConfigData';
 import {
   Users,
   Shield,
@@ -34,6 +34,12 @@ import {
   HardDrive,
   ShieldCheck,
   Zap,
+  CreditCard,
+  Landmark,
+  Smartphone,
+  Save,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 export const SettingsModule: React.FC = () => {
@@ -44,6 +50,8 @@ export const SettingsModule: React.FC = () => {
     setActiveStaff,
     language,
     profile,
+    updateProfile,
+    addAuditLog,
     addStaffMember,
     updateStaffMember,
     deleteStaffMember,
@@ -55,7 +63,7 @@ export const SettingsModule: React.FC = () => {
     checkPermission,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'roles' | 'data-clean' | 'system'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'roles' | 'payment-gateways' | 'data-clean' | 'system'>('users');
   const [searchQuery, setSearchQuery] = useState('');
 
   // User modal states
@@ -89,9 +97,95 @@ export const SettingsModule: React.FC = () => {
   const [cleanConfirmModule, setCleanConfirmModule] = useState<string | null>(null);
   const [cleanFeedback, setCleanFeedback] = useState<string | null>(null);
 
-  const canManageUsers = checkPermission('SETTINGS_MANAGE_USERS');
-  const canManageRoles = checkPermission('SETTINGS_MANAGE_ROLES');
-  const canCleanData = checkPermission('SETTINGS_CLEAN_DATA');
+  const isSuperUser =
+    (activeStaff?.role || '').toLowerCase().includes('admin') ||
+    (activeStaff?.role || '').toLowerCase().includes('director') ||
+    (activeStaff?.name || '').toLowerCase().includes('super admin');
+
+  const canManageUsers =
+    checkPermission('settings.manage_users') ||
+    checkPermission('SETTINGS_MANAGE_USERS') ||
+    isSuperUser;
+
+  const canManageRoles =
+    checkPermission('settings.manage_roles') ||
+    checkPermission('SETTINGS_MANAGE_ROLES') ||
+    isSuperUser;
+
+  const canCleanData =
+    checkPermission('settings.clean_data') ||
+    checkPermission('SETTINGS_CLEAN_DATA') ||
+    isSuperUser;
+
+  const canManagePayments =
+    checkPermission('settings.manage_payments') ||
+    checkPermission('settings.view') ||
+    isSuperUser;
+
+  const [paymentFormData, setPaymentFormData] = useState({
+    bankName: profile.bankName || '',
+    bankAccount: profile.bankAccount || '',
+    bankAccountTitle: profile.bankAccountTitle || profile.name || '',
+    bankBranch: profile.bankBranch || '',
+    routingNumber: profile.routingNumber || '',
+    bkashNagadNumber: profile.bkashNagadNumber || '',
+    nagadNumber: profile.nagadNumber || '',
+    rocketNumber: profile.rocketNumber || '',
+    bankingNotes: profile.bankingNotes || '',
+    paymentGatewayProvider: profile.paymentGatewayProvider || 'none',
+    paymentGatewayMode: profile.paymentGatewayMode || 'sandbox',
+    paymentGatewayStoreId: profile.paymentGatewayStoreId || '',
+    paymentGatewayApiKey: profile.paymentGatewayApiKey || '',
+    paymentGatewaySecret: profile.paymentGatewaySecret || '',
+    paymentGatewayIsEnabled: profile.paymentGatewayIsEnabled || false,
+  });
+  const [showSecretKey, setShowSecretKey] = useState(false);
+  const [paymentSaveSuccess, setPaymentSaveSuccess] = useState(false);
+  const [copiedCallback, setCopiedCallback] = useState(false);
+
+  useEffect(() => {
+    setPaymentFormData({
+      bankName: profile.bankName || '',
+      bankAccount: profile.bankAccount || '',
+      bankAccountTitle: profile.bankAccountTitle || profile.name || '',
+      bankBranch: profile.bankBranch || '',
+      routingNumber: profile.routingNumber || '',
+      bkashNagadNumber: profile.bkashNagadNumber || '',
+      nagadNumber: profile.nagadNumber || '',
+      rocketNumber: profile.rocketNumber || '',
+      bankingNotes: profile.bankingNotes || '',
+      paymentGatewayProvider: profile.paymentGatewayProvider || 'none',
+      paymentGatewayMode: profile.paymentGatewayMode || 'sandbox',
+      paymentGatewayStoreId: profile.paymentGatewayStoreId || '',
+      paymentGatewayApiKey: profile.paymentGatewayApiKey || '',
+      paymentGatewaySecret: profile.paymentGatewaySecret || '',
+      paymentGatewayIsEnabled: profile.paymentGatewayIsEnabled || false,
+    });
+  }, [profile]);
+
+  useEffect(() => {
+    const handleOpenPayment = () => setActiveTab('payment-gateways');
+    window.addEventListener('open-payment-settings', handleOpenPayment);
+    return () => window.removeEventListener('open-payment-settings', handleOpenPayment);
+  }, []);
+
+  const handleSavePaymentSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateProfile(paymentFormData);
+    addAuditLog({
+      staffId: activeStaff.id,
+      staffName: activeStaff.name,
+      staffRole: activeStaff.role,
+      location: 'All',
+      actionType: 'PROFILE_UPDATED',
+      entityType: 'Configuration',
+      details: `Updated payment gateway settings and banking credentials (${paymentFormData.paymentGatewayProvider})`,
+      detailsBn: `পেমেন্ট গেটওয়ে ও ব্যাংকিং তথ্য পরিবর্তন করা হয়েছে (${paymentFormData.paymentGatewayProvider})`,
+      severity: 'info',
+    });
+    setPaymentSaveSuccess(true);
+    setTimeout(() => setPaymentSaveSuccess(false), 3000);
+  };
 
   // Filtered staff members
   const filteredStaff = staffMembers.filter((staff) => {
@@ -105,18 +199,32 @@ export const SettingsModule: React.FC = () => {
     );
   });
 
+  const isSuperAdminStaff = (staff?: StaffMember | null): boolean => {
+    if (!staff) return false;
+    return (
+      staff.role === 'Super Admin' ||
+      (staff.name || '').toLowerCase() === 'super admin' ||
+      staff.id === 'staff-superadmin'
+    );
+  };
+
   // User Handlers
   const handleOpenAddUser = () => {
+    const regularRoles = userRoles.filter(
+      (r) => r.name !== 'Super Admin' && r.name.toLowerCase() !== 'superadmin'
+    );
+    const defaultRole =
+      regularRoles.find((r) => r.name === 'Sales Executive') || regularRoles[0] || userRoles[0];
     setUserFormData({
       name: '',
       nameBn: '',
-      role: 'Sales Executive',
-      roleBn: 'বিক্রয় প্রতিনিধি',
-      location: 'Office',
+      role: (defaultRole?.name || 'Sales Executive') as StaffRole,
+      roleBn: defaultRole?.nameBn || 'বিক্রয় প্রতিনিধি',
+      location: 'Both',
       phone: '',
       email: '',
       password: '1234',
-      customRoleId: userRoles[0]?.id || '',
+      customRoleId: defaultRole?.id || '',
       isActive: true,
     });
     setShowUserPassword(false);
@@ -125,16 +233,17 @@ export const SettingsModule: React.FC = () => {
   };
 
   const handleOpenEditUser = (staff: StaffMember) => {
+    const matchedRole = userRoles.find((r) => r.id === staff.customRoleId || r.name === staff.role);
     setUserFormData({
       name: staff.name,
       nameBn: staff.nameBn || '',
       role: staff.role,
       roleBn: staff.roleBn || '',
-      location: staff.location,
+      location: staff.location || 'Both',
       phone: staff.phone || '',
       email: staff.email || '',
       password: staff.password || '1234',
-      customRoleId: staff.customRoleId || '',
+      customRoleId: matchedRole?.id || staff.customRoleId || userRoles[0]?.id || '',
       isActive: staff.isActive !== false,
     });
     setShowUserPassword(false);
@@ -149,13 +258,16 @@ export const SettingsModule: React.FC = () => {
     const colors = ['bg-blue-600', 'bg-emerald-600', 'bg-amber-600', 'bg-purple-600', 'bg-rose-600', 'bg-indigo-600'];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
+    const selectedRole = userRoles.find((r) => r.id === userFormData.customRoleId);
+    const finalRoleName = (selectedRole ? selectedRole.name : userFormData.role) as StaffRole;
+    const finalRoleBn = selectedRole?.nameBn || userFormData.roleBn;
+
     if (editingStaff) {
       updateStaffMember(editingStaff.id, {
         name: userFormData.name.trim(),
-        nameBn: userFormData.nameBn.trim(),
-        role: userFormData.role,
-        roleBn: userFormData.roleBn,
-        location: userFormData.location,
+        role: isSuperAdminStaff(editingStaff) ? 'Super Admin' : finalRoleName,
+        roleBn: isSuperAdminStaff(editingStaff) ? 'সুপার অ্যাডমিন' : finalRoleBn,
+        location: 'Both',
         phone: userFormData.phone.trim(),
         email: userFormData.email.trim(),
         password: userFormData.password.trim() || '1234',
@@ -165,10 +277,9 @@ export const SettingsModule: React.FC = () => {
     } else {
       addStaffMember({
         name: userFormData.name.trim(),
-        nameBn: userFormData.nameBn.trim(),
-        role: userFormData.role,
-        roleBn: userFormData.roleBn,
-        location: userFormData.location,
+        role: finalRoleName,
+        roleBn: finalRoleBn,
+        location: 'Both',
         phone: userFormData.phone.trim(),
         email: userFormData.email.trim(),
         password: userFormData.password.trim() || '1234',
@@ -182,6 +293,16 @@ export const SettingsModule: React.FC = () => {
   };
 
   const handleDeleteUser = (id: string) => {
+    const target = staffMembers.find((s) => s.id === id);
+    if (!target) return;
+    if (isSuperAdminStaff(target)) {
+      alert(
+        language === 'bn'
+          ? 'সুপার অ্যাডমিন একটি স্থায়ী সিস্টেম রুট অ্যাকাউন্ট, এটি ডিলিট করা যাবে না।'
+          : 'Super Admin is a permanent system root account and cannot be deleted.'
+      );
+      return;
+    }
     if (staffMembers.length <= 1) {
       alert('Cannot delete the last remaining staff member.');
       return;
@@ -190,7 +311,13 @@ export const SettingsModule: React.FC = () => {
       alert('You cannot delete the currently active logged-in staff member.');
       return;
     }
-    if (confirm('Are you sure you want to remove this staff user?')) {
+    if (
+      confirm(
+        language === 'bn'
+          ? `আপনি কি নিশ্চিতভাবে "${target.name}" ইউজার মুছে ফেলতে চান?`
+          : `Are you sure you want to remove staff user "${target.name}"?`
+      )
+    ) {
       deleteStaffMember(id);
     }
   };
@@ -207,7 +334,24 @@ export const SettingsModule: React.FC = () => {
     setShowRoleModal(true);
   };
 
+  const isSuperAdminRole = (role?: UserRole | null): boolean => {
+    if (!role) return false;
+    return (
+      role.name === 'Super Admin' ||
+      role.name.toLowerCase() === 'superadmin' ||
+      role.id === 'role-superadmin'
+    );
+  };
+
   const handleOpenEditRole = (role: UserRole) => {
+    if (isSuperAdminRole(role)) {
+      alert(
+        language === 'bn'
+          ? 'সুপার অ্যাডমিনের সকল পারমিশন স্থায়ী ও শতভাগ সক্রিয়। এটি পরিবর্তন করার সুযোগ নেই।'
+          : 'Super Admin automatically has full unrestricted access and cannot be modified.'
+      );
+      return;
+    }
     setRoleFormData({
       name: role.name,
       nameBn: role.nameBn || '',
@@ -334,7 +478,9 @@ export const SettingsModule: React.FC = () => {
             {activeStaff.name.slice(0, 2).toUpperCase()}
           </div>
           <div>
-            <span className="text-slate-400 text-[10px] block">সক্রিয় অ্যাকাউন্ট (Current Session):</span>
+            <span className="text-slate-400 text-[10px] block">
+              {language === 'bn' ? 'সক্রিয় অ্যাকাউন্ট (Current Session):' : 'Current Session Account:'}
+            </span>
             <span className="font-bold text-white">{activeStaff.name}</span>
             <span className="text-[11px] text-amber-400 font-semibold block">({activeStaff.role})</span>
           </div>
@@ -383,6 +529,25 @@ export const SettingsModule: React.FC = () => {
             {userRoles.length}
           </span>
         </button>
+
+        {canManagePayments && (
+          <button
+            type="button"
+            id="tab-settings-payments"
+            onClick={() => setActiveTab('payment-gateways')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+              activeTab === 'payment-gateways'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-emerald-700 border border-slate-200'
+            }`}
+          >
+            <CreditCard className="w-4 h-4 text-emerald-500" />
+            <span>{language === 'bn' ? 'পেমেন্ট গেটওয়ে ও মেথড' : 'Payment Gateways & Methods'}</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800">
+              {paymentFormData.paymentGatewayIsEnabled ? 'Active API' : 'Bank & MFS'}
+            </span>
+          </button>
+        )}
 
         <button
           type="button"
@@ -613,15 +778,23 @@ export const SettingsModule: React.FC = () => {
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
-                              {!isCurrent && (
+                              {!isCurrent && !isSuperAdminStaff(staff) && (
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteUser(staff.id)}
-                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors"
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
                                   title={language === 'bn' ? 'মুছুন' : 'Delete'}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
+                              )}
+                              {isSuperAdminStaff(staff) && (
+                                <span
+                                  className="text-[9.5px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-200 select-none"
+                                  title={language === 'bn' ? 'স্থায়ী সিস্টেম রুট অ্যাকাউন্ট (মুছে ফেলা যাবে না)' : 'Permanent System Root Account (Cannot be deleted)'}
+                                >
+                                  Fixed
+                                </span>
                               )}
                             </div>
                           </td>
@@ -665,91 +838,525 @@ export const SettingsModule: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {userRoles.map((role) => (
-              <div
-                key={role.id}
-                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-100">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-slate-900 text-base">{role.name}</h4>
-                        {role.isSystem && (
-                          <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                            System Role
+            {userRoles.map((role) => {
+              const isSuper = isSuperAdminRole(role);
+              return (
+                <div
+                  key={role.id}
+                  className={`bg-white rounded-2xl border p-5 shadow-2xs flex flex-col justify-between ${
+                    isSuper
+                      ? 'border-indigo-200 bg-gradient-to-b from-indigo-50/20 to-white'
+                      : 'border-slate-200'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-100">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-slate-900 text-base">{role.name}</h4>
+                          {isSuper ? (
+                            <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                              {language === 'bn' ? 'Permanent Root Role (স্থায়ী রুট)' : 'Permanent Root Role'}
+                            </span>
+                          ) : role.isSystem ? (
+                            <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                              System Role
+                            </span>
+                          ) : null}
+                        </div>
+                        {role.nameBn && <p className="text-xs text-slate-500">{role.nameBn}</p>}
+                        <p className="text-xs text-slate-600 mt-1">{role.description}</p>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {isSuper ? (
+                          <span
+                            className="text-[9.5px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-200 select-none"
+                            title={language === 'bn' ? 'সুপার অ্যাডমিনের পারমিশন স্থায়ী ও অপরিবর্তনীয়' : 'Super Admin permissions are permanent and cannot be modified'}
+                          >
+                            Fixed / Locked
                           </span>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditRole(role)}
+                              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer"
+                              title={language === 'bn' ? 'পারমিশন সম্পাদনা' : 'Edit Permissions'}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            {!role.isSystem && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm(`Delete role '${role.name}'?`)) {
+                                    deleteUserRole(role.id);
+                                  }
+                                }}
+                                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer"
+                                title={language === 'bn' ? 'রোল মুছুন' : 'Delete Role'}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
-                      {role.nameBn && <p className="text-xs text-slate-500">{role.nameBn}</p>}
-                      <p className="text-xs text-slate-600 mt-1">{role.description}</p>
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    <div className="mt-3">
+                      <span className="text-xs font-bold text-slate-700 block mb-2">
+                        {isSuper
+                          ? (language === 'bn'
+                              ? 'অনুমোদিত পারমিশন: সম্পূর্ণ সিস্টেম অ্যাক্সেস (All Permissions Active - 100%):'
+                              : 'Authorized Permissions: Full System Access (100% Active):')
+                          : (language === 'bn'
+                              ? `অনুমোদিত পারমিশন (${role.permissions.length} টি সক্রিয়):`
+                              : `Authorized Permissions (${role.permissions.length} Active):`)}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
+                        {(isSuper ? ALL_SYSTEM_PERMISSIONS.map((p) => p.code) : role.permissions).map((permCode) => {
+                          const permObj = SYSTEM_PERMISSIONS.find((p) => p.code === permCode);
+                          return (
+                            <span
+                              key={permCode}
+                              className={`inline-block text-[10px] font-bold px-2 py-1 rounded-md border ${
+                                isSuper
+                                  ? 'bg-indigo-50/70 text-indigo-800 border-indigo-200'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              {permObj ? (language === 'bn' ? permObj.nameBn : permObj.name) : permCode}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span>
+                      {language === 'bn' ? 'নিযুক্ত ব্যবহারকারী: ' : 'Assigned Users: '}
+                      <strong className="text-slate-900">
+                        {staffMembers.filter((s) => s.customRoleId === role.id || s.role === role.name).length}
+                      </strong>{' '}
+                      {language === 'bn' ? 'জন' : 'users'}
+                    </span>
+                    {isSuper ? (
+                      <span className="text-indigo-600 font-bold text-[11px] flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>{language === 'bn' ? 'সকল রাইটস স্থায়ীভাবে সক্রিয়' : 'All Privileges Permanently Active'}</span>
+                      </span>
+                    ) : (
                       <button
                         type="button"
                         onClick={() => handleOpenEditRole(role)}
-                        className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
-                        title="পারমিশন সম্পাদনা"
+                        className="text-blue-600 font-bold hover:underline cursor-pointer"
                       >
-                        <Edit2 className="w-4 h-4" />
+                        {language === 'bn' ? 'পারমিশন পরিবর্তন করুন ➔' : 'Modify Permissions ➔'}
                       </button>
-                      {!role.isSystem && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm(`Delete role '${role.name}'?`)) {
-                              deleteUserRole(role.id);
-                            }
-                          }}
-                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-3">
-                    <span className="text-xs font-bold text-slate-700 block mb-2">
-                      অনুমোদিত পারমিশন ({role.permissions.length} টি সক্রিয়):
-                    </span>
-                    <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
-                      {role.permissions.map((permCode) => {
-                        const permObj = SYSTEM_PERMISSIONS.find((p) => p.code === permCode);
-                        return (
-                          <span
-                            key={permCode}
-                            className="inline-block text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded-md border border-slate-200"
-                          >
-                            {permObj ? (language === 'bn' ? permObj.nameBn : permObj.name) : permCode}
-                          </span>
-                        );
-                      })}
-                    </div>
+                    )}
                   </div>
                 </div>
-
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                  <span>
-                    নিযুক্ত ব্যবহারকারী:{' '}
-                    <strong className="text-slate-900">
-                      {staffMembers.filter((s) => s.customRoleId === role.id || s.role === role.name).length}
-                    </strong>{' '}
-                    জন
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEditRole(role)}
-                    className="text-blue-600 font-bold hover:underline"
-                  >
-                    পারমিশন পরিবর্তন করুন ➔
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
+      )}
+
+      {/* TAB: PAYMENT GATEWAYS & METHODS */}
+      {activeTab === 'payment-gateways' && canManagePayments && (
+        <form onSubmit={handleSavePaymentSettings} className="space-y-6">
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white p-5 rounded-3xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                <CreditCard className="w-4 h-4" />
+                <span>{language === 'bn' ? 'পেমেন্ট গেটওয়ে ও মেথড কনফিগারেশন' : 'Payment Gateways & Banking Configuration'}</span>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
+                  {language === 'bn' ? '🔒 সুরক্ষিত অ্যাক্সেস' : '🔒 RBAC Protected'}
+                </span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black mt-1">
+                {language === 'bn' ? 'অফিসিয়াল পেমেন্ট মেথড ও অনলাইন গেটওয়ে' : 'Enterprise Payment Methods & Online Gateway'}
+              </h3>
+              <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+                {language === 'bn'
+                  ? 'ইনভয়েস পেমেন্ট, অনলাইন গেটওয়ে এপিআই (SSLCommerz, bKash PGW), ব্যাংক অ্যাকাউন্ট ও বিকাশ/নগদ মার্চেন্ট নাম্বার কনফিগার করুন। শুধুমাত্র সুপার অ্যাডমিন ও অনুমতিপ্রাপ্ত অ্যাকাউন্টিং স্টাফ এই তথ্য দেখতে ও পরিবর্তন করতে পারে।'
+                  : 'Configure corporate bank accounts, mobile merchant wallets (bKash/Nagad), and automated online payment gateway APIs. Only Super Admin and authorized staff can view or update.'}
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs sm:text-sm shadow-md transition-all cursor-pointer shrink-0"
+            >
+              <Save className="w-4 h-4" />
+              <span>{language === 'bn' ? 'সকল পরিবর্তন সংরক্ষণ করুন' : 'Save All Changes'}</span>
+            </button>
+          </div>
+
+          {paymentSaveSuccess && (
+            <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-2xl text-xs font-bold text-emerald-900 flex items-center gap-2 shadow-2xs animate-in fade-in">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <span>
+                {language === 'bn'
+                  ? 'পেমেন্ট গেটওয়ে, ব্যাংকিং ও মার্চেন্ট তথ্য সফলভাবে সংরক্ষিত ও আপডেট হয়েছে!'
+                  : 'Payment gateway, bank accounts, and merchant settings have been successfully updated!'}
+              </span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Card 1: Official Bank Accounts */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                    <Landmark className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      {language === 'bn' ? '১. কর্পোরেট ব্যাংক অ্যাকাউন্ট' : '1. Corporate Bank Account'}
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      {language === 'bn' ? 'ক্লায়েন্ট ডিপোজিট ও ইনভয়েস ব্যাংক ট্রান্সফার' : 'Client deposits and wire transfers'}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
+                  Bank Transfer
+                </span>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'ব্যাংকের নাম (Bank Name)' : 'Bank Name'}
+                  </label>
+                  <input
+                    type="text"
+                    value={paymentFormData.bankName}
+                    onChange={(e) => setPaymentFormData({ ...paymentFormData, bankName: e.target.value })}
+                    placeholder="e.g. City Bank PLC / BRAC Bank PLC"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">
+                      {language === 'bn' ? 'হিসাব নম্বর (Account Number)' : 'Account Number'}
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentFormData.bankAccount}
+                      onChange={(e) => setPaymentFormData({ ...paymentFormData, bankAccount: e.target.value })}
+                      placeholder="e.g. 1504058517001"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">
+                      {language === 'bn' ? 'হিসাবের শিরোনাম (Beneficiary Name)' : 'Account Title'}
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentFormData.bankAccountTitle}
+                      onChange={(e) => setPaymentFormData({ ...paymentFormData, bankAccountTitle: e.target.value })}
+                      placeholder="e.g. Dot Color Communication"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">
+                      {language === 'bn' ? 'শাখা (Branch Name)' : 'Branch Name'}
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentFormData.bankBranch}
+                      onChange={(e) => setPaymentFormData({ ...paymentFormData, bankBranch: e.target.value })}
+                      placeholder="e.g. Pabartek Mor / Agrabad"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">
+                      {language === 'bn' ? 'রাউটিং / SWIFT কোড' : 'Routing / SWIFT Code'}
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentFormData.routingNumber}
+                      onChange={(e) => setPaymentFormData({ ...paymentFormData, routingNumber: e.target.value })}
+                      placeholder="e.g. 225156326"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Mobile Financial Services (MFS / Wallets) */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center font-bold">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      {language === 'bn' ? '২. মোবাইল ব্যাংকিং ও মার্চেন্ট ওয়ালেট (MFS)' : '2. Mobile Financial Wallets (MFS)'}
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      {language === 'bn' ? 'বিকাশ, নগদ ও রকেট পেমেন্ট গ্রহণের নম্বর' : 'bKash, Nagad, and Rocket collection numbers'}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold bg-pink-50 text-pink-700 px-2 py-0.5 rounded border border-pink-200">
+                  Instant MFS
+                </span>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'বিকাশ মার্চেন্ট / পার্সোনাল নম্বর (bKash)' : 'bKash Merchant / Personal No'}
+                  </label>
+                  <input
+                    type="text"
+                    value={paymentFormData.bkashNagadNumber}
+                    onChange={(e) => setPaymentFormData({ ...paymentFormData, bkashNagadNumber: e.target.value })}
+                    placeholder="e.g. 01841581887"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-pink-700 focus:bg-white focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">
+                    {language === 'bn' ? 'ইনভয়েস এবং পিওএস স্লিপে এই বিকাশ নম্বরটি প্রদর্শিত হবে।' : 'Displayed on printed invoices and POS slips.'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">
+                      {language === 'bn' ? 'নগদ মার্চেন্ট নম্বর (Nagad)' : 'Nagad Merchant No'}
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentFormData.nagadNumber}
+                      onChange={(e) => setPaymentFormData({ ...paymentFormData, nagadNumber: e.target.value })}
+                      placeholder="e.g. 01841581887"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-orange-700 focus:bg-white focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">
+                      {language === 'bn' ? 'রকেট / উপায় নম্বর (Rocket/Upay)' : 'Rocket / Upay No'}
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentFormData.rocketNumber}
+                      onChange={(e) => setPaymentFormData({ ...paymentFormData, rocketNumber: e.target.value })}
+                      placeholder="e.g. 01841581887-9"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-purple-700 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Automated Online Payment Gateway API */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      {language === 'bn' ? '৩. অটোমেটেড অনলাইন পেমেন্ট গেটওয়ে API' : '3. Online Payment Gateway API'}
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      {language === 'bn' ? 'SSLCommerz, bKash Checkout, Shurjopay বা AamarPay ইন্টিগ্রেশন' : 'Automated online customer payments'}
+                    </p>
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={paymentFormData.paymentGatewayIsEnabled}
+                    onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentGatewayIsEnabled: e.target.checked })}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className={`text-[11px] font-bold ${paymentFormData.paymentGatewayIsEnabled ? 'text-emerald-700' : 'text-slate-400'}`}>
+                    {paymentFormData.paymentGatewayIsEnabled ? 'Active' : 'Disabled'}
+                  </span>
+                </label>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">
+                      {language === 'bn' ? 'গেটওয়ে প্রভাইডার (Provider)' : 'Gateway Provider'}
+                    </label>
+                    <select
+                      value={paymentFormData.paymentGatewayProvider}
+                      onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentGatewayProvider: e.target.value as any })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                    >
+                      <option value="none">{language === 'bn' ? 'কোনো গেটওয়ে নেই (শুধু ম্যানুয়াল)' : 'None (Manual Only)'}</option>
+                      <option value="sslcommerz">SSLCommerz (Cards & Wallets)</option>
+                      <option value="bkash_pgw">bKash Direct Checkout (PGW)</option>
+                      <option value="shurjopay">Shurjopay Gateway</option>
+                      <option value="aamarpay">AamarPay Payment Gateway</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">
+                      {language === 'bn' ? 'মোড (Environment)' : 'Environment Mode'}
+                    </label>
+                    <select
+                      value={paymentFormData.paymentGatewayMode}
+                      onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentGatewayMode: e.target.value as any })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                    >
+                      <option value="sandbox">Sandbox / Test Mode</option>
+                      <option value="live">Live / Production</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'স্টোর আইডি / মার্চেন্ট অ্যাপ কি (Store ID / App Key)' : 'Store ID / App Key'}
+                  </label>
+                  <input
+                    type="text"
+                    value={paymentFormData.paymentGatewayStoreId}
+                    onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentGatewayStoreId: e.target.value })}
+                    placeholder="e.g. dotcolor_live_store"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700">
+                      {language === 'bn' ? 'সিক্রেট কি / পাসওয়ার্ড (Store Password / Secret Key)' : 'Store Password / Secret Key'}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowSecretKey(!showSecretKey)}
+                      className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
+                    >
+                      {showSecretKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      <span>{showSecretKey ? (language === 'bn' ? 'লুকান' : 'Hide') : (language === 'bn' ? 'দেখান' : 'Show')}</span>
+                    </button>
+                  </div>
+                  <input
+                    type={showSecretKey ? 'text' : 'password'}
+                    value={paymentFormData.paymentGatewaySecret}
+                    onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentGatewaySecret: e.target.value })}
+                    placeholder="••••••••••••••••••••••••"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'আইপিএন কলব্যাক ইউআরএল (IPN / Webhook Callback URL)' : 'IPN Webhook Callback URL'}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={`${window.location.origin}/api/payment/callback`}
+                      className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-mono text-[11px] select-all cursor-text"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/api/payment/callback`);
+                        setCopiedCallback(true);
+                        setTimeout(() => setCopiedCallback(false), 2000);
+                      }}
+                      className="px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded-xl text-slate-700 font-bold shrink-0 flex items-center gap-1 cursor-pointer"
+                      title={language === 'bn' ? 'ইউআরএল কপি করুন' : 'Copy URL'}
+                    >
+                      {copiedCallback ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedCallback ? (language === 'bn' ? 'কপি হয়েছে' : 'Copied') : (language === 'bn' ? 'কপি' : 'Copy')}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 4: Invoicing Client Instructions */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                    <SlidersHorizontal className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      {language === 'bn' ? '৪. ইনভয়েস ও বিলের পেমেন্ট নির্দেশিকা' : '4. Client Invoicing Instructions'}
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      {language === 'bn' ? 'প্রিন্ট ও ডিজিটাল বিলে ক্লায়েন্টকে পেমেন্ট করার নোট' : 'Printed instructions on invoices & quotes'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {language === 'bn' ? 'পেমেন্ট নির্দেশিকা টেক্সট (Banking Notes)' : 'Payment Notes & Notice'}
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={paymentFormData.bankingNotes}
+                    onChange={(e) => setPaymentFormData({ ...paymentFormData, bankingNotes: e.target.value })}
+                    placeholder="Clients can transfer invoices via City Bank PLC, bKash Merchant (01841581887), or Cash counters."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none leading-relaxed"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {language === 'bn'
+                      ? 'এই লেখাটি কাস্টমারের প্রিন্ট ইনভয়েস, চালান এবং হিসাব মেমোতে ব্যাংক ও পেমেন্ট বিবরণী হিসেবে স্বয়ংক্রিয়ভাবে দেখাবে।'
+                      : 'This note is automatically printed at the bottom of client invoices and challans.'}
+                  </p>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <span className="font-bold text-slate-700 text-xs block">
+                    {language === 'bn' ? 'লাইভ প্রিভিউ (ইনভয়েসে যেমন দেখাবে):' : 'Live Preview (As seen on invoices):'}
+                  </span>
+                  <div className="bg-white p-3 rounded-lg border border-slate-200 text-slate-700 text-xs font-mono leading-relaxed">
+                    <div>🏦 <strong>Bank:</strong> {paymentFormData.bankName || 'Not Set'} {paymentFormData.bankAccount ? `(A/C: ${paymentFormData.bankAccount})` : ''}</div>
+                    <div>📱 <strong>bKash / Nagad:</strong> {paymentFormData.bkashNagadNumber || '---'}</div>
+                    {paymentFormData.bankingNotes && (
+                      <div className="text-[11px] text-slate-500 mt-1">💬 {paymentFormData.bankingNotes}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-sm shadow-md transition-all cursor-pointer"
+            >
+              <Save className="w-4 h-4" />
+              <span>{language === 'bn' ? 'সকল পেমেন্ট ও ব্যাংকিং সেটিংস সংরক্ষণ করুন' : 'Save & Apply Payment Settings'}</span>
+            </button>
+          </div>
+        </form>
       )}
 
       {/* TAB 3: MODULE DATA CLEAN & PURGE */}
@@ -773,76 +1380,92 @@ export const SettingsModule: React.FC = () => {
             {/* Sales / POS Invoices Clean */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 text-sm">১. সেলস ও ইনভয়েস ডাটা ক্লিন</span>
+                <span className="font-bold text-slate-900 text-sm">
+                  {language === 'bn' ? '১. সেলস ও ইনভয়েস ডাটা ক্লিন' : '1. Sales & POS Invoices Purge'}
+                </span>
                 <span className="text-xs font-mono text-slate-500">POS & Sales</span>
               </div>
               <p className="text-xs text-slate-500">
-                সমস্ত ইনভয়েস, ওয়ার্ক অর্ডার, ও কোটেশন ডিলিট করবে। কাস্টমার ও প্রোডাক্ট তালিকা অক্ষুণ্ণ থাকবে।
+                {language === 'bn'
+                  ? 'সমস্ত ইনভয়েস, ওয়ার্ক অর্ডার, ও কোটেশন ডিলিট করবে। কাস্টমার ও প্রোডাক্ট তালিকা অক্ষুণ্ণ থাকবে।'
+                  : 'Deletes all sales invoices, work orders, and quotes. Product and customer catalogs remain intact.'}
               </p>
               <button
                 type="button"
                 onClick={() => setCleanConfirmModule('invoices')}
-                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5"
+                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>ইনভয়েস ডাটা মুছে ফেলুন</span>
+                <span>{language === 'bn' ? 'ইনভয়েস ডাটা মুছে ফেলুন' : 'Purge Invoices Data'}</span>
               </button>
             </div>
 
             {/* Inventory Movements Clean */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 text-sm">২. স্টক মুভমেন্ট হিস্ট্রি ক্লিন</span>
+                <span className="font-bold text-slate-900 text-sm">
+                  {language === 'bn' ? '২. স্টক মুভমেন্ট হিস্ট্রি ক্লিন' : '2. Stock Movement History Purge'}
+                </span>
                 <span className="text-xs font-mono text-slate-500">Stock Movements</span>
               </div>
               <p className="text-xs text-slate-500">
-                সমস্ত ট্রান্সফার ও স্টক এডজাস্টমেন্ট হিস্ট্রি মুছে ফেলবে। পণ্যের মূল তথ্য অপরিবর্তিত থাকবে।
+                {language === 'bn'
+                  ? 'সমস্ত ট্রান্সফার ও স্টক এডজাস্টমেন্ট হিস্ট্রি মুছে ফেলবে। পণ্যের মূল তথ্য অপরিবর্তিত থাকবে।'
+                  : 'Deletes all stock transfers and adjustments history logs. Master inventory catalog is preserved.'}
               </p>
               <button
                 type="button"
                 onClick={() => setCleanConfirmModule('stockMovements')}
-                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5"
+                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>মুভমেন্ট লগ মুছে ফেলুন</span>
+                <span>{language === 'bn' ? 'মুভমেন্ট লগ মুছে ফেলুন' : 'Purge Movement Logs'}</span>
               </button>
             </div>
 
             {/* Supply Chain PO Clean */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 text-sm">৩. পারচেস অর্ডার (PO) ক্লিন</span>
+                <span className="font-bold text-slate-900 text-sm">
+                  {language === 'bn' ? '৩. পারচেস অর্ডার (PO) ক্লিন' : '3. Purchase Orders (PO) Purge'}
+                </span>
                 <span className="text-xs font-mono text-slate-500">Purchase Orders</span>
               </div>
               <p className="text-xs text-slate-500">
-                সমস্ত সাপ্লায়ার পারচেস অর্ডার রেকর্ড ডিলিট করবে। সাপ্লায়ার তালিকা অক্ষুণ্ণ থাকবে।
+                {language === 'bn'
+                  ? 'সমস্ত সাপ্লায়ার পারচেস অর্ডার রেকর্ড ডিলিট করবে। সাপ্লায়ার তালিকা অক্ষুণ্ণ থাকবে।'
+                  : 'Deletes all supplier purchase orders. Supplier directory remains intact.'}
               </p>
               <button
                 type="button"
                 onClick={() => setCleanConfirmModule('purchaseOrders')}
-                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5"
+                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>পারচেস অর্ডার মুছে ফেলুন</span>
+                <span>{language === 'bn' ? 'পারচেস অর্ডার মুছে ফেলুন' : 'Purge Purchase Orders'}</span>
               </button>
             </div>
 
             {/* Accounting Transactions Clean */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 text-sm">৪. ফিনান্সিয়াল লেনদেন ও লেজার ক্লিন</span>
+                <span className="font-bold text-slate-900 text-sm">
+                  {language === 'bn' ? '৪. ফিনান্সিয়াল লেনদেন ও লেজার ক্লিন' : '4. Financial Ledger & Txns Purge'}
+                </span>
                 <span className="text-xs font-mono text-slate-500">Accounting Ledger</span>
               </div>
               <p className="text-xs text-slate-500">
-                সকল দৈনিক খরচ, আয় ও জার্নাল ভাউচার ডিলিট করে ব্যালেন্স শূন্যে রিসেট করবে।
+                {language === 'bn'
+                  ? 'সকল দৈনিক খরচ, আয় ও জার্নাল ভাউচার ডিলিট করে ব্যালেন্স শূন্যে রিসেট করবে।'
+                  : 'Deletes all daily expenses, revenue entries, and journal vouchers, resetting account balances to zero.'}
               </p>
               <button
                 type="button"
                 onClick={() => setCleanConfirmModule('transactions')}
-                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5"
+                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>লেনদেন ডাটা মুছে ফেলুন</span>
+                <span>{language === 'bn' ? 'লেনদেন ডাটা মুছে ফেলুন' : 'Purge Transactions Data'}</span>
               </button>
             </div>
 
@@ -872,20 +1495,33 @@ export const SettingsModule: React.FC = () => {
             {/* Wipe All Except Products */}
             <div className="bg-rose-50/60 p-5 rounded-2xl border-2 border-dashed border-rose-200 shadow-2xs space-y-3 col-span-1 md:col-span-2">
               <div className="flex items-center justify-between">
-                <span className="font-extrabold text-rose-950 text-sm">৬. সম্পূর্ণ সিস্টেম ডাটা রিসেট (প্রোডাক্ট বাদে)</span>
+                <span className="font-extrabold text-rose-950 text-sm">
+                  {language === 'bn' ? '৬. সম্পূর্ণ সিস্টেম ডাটা রিসেট (প্রোডাক্ট বাদে)' : '6. Complete System Data Reset (Except Products)'}
+                </span>
                 <span className="text-xs font-mono font-bold text-rose-600 bg-rose-100/60 px-2.5 py-0.5 rounded-full">RECOMMENDED START</span>
               </div>
               <p className="text-xs text-rose-800 leading-relaxed font-medium">
-                এটি সমস্ত ইনভয়েস, কোটেশন, পারচেস অর্ডার, কাস্টমার/সাপ্লায়ার ডিরেক্টরি এবং হিসাবের সমস্ত ট্রানজেকশন (ক্যাশ, ব্যাংক, বিকাশ ইত্যাদি ব্যালেন্স সহ) সম্পূর্ণ মুছে শূন্য (৳০) করবে। 
-                <strong> তবে আপনার ইনভেন্টরি বা প্রোডাক্ট ক্যাটালগটি অক্ষুণ্ণ থাকবে এবং সমস্ত প্রোডাক্টের স্টক কোয়ান্টিটি ০ হয়ে যাবে।</strong>
+                {language === 'bn' ? (
+                  <>
+                    এটি সমস্ত ইনভয়েস, কোটেশন, পারচেস অর্ডার, কাস্টমার/সাপ্লায়ার ডিরেক্টরি এবং হিসাবের সমস্ত ট্রানজেকশন (ক্যাশ, ব্যাংক, বিকাশ ইত্যাদি ব্যালেন্স সহ) সম্পূর্ণ মুছে শূন্য (৳০) করবে।{' '}
+                    <strong>তবে আপনার ইনভেন্টরি বা প্রোডাক্ট ক্যাটালগটি অক্ষুণ্ণ থাকবে এবং সমস্ত প্রোডাক্টের স্টক কোয়ান্টিটি ০ হয়ে যাবে।</strong>
+                  </>
+                ) : (
+                  <>
+                    Wipes all sales invoices, quotes, purchase orders, customer & supplier directories, and ledger transactions. Resets all account balances to zero.{' '}
+                    <strong>Your inventory product catalog remains intact, and all stock quantities are reset to 0.</strong>
+                  </>
+                )}
               </p>
               <button
                 type="button"
                 onClick={() => setCleanConfirmModule('WIPE_ALL_EXCEPT_PRODUCTS')}
-                className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <AlertOctagon className="w-4 h-4" />
-                <span>সব ডাটা মুছুন কিন্তু প্রোডাক্ট ক্যাটালগ রাখুন (স্টক ০)</span>
+                <span>
+                  {language === 'bn' ? 'সব ডাটা মুছুন কিন্তু প্রোডাক্ট ক্যাটালগ রাখুন (স্টক ০)' : 'Wipe All Data but Keep Product Catalog (Stock 0)'}
+                </span>
               </button>
             </div>
           </div>
@@ -893,18 +1529,22 @@ export const SettingsModule: React.FC = () => {
           {/* Master Reset */}
           <div className="bg-slate-900 text-white p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <h4 className="font-bold text-sm text-amber-400">সিস্টেম ফ্যাক্টরি রিসেট (Full Baseline Reset)</h4>
+              <h4 className="font-bold text-sm text-amber-400">
+                {language === 'bn' ? 'সিস্টেম ফ্যাক্টরি রিসেট (Full Baseline Reset)' : 'System Factory Reset (Full Baseline Reset)'}
+              </h4>
               <p className="text-xs text-slate-300 mt-0.5">
-                সমস্ত টেস্ট ডাটা মুছে প্রাথমিক স্ট্যান্ডার্ড ডেমো ডাটাবেসে সিস্টেম ফিরিয়ে আনুন।
+                {language === 'bn'
+                  ? 'সমস্ত টেস্ট ডাটা মুছে প্রাথমিক স্ট্যান্ডার্ড ডেমো ডাটাবেসে সিস্টেম ফিরিয়ে আনুন।'
+                  : 'Clear all test data and restore initial demo baseline database.'}
               </p>
             </div>
             <button
               type="button"
               onClick={handleFactoryReset}
-              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-xs shrink-0 flex items-center gap-1.5"
+              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-xs shrink-0 flex items-center gap-1.5 cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>রিসেট টু ডিফল্ট</span>
+              <span>{language === 'bn' ? 'রিসেট টু ডিফল্ট' : 'Reset to Default'}</span>
             </button>
           </div>
         </div>
@@ -1080,12 +1720,26 @@ export const SettingsModule: React.FC = () => {
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div className="text-center">
-              <h3 className="font-bold text-slate-900 text-base">ডাটা মুছে ফেলার নিশ্চিতকরণ</h3>
+              <h3 className="font-bold text-slate-900 text-base">
+                {language === 'bn' ? 'ডাটা মুছে ফেলার নিশ্চিতকরণ' : 'Confirm Data Deletion'}
+              </h3>
               <p className="text-xs text-slate-500 mt-1">
                 {cleanConfirmModule === 'WIPE_ALL_EXCEPT_PRODUCTS' ? (
-                  <span>আপনি কি নিশ্চিত যে <strong>ইনভেন্টরি প্রোডাক্ট তালিকা বাদে</strong> অন্য সব ডাটা (ইনভয়েস, লেজার, কাস্টমার, ক্যাশ/ব্যাংক ব্যালেন্স) সম্পূর্ণ মুছে সিস্টেমের স্টক ০ করতে চান?</span>
+                  <span>
+                    {language === 'bn' ? (
+                      <>আপনি কি নিশ্চিত যে <strong>ইনভেন্টরি প্রোডাক্ট তালিকা বাদে</strong> অন্য সব ডাটা (ইনভয়েস, লেজার, কাস্টমার, ক্যাশ/ব্যাংক ব্যালেন্স) সম্পূর্ণ মুছে সিস্টেমের স্টক ০ করতে চান?</>
+                    ) : (
+                      <>Are you sure you want to delete all operational records (invoices, ledger, customer directory, balances) and reset stock to 0 while keeping products?</>
+                    )}
+                  </span>
                 ) : (
-                  <span>আপনি কি নিশ্চিত যে <strong className="text-slate-900">{cleanConfirmModule}</strong> মডিউলের সমস্ত রেকর্ড মুছে ফেলতে চান?</span>
+                  <span>
+                    {language === 'bn' ? (
+                      <>আপনি কি নিশ্চিত যে <strong className="text-slate-900">{cleanConfirmModule}</strong> মডিউলের সমস্ত রেকর্ড মুছে ফেলতে চান?</>
+                    ) : (
+                      <>Are you sure you want to permanently delete all records from the <strong className="text-slate-900">{cleanConfirmModule}</strong> module?</>
+                    )}
+                  </span>
                 )}
               </p>
             </div>
@@ -1094,16 +1748,16 @@ export const SettingsModule: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setCleanConfirmModule(null)}
-                className="flex-1 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                className="flex-1 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
               >
-                বাতিল
+                {language === 'bn' ? 'বাতিল' : 'Cancel'}
               </button>
               <button
                 type="button"
                 onClick={() => handleExecuteClean(cleanConfirmModule)}
-                className="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-2xs"
+                className="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-2xs cursor-pointer"
               >
-                হ্যাঁ, মুছে ফেলুন
+                {language === 'bn' ? 'হ্যাঁ, মুছে ফেলুন' : 'Yes, Delete'}
               </button>
             </div>
           </div>
@@ -1139,97 +1793,60 @@ export const SettingsModule: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    {language === 'bn' ? 'নাম (English) *' : 'Full Name (EN) *'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={userFormData.name}
-                    onChange={(e) => setUserFormData({ ...userFormData, name: e.target.value })}
-                    placeholder="e.g. Tanvir Ahmed"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    {language === 'bn' ? 'বাংলা নাম' : 'Bengali Name'}
-                  </label>
-                  <input
-                    type="text"
-                    value={userFormData.nameBn}
-                    onChange={(e) => setUserFormData({ ...userFormData, nameBn: e.target.value })}
-                    placeholder="যেমন: তানভীর আহমেদ"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    {language === 'bn' ? 'পদবি (Primary Role)' : 'Primary Role'}
-                  </label>
-                  <select
-                    value={userFormData.role}
-                    onChange={(e) => {
-                      const r = e.target.value as StaffRole;
-                      const bn =
-                        r === 'Super Admin'
-                          ? 'সুপার অ্যাডমিন'
-                          : r === 'Branch Manager'
-                          ? 'ব্রাঞ্চ ম্যানেজার'
-                          : r === 'Factory Supervisor'
-                          ? 'ফ্যাক্টরি সুপারভাইজার'
-                          : r === 'Accountant'
-                          ? 'প্রধান হিসাবরক্ষক'
-                          : 'বিক্রয় প্রতিনিধি';
-                      setUserFormData({ ...userFormData, role: r, roleBn: bn });
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
-                  >
-                    <option value="Super Admin">Super Admin</option>
-                    <option value="Branch Manager">Branch Manager</option>
-                    <option value="Factory Supervisor">Factory Supervisor</option>
-                    <option value="Accountant">Accountant</option>
-                    <option value="Sales Executive">Sales Executive</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    {language === 'bn' ? 'কর্মস্থল (Branch/Site)' : 'Site Location'}
-                  </label>
-                  <select
-                    value={userFormData.location}
-                    onChange={(e) => setUserFormData({ ...userFormData, location: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
-                  >
-                    <option value="Both">Central Warehouse & Office (সেন্ট্রাল ওয়্যারহাউজ)</option>
-                  </select>
-                </div>
+            <div className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  {language === 'bn' ? 'স্টাফ / ইউজারের নাম (Full Name) *' : 'Full Name *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={userFormData.name}
+                  onChange={(e) => setUserFormData({ ...userFormData, name: e.target.value })}
+                  placeholder="e.g. Sajib Khan"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                />
               </div>
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'নিযুক্ত RBAC রোল পারমিশন' : 'Assign RBAC Role Profile'}
+                  {language === 'bn' ? 'পদবি ও রোল পারমিশন (Role & Permissions) *' : 'Role & Access Permissions *'}
                 </label>
-                <select
-                  value={userFormData.customRoleId}
-                  onChange={(e) => setUserFormData({ ...userFormData, customRoleId: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-purple-700"
-                >
-                  <option value="">-- {language === 'bn' ? 'ডিফল্ট রোল পারমিশন' : 'Default Primary Role'} --</option>
-                  {userRoles.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name} ({r.permissions.length} perms)
-                    </option>
-                  ))}
-                </select>
+                {editingStaff && isSuperAdminStaff(editingStaff) ? (
+                  <div className="w-full px-3 py-2 border border-indigo-200 bg-indigo-50/70 rounded-xl font-bold text-indigo-900 flex items-center justify-between">
+                    <span>{language === 'bn' ? 'Super Admin (সুপার অ্যাডমিন — স্থায়ী রুট অ্যাকাউন্ট)' : 'Super Admin (Permanent Root Account)'}</span>
+                    <span className="text-[10px] font-black text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-200">
+                      Permanent Root
+                    </span>
+                  </div>
+                ) : (
+                  <select
+                    value={userFormData.customRoleId}
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      const foundRole = userRoles.find((r) => r.id === selectedId);
+                      if (foundRole) {
+                        setUserFormData({
+                          ...userFormData,
+                          customRoleId: foundRole.id,
+                          role: foundRole.name as StaffRole,
+                          roleBn: foundRole.nameBn || '',
+                        });
+                      } else {
+                        setUserFormData({ ...userFormData, customRoleId: selectedId });
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-800 bg-white cursor-pointer"
+                  >
+                    {userRoles
+                      .filter((r) => r.name !== 'Super Admin' && r.name.toLowerCase() !== 'superadmin')
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name} {r.nameBn ? `(${r.nameBn})` : ''} — {r.permissions.length} Permissions
+                        </option>
+                      ))}
+                  </select>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1368,7 +1985,7 @@ export const SettingsModule: React.FC = () => {
                     type="text"
                     value={roleFormData.nameBn}
                     onChange={(e) => setRoleFormData({ ...roleFormData, nameBn: e.target.value })}
-                    placeholder="যেমন: ইনভেন্টরি নিয়ন্ত্রক"
+                    placeholder={language === 'bn' ? 'যেমন: ইনভেন্টরি নিয়ন্ত্রক' : 'e.g. Inventory Controller'}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl"
                   />
                 </div>

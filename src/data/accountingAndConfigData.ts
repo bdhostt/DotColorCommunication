@@ -52,13 +52,22 @@ export const ALL_SYSTEM_PERMISSIONS: RolePermission[] = [
   { id: 'perm-set-3', code: 'settings.manage_roles', name: 'Configure Roles & Permissions', nameBn: 'রোল ও পারমিশন নিয়ন্ত্রণ', category: 'Settings' },
   { id: 'perm-set-4', code: 'settings.clean_data', name: 'Module-wise Data Clean & Purge', nameBn: 'মডিউল ডেটা ক্লিন ও ডিলিট', category: 'Settings' },
   { id: 'perm-set-5', code: 'settings.backup_restore', name: 'Database Backup & Restore', nameBn: 'ব্যাকআপ ও রিস্টোর', category: 'Settings' },
+  { id: 'perm-set-6', code: 'settings.manage_payments', name: 'Manage Payment Gateways & Banking', nameBn: 'পেমেন্ট গেটওয়ে ও ব্যাংকিং নিয়ন্ত্রণ', category: 'Settings' },
 ];
 
 export const INITIAL_USER_ROLES: UserRole[] = [
   {
+    id: 'role-superadmin',
+    name: 'Super Admin',
+    nameBn: 'সুপার অ্যাডমিন',
+    description: 'Full root administrative access to all modules, financial ledgers, system settings and user controls.',
+    isSystem: true,
+    permissions: ALL_SYSTEM_PERMISSIONS.map((p) => p.code),
+  },
+  {
     id: 'role-md',
     name: 'Managing Director',
-    nameBn: 'ব্যবস্থাপনা পরিচালক (সুপার এডমিন)',
+    nameBn: 'ব্যবস্থাপনা পরিচালক (ম্যানেজমেন্ট)',
     description: 'Full administrative access to all modules, financial ledgers, system settings and user controls.',
     isSystem: true,
     permissions: ALL_SYSTEM_PERMISSIONS.map((p) => p.code),

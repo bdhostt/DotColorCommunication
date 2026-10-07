@@ -56,7 +56,20 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
     lastSyncedAt,
     syncWithCloud,
     updateStaffMember,
+    checkPermission,
   } = useApp();
+
+  const canAccessSettings =
+    (activeStaff?.role || '').toLowerCase().includes('admin') ||
+    (activeStaff?.role || '').toLowerCase().includes('director') ||
+    Boolean(
+      checkPermission &&
+        (checkPermission('settings.view') ||
+          checkPermission('settings.manage_users') ||
+          checkPermission('SETTINGS_MANAGE_USERS') ||
+          checkPermission('settings.manage_payments') ||
+          checkPermission('settings.manage_roles'))
+    );
 
   const [showBackupModal, setShowBackupModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
@@ -184,19 +197,21 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               </button>
 
               {/* Settings / Configuration Module */}
-              <button
-                type="button"
-                id="btn-nav-settings"
-                onClick={() => setActiveTab('settings')}
-                className={`p-2 rounded-lg transition-colors ${
-                  activeTab === 'settings'
-                    ? 'bg-slate-900 text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-                title={language === 'bn' ? 'কনফিগারেশন ও সেটিংস' : 'Settings & Admin'}
-              >
-                <Settings className="w-4 h-4" />
-              </button>
+              {canAccessSettings && (
+                <button
+                  type="button"
+                  id="btn-nav-settings"
+                  onClick={() => setActiveTab('settings')}
+                  className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                    activeTab === 'settings'
+                      ? 'bg-slate-900 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  title={language === 'bn' ? 'কনফিগারেশন ও সেটিংস' : 'Settings & Admin'}
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              )}
 
               {/* Thermal Printer Hardware Bridge Status Button */}
               <button
@@ -350,7 +365,9 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               { id: 'projects', labelEn: 'Projects', labelBn: 'প্রজেক্টস' },
               { id: 'accounting', labelEn: 'Accounting', labelBn: 'অ্যাকাউন্টিং ও অর্থ' },
               { id: 'reports', labelEn: 'Reports', labelBn: 'রিপোর্ট ও বিশ্লেষণ' },
-              { id: 'settings', labelEn: 'Settings & Admin', labelBn: 'সেটিংস ও অ্যাডমিন' },
+              ...(canAccessSettings
+                ? [{ id: 'settings', labelEn: 'Settings & Admin', labelBn: 'সেটিংস ও অ্যাডমিন' }]
+                : []),
               { id: 'profile', labelEn: 'Company Profile', labelBn: 'কোম্পানি প্রোফাইল' },
             ].map((tab) => {
               const active = activeTab === tab.id;
@@ -763,16 +780,20 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('settings');
-                    setShowProfileModal(false);
-                  }}
-                  className="text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-3 py-2 rounded-xl transition-colors cursor-pointer"
-                >
-                  {language === 'bn' ? 'সকল ইউজার ম্যানেজমেন্ট ↗' : 'All Users Management ↗'}
-                </button>
+                {canAccessSettings ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('settings');
+                      setShowProfileModal(false);
+                    }}
+                    className="text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                  >
+                    {language === 'bn' ? 'সকল ইউজার ম্যানেজমেন্ট ↗' : 'All Users Management ↗'}
+                  </button>
+                ) : (
+                  <div />
+                )}
 
                 <div className="flex items-center gap-2">
                   <button

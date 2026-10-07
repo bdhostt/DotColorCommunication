@@ -57,7 +57,26 @@ const MainLayout: React.FC = () => {
     isPadMode: false,
   });
 
-  const { profile, activeStaff, language } = useApp();
+  const { profile, activeStaff, language, checkPermission } = useApp();
+
+  const canAccessSettings =
+    (activeStaff?.role || '').toLowerCase().includes('admin') ||
+    (activeStaff?.role || '').toLowerCase().includes('director') ||
+    Boolean(
+      checkPermission &&
+        (checkPermission('settings.view') ||
+          checkPermission('settings.manage_users') ||
+          checkPermission('SETTINGS_MANAGE_USERS') ||
+          checkPermission('settings.manage_payments') ||
+          checkPermission('settings.manage_roles'))
+    );
+
+  // Guard: If non-admin user lands on 'settings', redirect them to 'pos'
+  useEffect(() => {
+    if (activeTab === 'settings' && !canAccessSettings) {
+      setActiveTab('pos');
+    }
+  }, [activeTab, canAccessSettings]);
 
   // Sync document title with company profile name
   useEffect(() => {
@@ -112,11 +131,19 @@ const MainLayout: React.FC = () => {
       } catch {}
     };
 
+    const handleSwitchTab = (e: any) => {
+      if (e.detail && VALID_TABS.includes(e.detail)) {
+        setActiveTab(e.detail);
+      }
+    };
+
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('hashchange', handlePopState);
+    window.addEventListener('switch-tab', handleSwitchTab);
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('hashchange', handlePopState);
+      window.removeEventListener('switch-tab', handleSwitchTab);
     };
   }, []);
 
@@ -160,7 +187,7 @@ const MainLayout: React.FC = () => {
         {activeTab === 'projects' && <ProjectManagementModule />}
         {activeTab === 'accounting' && <AccountingModule />}
         {activeTab === 'reports' && <ReportModule />}
-        {activeTab === 'settings' && <SettingsModule />}
+        {activeTab === 'settings' && canAccessSettings && <SettingsModule />}
         {activeTab === 'profile' && <CompanyProfileModule />}
       </main>
 

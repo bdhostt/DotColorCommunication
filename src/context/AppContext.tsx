@@ -1806,6 +1806,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     const staff = staffMembers.find((s) => s.id === id);
     if (!staff) return { success: false, message: 'User not found' };
+    if (
+      staff.role === 'Super Admin' ||
+      (staff.name || '').toLowerCase() === 'super admin' ||
+      staff.id === 'staff-superadmin'
+    ) {
+      return { success: false, message: 'Super Admin is a permanent system root account and cannot be deleted.' };
+    }
     if (staff.id === activeStaff.id) {
       return { success: false, message: 'You cannot delete the currently logged-in active user. Please switch user profile first.' };
     }
@@ -1847,6 +1854,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateUserRole = (id: string, updates: Partial<UserRole>) => {
+    const role = userRoles.find((r) => r.id === id);
+    if (
+      role &&
+      (role.name === 'Super Admin' ||
+        role.name.toLowerCase() === 'superadmin' ||
+        role.id === 'role-superadmin')
+    ) {
+      // Super Admin permanently retains all permissions
+      return;
+    }
     setUserRoles((prev) =>
       prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
     );
@@ -1866,8 +1883,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteUserRole = (id: string): { success: boolean; message?: string } => {
     const role = userRoles.find((r) => r.id === id);
     if (!role) return { success: false, message: 'Role not found' };
-    if (role.isSystem) {
-      return { success: false, message: 'Core system predefined roles cannot be deleted.' };
+    if (
+      role.isSystem ||
+      role.name === 'Super Admin' ||
+      role.name.toLowerCase() === 'superadmin' ||
+      role.id === 'role-superadmin' ||
+      role.name === 'Managing Director'
+    ) {
+      return { success: false, message: 'Super Admin and core system root roles cannot be deleted.' };
     }
     const isAssigned = staffMembers.some((s) => s.customRoleId === id || s.role === role.name);
     if (isAssigned) {
@@ -1879,16 +1902,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const checkPermission = (permissionCode: string): boolean => {
     if (!activeStaff || !activeStaff.role) return false;
-    if (activeStaff.role === 'Managing Director') return true;
+    const roleLower = (activeStaff.role || '').toLowerCase();
+    const nameLower = (activeStaff.name || '').toLowerCase();
+    if (
+      roleLower === 'managing director' ||
+      roleLower === 'super admin' ||
+      roleLower.includes('admin') ||
+      roleLower.includes('director') ||
+      nameLower === 'super admin' ||
+      nameLower.includes('super admin')
+    ) {
+      return true;
+    }
+
+    const checkList = [
+      permissionCode,
+      permissionCode.toLowerCase(),
+      permissionCode.toUpperCase(),
+      permissionCode.toLowerCase().replace(/_/g, '.'),
+      permissionCode.toLowerCase().replace(/\./g, '_'),
+      permissionCode.toUpperCase().replace(/\./g, '_'),
+    ];
+
     const role = (userRoles || []).find(
       (r) => (activeStaff.customRoleId && r.id === activeStaff.customRoleId) || r.name === activeStaff.role
     );
     if (role && role.permissions) {
-      return role.permissions.includes(permissionCode);
+      if (role.permissions.some((p) => checkList.includes(p))) {
+        return true;
+      }
     }
     const fallback = (INITIAL_USER_ROLES || []).find((r) => r.name === activeStaff.role);
     if (fallback && fallback.permissions) {
-      return fallback.permissions.includes(permissionCode);
+      if (fallback.permissions.some((p) => checkList.includes(p))) {
+        return true;
+      }
     }
     return false;
   };

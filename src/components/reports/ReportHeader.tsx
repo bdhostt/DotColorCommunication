@@ -35,7 +35,7 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
   const companyEmail = profile.emails?.[0] || 'info@dotcom.com.bd';
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs mb-6">
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
       {/* Screen action bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 print:hidden">
         <div>

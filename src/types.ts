@@ -70,10 +70,19 @@ export interface CompanyProfile {
   qrCodeValue?: string;
   bankName?: string;
   bankAccount?: string;
+  bankAccountTitle?: string;
   bankBranch?: string;
   routingNumber?: string;
   bkashNagadNumber?: string;
+  nagadNumber?: string;
+  rocketNumber?: string;
   bankingNotes?: string;
+  paymentGatewayProvider?: 'none' | 'sslcommerz' | 'bkash_pgw' | 'shurjopay' | 'aamarpay';
+  paymentGatewayMode?: 'sandbox' | 'live';
+  paymentGatewayStoreId?: string;
+  paymentGatewayApiKey?: string;
+  paymentGatewaySecret?: string;
+  paymentGatewayIsEnabled?: boolean;
   padTopMarginMm?: number;
   
   // Dynamic Factory Details
@@ -415,7 +424,7 @@ export interface UserRole {
 export interface StaffMember {
   id: string;
   name: string;
-  nameBn: string;
+  nameBn?: string;
   role: StaffRole;
   roleBn: string;
   location: 'Office' | 'Factory' | 'Both';

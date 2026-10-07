@@ -35,6 +35,7 @@ import {
   Upload,
   Image as ImageIcon,
   QrCode,
+  Lock,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
@@ -72,6 +73,17 @@ export const CompanyProfileModule: React.FC = () => {
     activeStaff.role === 'admin' ||
     (activeStaff.roleTitle && (activeStaff.roleTitle.toLowerCase().includes('director') || activeStaff.roleTitle.toLowerCase().includes('admin'))) ||
     Boolean(checkPermission && checkPermission('settings.view'));
+
+  const canManagePayments =
+    !activeStaff ||
+    (activeStaff.role || '').toLowerCase().includes('admin') ||
+    (activeStaff.role || '').toLowerCase().includes('director') ||
+    (activeStaff.name || '').toLowerCase().includes('super admin') ||
+    Boolean(
+      checkPermission &&
+        (checkPermission('settings.manage_payments') ||
+          checkPermission('settings.view'))
+    );
 
   const [isFullEditorOpen, setIsFullEditorOpen] = useState(false);
   const [activeEditorTab, setActiveEditorTab] = useState<'general' | 'premises' | 'services' | 'banking'>('general');
@@ -1139,47 +1151,89 @@ export const CompanyProfileModule: React.FC = () => {
             <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/20">
               Official Banking Credentials
             </span>
-            <button
-              type="button"
-              onClick={() => handleOpenFullEditor('banking')}
-              className="text-xs text-slate-400 hover:text-white flex items-center gap-1 px-2 py-0.5 rounded hover:bg-slate-800 transition-colors"
-            >
-              <Edit2 className="w-3 h-3 text-amber-400" />
-              <span>{language === 'bn' ? 'এডিট করুন' : 'Edit'}</span>
-            </button>
+            {canManagePayments ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'settings' }));
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent('open-payment-settings'));
+                    }, 60);
+                  }}
+                  className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 px-2.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer font-bold border border-emerald-500/30"
+                  title="Manage Payment Gateway & Methods in Settings"
+                >
+                  <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{language === 'bn' ? 'পেমেন্ট গেটওয়ে সেটিংস ➔' : 'Payment Gateway Settings ➔'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenFullEditor('banking')}
+                  className="text-xs text-slate-400 hover:text-white flex items-center gap-1 px-2 py-0.5 rounded hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <Edit2 className="w-3 h-3 text-amber-400" />
+                  <span>{language === 'bn' ? 'এডিট' : 'Edit'}</span>
+                </button>
+              </div>
+            ) : (
+              <span className="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+                🔒 Protected
+              </span>
+            )}
           </div>
           <h4 className="text-base font-bold text-white mt-2">
             Payment & Accounts Information
           </h4>
           <p className="text-xs text-slate-300 max-w-xl">
-            {profile.bankingNotes || 'Clients can transfer invoices via BRAC Bank, bKash Merchant, or Cash counters.'}
+            {profile.bankingNotes || 'Clients can transfer invoices via City Bank PLC, bKash Merchant, or Cash counters.'}
           </p>
         </div>
 
-        <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 text-xs space-y-1.5 w-full md:w-auto min-w-[300px]">
-          <div className="flex justify-between">
-            <span className="text-slate-400">Bank:</span>
-            <span className="font-bold text-white">{profile.bankName}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-400">Account No:</span>
-            <span className="font-mono font-bold text-amber-400">{profile.bankAccount}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-400">Branch:</span>
-            <span className="font-semibold text-slate-200">{profile.bankBranch}</span>
-          </div>
-          {profile.routingNumber && (
+        {canManagePayments ? (
+          <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 text-xs space-y-1.5 w-full md:w-auto min-w-[300px]">
             <div className="flex justify-between">
-              <span className="text-slate-400">Routing / SWIFT:</span>
-              <span className="font-mono text-slate-300">{profile.routingNumber}</span>
+              <span className="text-slate-400">Bank:</span>
+              <span className="font-bold text-white">{profile.bankName || 'Not Set'}</span>
             </div>
-          )}
-          <div className="flex justify-between pt-1 border-t border-slate-700">
-            <span className="text-slate-400">bKash / Nagad:</span>
-            <span className="font-bold text-pink-400">{profile.bkashNagadNumber || profile.phone}</span>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Account No:</span>
+              <span className="font-mono font-bold text-amber-400">{profile.bankAccount || '---'}</span>
+            </div>
+            {profile.bankAccountTitle && (
+              <div className="flex justify-between">
+                <span className="text-slate-400">Account Title:</span>
+                <span className="font-semibold text-slate-300">{profile.bankAccountTitle}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-slate-400">Branch:</span>
+              <span className="font-semibold text-slate-200">{profile.bankBranch || '---'}</span>
+            </div>
+            {profile.routingNumber && (
+              <div className="flex justify-between">
+                <span className="text-slate-400">Routing / SWIFT:</span>
+                <span className="font-mono text-slate-300">{profile.routingNumber}</span>
+              </div>
+            )}
+            <div className="flex justify-between pt-1 border-t border-slate-700">
+              <span className="text-slate-400">bKash / Nagad:</span>
+              <span className="font-bold text-pink-400">{profile.bkashNagadNumber || profile.phone}</span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 text-xs space-y-1.5 w-full md:w-auto min-w-[300px] text-center py-4">
+            <Lock className="w-5 h-5 text-amber-400 mx-auto mb-1" />
+            <span className="font-bold text-slate-200 block">
+              {language === 'bn' ? 'সংরক্ষিত ব্যাংকিং ও পেমেন্ট তথ্য' : 'Restricted Banking Information'}
+            </span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">
+              {language === 'bn'
+                ? 'শুধুমাত্র সুপার অ্যাডমিন ও অনুমতিপ্রাপ্ত অ্যাকাউন্টিং স্টাফের জন্য।'
+                : 'Accessible only by Super Admin & authorized staff.'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ============================================================ */}
@@ -1255,18 +1309,20 @@ export const CompanyProfileModule: React.FC = () => {
                 <span>{language === 'bn' ? 'সার্ভিস ক্যাপাবিলিটিস' : '3. Services & Catalog'}</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveEditorTab('banking')}
-                className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
-                  activeEditorTab === 'banking'
-                    ? 'border-amber-600 text-amber-700 bg-white'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <CreditCard className="w-4 h-4 text-emerald-600" />
-                <span>{language === 'bn' ? 'ব্যাংক ও পেমেন্ট' : '4. Banking & Accounts'}</span>
-              </button>
+              {canManagePayments && (
+                <button
+                  type="button"
+                  onClick={() => setActiveEditorTab('banking')}
+                  className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                    activeEditorTab === 'banking'
+                      ? 'border-amber-600 text-amber-700 bg-white'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <CreditCard className="w-4 h-4 text-emerald-600" />
+                  <span>{language === 'bn' ? 'ব্যাংক ও পেমেন্ট' : '4. Banking & Accounts'}</span>
+                </button>
+              )}
             </div>
 
             {/* Modal Body */}
@@ -1780,7 +1836,7 @@ export const CompanyProfileModule: React.FC = () => {
               )}
 
               {/* TAB 4: BANKING & PAYMENTS */}
-              {activeEditorTab === 'banking' && (
+              {activeEditorTab === 'banking' && canManagePayments && (
                 <div className="space-y-4 text-xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>

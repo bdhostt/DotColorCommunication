@@ -393,7 +393,7 @@ export const ReportModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 print:max-w-none print:p-0 print:m-0 space-y-5">
       {/* Top Filter & Module Bar (Screen Only) */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs print:hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -515,9 +515,9 @@ export const ReportModule: React.FC = () => {
       </div>
 
       {/* Main Layout: Sidebar of Reports on Left + Active Report Canvas on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Left Side: Report Selection Index (Screen Only) */}
-        <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-3 shadow-2xs space-y-3 print:hidden">
+        <div className="lg:col-span-4 xl:col-span-3 bg-white rounded-xl border border-slate-200 p-3 shadow-2xs space-y-3 print:hidden sticky top-20 self-start">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
             <input
@@ -529,7 +529,7 @@ export const ReportModule: React.FC = () => {
             />
           </div>
 
-          <div className="space-y-1 max-h-[700px] overflow-y-auto pr-1">
+          <div className="space-y-1 max-h-[calc(100vh-160px)] overflow-y-auto pr-1">
             {filteredReportsList.map((r, idx) => {
               const isSelected = r.id === activeReportId;
               const Icon = r.icon;
@@ -581,7 +581,7 @@ export const ReportModule: React.FC = () => {
         </div>
 
         {/* Right Side: Active Report Workspace */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-8 xl:col-span-9 space-y-5 min-w-0">
           {/* Header Component with official letterhead & export buttons */}
           <ReportHeader
             titleEn={activeReport.titleEn}
