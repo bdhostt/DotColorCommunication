@@ -734,92 +734,101 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                  <th className="py-3 px-4">ইনভয়েস / তারিখ</th>
-                  <th className="py-3 px-4">গ্রাহক ও প্রতিষ্ঠান</th>
-                  <th className="py-3 px-4">আইটেম ও বিবরণ</th>
-                  <th className="py-3 px-4 text-right">মোট টাকা</th>
-                  <th className="py-3 px-4 text-center">পেমেন্ট</th>
-                  <th className="py-3 px-4 text-center">কাজের অগ্রগতি</th>
-                  <th className="py-3 px-4 text-center">অ্যাকশন</th>
+                <tr className="bg-slate-50 text-[9.5px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 whitespace-nowrap">
+                  <th className="py-2 px-1.5">INVOICE / DATE</th>
+                  <th className="py-2 px-1.5">CUSTOMER & COMPANY</th>
+                  <th className="py-2 px-1.5">ITEMS & DESCRIPTION</th>
+                  <th className="py-2 px-1.5 text-right">TOTAL AMOUNT</th>
+                  <th className="py-2 px-1.5 text-center">PAYMENT</th>
+                  <th className="py-2 px-1.5 text-center">WORK STATUS</th>
+                  <th className="py-2 px-1.5 text-center">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredInvoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div className="font-extrabold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                    <td className="py-1.5 px-1.5 whitespace-nowrap">
+                      <div className="font-bold text-slate-900 flex items-center gap-1 flex-nowrap text-[10px]">
                         <span>{inv.invoiceNo}</span>
                         {inv.referenceNo && (
-                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                          <span className="text-[8px] font-bold text-indigo-700 bg-indigo-50 px-1 py-0 rounded border border-indigo-200">
                             Ref: {inv.referenceNo}
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                        <Calendar className="w-3 h-3 text-slate-400" />
-                        {inv.date}
+                      <div className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5">
+                        <Calendar className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                        <span>{inv.date}</span>
                         {inv.warehouseLocation && (
-                          <span className="font-semibold text-slate-700 bg-slate-100 px-1 rounded ml-1">
+                          <span className="font-semibold text-slate-600 bg-slate-100 px-1 rounded text-[8.5px]">
                             {inv.warehouseLocation}
                           </span>
                         )}
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-900">{inv.customerName}</div>
-                      <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                        <Phone className="w-3 h-3 text-slate-400" />
-                        {inv.customerPhone}
+                    <td className="py-1.5 px-1.5 max-w-[130px]">
+                      <div className="font-bold text-slate-900 truncate text-[10.5px]" title={inv.customerName}>
+                        {inv.customerName}
+                      </div>
+                      <div className="text-[9px] text-slate-500 flex items-center gap-1 truncate mt-0.5">
+                        <Phone className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                        <span className="truncate">{inv.customerPhone}</span>
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 max-w-xs">
-                      <div className="font-medium text-slate-800 line-clamp-1">
-                        {inv.items.map((i) => `${i.name} (x${i.qty})`).join(', ')}
+                    <td className="py-1.5 px-1.5 max-w-[150px]">
+                      <div
+                        className="font-medium text-slate-800 truncate text-[10px]"
+                        title={`${inv.items.map((i) => `${i.name} (x${i.qty})`).join(', ')}${inv.jobSpecs ? ` • ${inv.jobSpecs}` : ''}`}
+                      >
+                        <span>{inv.items.map((i) => `${i.name} (x${i.qty})`).join(', ')}</span>
+                        {inv.jobSpecs && (
+                          <span className="text-[9px] text-amber-700 italic ml-1 font-normal">
+                            • {inv.jobSpecs}
+                          </span>
+                        )}
                       </div>
-                      {inv.jobSpecs && (
-                        <div className="text-[10px] text-amber-700 italic truncate mt-0.5">
-                          {inv.jobSpecs}
-                        </div>
-                      )}
                     </td>
 
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="font-black text-slate-900 text-sm">
+                    <td className="py-1.5 px-1.5 text-right whitespace-nowrap">
+                      <div className="font-black text-slate-900 text-[10.5px]">
                         {profile.currencySymbol}
                         {inv.grandTotal.toLocaleString()}
                       </div>
                       {inv.dueAmount > 0 && (
-                        <div className="text-[11px] font-bold text-rose-600">
-                          {language === 'bn' ? 'বকেয়া: ' : 'Due: '}
-                          {profile.currencySymbol}
-                          {inv.dueAmount.toLocaleString()}
+                        <div className="text-[9px] font-bold text-rose-600">
+                          Due: {profile.currencySymbol}{inv.dueAmount.toLocaleString()}
                         </div>
                       )}
                     </td>
 
-                    <td className="py-3.5 px-4 text-center">
-                      <span
-                        className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                          inv.paymentStatus === 'Paid'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : inv.paymentStatus === 'Partial'
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                            : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}
-                      >
-                        {inv.paymentStatus}
-                      </span>
-                      <div className="text-[10px] text-slate-500 mt-0.5">{inv.paymentMethod}</div>
+                    <td className="py-1.5 px-1.5 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
+                        <span
+                          className={`inline-block px-1.5 py-0.2 rounded-full text-[8.5px] font-extrabold ${
+                            inv.paymentStatus === 'Paid'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : inv.paymentStatus === 'Partial'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}
+                        >
+                          {inv.paymentStatus}
+                        </span>
+                        {inv.paymentMethod && (
+                          <span className="text-[8.5px] text-slate-500 font-medium">
+                            {inv.paymentMethod}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
-                    <td className="py-3.5 px-4 text-center">
+                    <td className="py-1.5 px-1.5 text-center whitespace-nowrap">
                       <select
                         value={inv.productionStatus}
                         onChange={(e) => updateProductionStatus(inv.id, e.target.value)}
-                        className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700"
+                        className="px-1 py-0 bg-slate-50 border border-slate-200 rounded text-[9px] font-semibold text-slate-700 h-5 w-[84px] cursor-pointer focus:outline-hidden"
                       >
                         {productionStatuses.map((st) => (
                           <option key={st} value={st}>
@@ -829,9 +838,9 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                       </select>
                     </td>
 
-                    <td className="py-3.5 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        {/* Printer Select Dropdown (Matches status dropdown style) */}
+                    <td className="py-1.5 px-1.5 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-0.5 whitespace-nowrap">
+                        {/* Printer Select Dropdown (Ultra-compact) */}
                         <select
                           defaultValue=""
                           onChange={(e) => {
@@ -847,34 +856,26 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                               onOpenInvoiceModal(inv.id, 'invoice', { autoPrint: false });
                             }
                           }}
-                          className="px-2 py-1 bg-amber-50 hover:bg-amber-100/80 text-amber-950 border border-amber-300 rounded-lg text-[11px] font-bold cursor-pointer transition-colors shadow-2xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
-                          title={language === 'bn' ? 'প্রিন্ট অপশন সিলেক্ট করুন' : 'Select print option'}
+                          className="px-1 py-0 h-5 w-[62px] bg-amber-50 hover:bg-amber-100/90 text-amber-950 border border-amber-300 rounded text-[8.5px] font-bold cursor-pointer transition-colors shadow-2xs focus:outline-hidden"
+                          title="Select print option"
                         >
                           <option value="" disabled>
-                            {language === 'bn' ? '🖨️ প্রিন্ট করুন ▼' : '🖨️ Print ▼'}
+                            Print ▾
                           </option>
-                          <option value="pos">
-                            {language === 'bn' ? '🧾 ৮০মিমি POS / KOT স্লিপ' : '🧾 80mm POS / KOT Slip'}
-                          </option>
-                          <option value="a4">
-                            {language === 'bn' ? '📄 A4 সাধারণ ইনভয়েস' : '📄 A4 Standard Invoice'}
-                          </option>
-                          <option value="pad">
-                            {language === 'bn' ? '📑 লেটারহেড প্যাড প্রিন্ট' : '📑 Letterhead Pad Print'}
-                          </option>
-                          <option value="preview">
-                            {language === 'bn' ? '👁️ প্রিভিউ ও এডিট' : '👁️ Preview & Edit'}
-                          </option>
+                          <option value="pos">🧾 80mm POS Slip</option>
+                          <option value="a4">📄 A4 Invoice</option>
+                          <option value="pad">📑 Letterhead Pad</option>
+                          <option value="preview">👁️ Preview & Edit</option>
                         </select>
 
                         {/* View / Preview Invoice Modal */}
                         <button
                           type="button"
                           onClick={() => onOpenInvoiceModal(inv.id, 'invoice', { autoPrint: false })}
-                          className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
-                          title={language === 'bn' ? 'ইনভয়েস প্রিভিউ ও বিস্তারিত দেখুন' : 'View / Preview Invoice'}
+                          className="w-5 h-5 p-0.5 flex items-center justify-center text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded border border-slate-200 transition-colors cursor-pointer"
+                          title="View Invoice"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-2.5 h-2.5" />
                         </button>
 
                         {/* Edit Invoice */}
@@ -894,30 +895,30 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                             setInvItemPrice(1000);
                             setInvSelectedProductId('');
                           }}
-                          className="p-1.5 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-slate-200 transition-colors"
+                          className="w-5 h-5 p-0.5 flex items-center justify-center text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded border border-slate-200 transition-colors cursor-pointer"
                           title="Edit Invoice"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-2.5 h-2.5" />
                         </button>
 
                         {/* Delivery Challan */}
                         <button
                           type="button"
                           onClick={() => onOpenChallanModal(inv.id)}
-                          className="p-1.5 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-slate-200 transition-colors"
+                          className="w-5 h-5 p-0.5 flex items-center justify-center text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded border border-slate-200 transition-colors cursor-pointer"
                           title="Generate Delivery Challan"
                         >
-                          <Truck className="w-3.5 h-3.5" />
+                          <Truck className="w-2.5 h-2.5" />
                         </button>
 
                         {/* Delete Invoice */}
                         <button
                           type="button"
                           onClick={() => setInvoiceToDelete(inv)}
-                          className="p-1.5 text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors"
+                          className="w-5 h-5 p-0.5 flex items-center justify-center text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded border border-slate-200 transition-colors cursor-pointer"
                           title="Delete Invoice"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-2.5 h-2.5" />
                         </button>
 
                         {/* Collect Payment */}
@@ -928,10 +929,10 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                               setPaymentModalInvoice(inv);
                               setCollectAmount(inv.dueAmount);
                             }}
-                            className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 text-[10px] font-bold"
+                            className="h-5 px-1 py-0 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded border border-emerald-300 text-[8.5px] font-bold whitespace-nowrap cursor-pointer transition-colors"
                             title="Collect Due Payment"
                           >
-                            +জমা
+                            +Pay
                           </button>
                         )}
                       </div>
@@ -976,94 +977,84 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                  <th className="py-3 px-4">{language === 'bn' ? 'কোটেশন নং / মেয়াদ' : 'Quote No / Validity'}</th>
-                  <th className="py-3 px-4">{language === 'bn' ? 'গ্রাহক ও প্রতিষ্ঠান' : 'Customer & Company'}</th>
-                  <th className="py-3 px-4">{language === 'bn' ? 'আইটেম ও বিবরণ' : 'Items & Specs'}</th>
-                  <th className="py-3 px-4 text-right">{language === 'bn' ? 'মোট কোটেশন' : 'Total Quote'}</th>
-                  <th className="py-3 px-4 text-center">{language === 'bn' ? 'স্ট্যাটাস' : 'Status'}</th>
-                  <th className="py-3 px-4 text-center">{language === 'bn' ? 'অ্যাকশন' : 'Actions'}</th>
+                <tr className="bg-slate-50 text-[9.5px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 whitespace-nowrap">
+                  <th className="py-2 px-1.5">QUOTE NO / VALIDITY</th>
+                  <th className="py-2 px-1.5">CUSTOMER & COMPANY</th>
+                  <th className="py-2 px-1.5">ITEMS & SPECS</th>
+                  <th className="py-2 px-1.5 text-right">TOTAL QUOTE</th>
+                  <th className="py-2 px-1.5 text-center">STATUS</th>
+                  <th className="py-2 px-1.5 text-center">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {quotations.map((q) => (
                   <tr key={q.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div className="font-extrabold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                    <td className="py-1.5 px-1.5 whitespace-nowrap">
+                      <div className="font-bold text-slate-900 flex items-center gap-1 flex-nowrap text-[10px]">
                         <span>{q.quoteNo}</span>
                         {q.referenceNo && (
-                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                          <span className="text-[8px] font-bold text-indigo-700 bg-indigo-50 px-1 py-0 rounded border border-indigo-200">
                             Ref: {q.referenceNo}
                           </span>
                         )}
                         <span
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                          className={`text-[8px] font-bold px-1 py-0 rounded border ${
                             q.quoteType === 'Custom'
                               ? 'bg-purple-50 text-purple-700 border-purple-200'
                               : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           }`}
                         >
-                          {q.quoteType === 'Custom'
-                            ? language === 'bn'
-                              ? 'কাস্টম'
-                              : 'Custom'
-                            : language === 'bn'
-                            ? 'সেলস'
-                            : 'Sales'}
+                          {q.quoteType || 'Sales'}
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                        <Calendar className="w-3 h-3 text-slate-400" />
-                        <span>
-                          {language === 'bn' ? 'মেয়াদ:' : 'Valid until:'} {q.validUntil}
-                        </span>
+                      <div className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5">
+                        <Calendar className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                        <span>Valid until: {q.validUntil}</span>
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-900">
+                    <td className="py-1.5 px-1.5 max-w-[130px]">
+                      <div className="font-bold text-slate-900 truncate text-[10.5px]" title={`${q.customerCompany ? `${q.customerCompany} - ` : ''}${q.customerName}`}>
                         {q.customerCompany ? `${q.customerCompany} - ` : ''}
                         {q.customerName}
                       </div>
-                      <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                        <Phone className="w-3 h-3 text-slate-400" />
-                        {q.customerPhone}
+                      <div className="text-[9px] text-slate-500 flex items-center gap-1 truncate mt-0.5">
+                        <Phone className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                        <span className="truncate">{q.customerPhone}</span>
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 max-w-xs">
+                    <td className="py-1.5 px-1.5 max-w-[150px]">
                       <div
-                        className="font-medium text-slate-800 line-clamp-1"
-                        title={q.items.map((i) => `${i.name} (x${i.qty} ${i.unit || ''})`).join(', ')}
+                        className="font-medium text-slate-800 truncate text-[10px]"
+                        title={`${q.items.map((i) => `${i.name} (x${i.qty} ${i.unit || ''})`).join(', ')}${q.notes ? ` • ${q.notes}` : ''}`}
                       >
-                        {q.items.map((i) => `${i.name} (x${i.qty} ${i.unit || ''})`).join(', ')}
+                        <span>{q.items.map((i) => `${i.name} (x${i.qty} ${i.unit || ''})`).join(', ')}</span>
+                        {q.notes && (
+                          <span className="text-[9px] text-slate-500 italic ml-1 font-normal">
+                            • {q.notes}
+                          </span>
+                        )}
                       </div>
-                      {q.notes && (
-                        <div className="text-[10px] text-slate-500 italic truncate mt-0.5" title={q.notes}>
-                          {q.notes}
-                        </div>
-                      )}
                     </td>
 
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="font-black text-slate-900 text-sm">
+                    <td className="py-1.5 px-1.5 text-right whitespace-nowrap">
+                      <div className="font-black text-slate-900 text-[10.5px]">
                         {profile.currencySymbol}
                         {q.grandTotal.toLocaleString()}
                       </div>
                       {q.discountValue || q.discount ? (
-                        <div className="text-[10px] text-slate-500">
-                          {language === 'bn' ? 'ছাড়: ' : 'Disc: '}
-                          {profile.currencySymbol}
-                          {(q.discountValue || q.discount || 0).toLocaleString()}
+                        <div className="text-[9px] text-slate-500">
+                          Disc: {profile.currencySymbol}{(q.discountValue || q.discount || 0).toLocaleString()}
                         </div>
                       ) : null}
                     </td>
 
-                    <td className="py-3.5 px-4 text-center">
+                    <td className="py-1.5 px-1.5 text-center whitespace-nowrap">
                       <select
                         value={q.status}
                         onChange={(e) => updateQuotationStatus(q.id, e.target.value as any)}
-                        className={`text-[10px] font-black px-2.5 py-1 rounded-lg border cursor-pointer focus:outline-hidden transition-all ${
+                        className={`text-[8.5px] font-bold px-1.5 py-0 rounded border cursor-pointer focus:outline-hidden transition-all h-5 ${
                           q.status === 'Approved'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
                             : q.status === 'Sent'
@@ -1073,21 +1064,21 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                             : 'bg-slate-100 text-slate-700 border-slate-300'
                         }`}
                       >
-                        <option value="Sent">{language === 'bn' ? 'Pending / Sent' : 'Pending / Sent'}</option>
-                        <option value="Approved">{language === 'bn' ? 'Approved' : 'Approved'}</option>
-                        <option value="Declined">{language === 'bn' ? 'Declined' : 'Declined'}</option>
-                        <option value="Draft">{language === 'bn' ? 'Draft' : 'Draft'}</option>
+                        <option value="Sent">Pending / Sent</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Declined">Declined</option>
+                        <option value="Draft">Draft</option>
                       </select>
                       {q.status === 'Approved' && q.isConverted && (
-                        <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-emerald-600 mt-1">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>{language === 'bn' ? 'ইনভয়েস কনভার্টেড' : 'Converted'}</span>
+                        <div className="flex items-center justify-center gap-1 text-[8.5px] font-bold text-emerald-600 mt-0.5">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          <span>Converted</span>
                         </div>
                       )}
                     </td>
 
-                    <td className="py-3.5 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                    <td className="py-1.5 px-1.5 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-0.5 whitespace-nowrap">
                         {/* Printer Select Dropdown */}
                         <select
                           defaultValue=""
@@ -1104,34 +1095,26 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                               onOpenInvoiceModal(q.id, 'invoice', { autoPrint: false });
                             }
                           }}
-                          className="px-2 py-1 bg-amber-50 hover:bg-amber-100/80 text-amber-950 border border-amber-300 rounded-lg text-[11px] font-bold cursor-pointer transition-colors shadow-2xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
-                          title={language === 'bn' ? 'কোটেশন প্রিন্ট অপশন সিলেক্ট করুন' : 'Select quote print option'}
+                          className="px-1 py-0 h-5 w-[62px] bg-amber-50 hover:bg-amber-100/90 text-amber-950 border border-amber-300 rounded text-[8.5px] font-bold cursor-pointer transition-colors shadow-2xs focus:outline-hidden"
+                          title="Select quote print option"
                         >
                           <option value="" disabled>
-                            {language === 'bn' ? '🖨️ প্রিন্ট করুন ▼' : '🖨️ Print ▼'}
+                            Print ▾
                           </option>
-                          <option value="pos">
-                            {language === 'bn' ? '🧾 ৮০মিমি POS থার্মাল' : '🧾 80mm POS Thermal'}
-                          </option>
-                          <option value="a4">
-                            {language === 'bn' ? '📄 A4 সাধারণ কোটেশন' : '📄 A4 Standard Quote'}
-                          </option>
-                          <option value="pad">
-                            {language === 'bn' ? '📑 লেটারহেড প্যাড প্রিন্ট' : '📑 Letterhead Pad Print'}
-                          </option>
-                          <option value="preview">
-                            {language === 'bn' ? '👁️ কোটেশন প্রিভিউ' : '👁️ Quote Preview'}
-                          </option>
+                          <option value="pos">🧾 80mm POS Slip</option>
+                          <option value="a4">📄 A4 Quote</option>
+                          <option value="pad">📑 Letterhead Pad</option>
+                          <option value="preview">👁️ Quote Preview</option>
                         </select>
 
                         {/* View Preview */}
                         <button
                           type="button"
                           onClick={() => onOpenInvoiceModal(q.id, 'invoice', { autoPrint: false })}
-                          className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
-                          title={language === 'bn' ? 'কোটেশন প্রিভিউ দেখুন' : 'View Quote Preview'}
+                          className="w-5 h-5 p-0.5 flex items-center justify-center text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded border border-slate-200 transition-colors cursor-pointer"
+                          title="View Quote Preview"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-2.5 h-2.5" />
                         </button>
 
                         {/* Edit Button if not converted to invoice */}
@@ -1157,14 +1140,14 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                               setAddedQuoteItems(q.items || []);
                               setShowNewQuoteModal(true);
                             }}
-                            className="p-1.5 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
-                            title={language === 'bn' ? 'কোটেশন সম্পাদনা' : 'Edit Quotation'}
+                            className="w-5 h-5 p-0.5 flex items-center justify-center text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded border border-slate-200 transition-colors cursor-pointer"
+                            title="Edit Quotation"
                           >
-                            <Edit2 className="w-3.5 h-3.5" />
+                            <Edit2 className="w-2.5 h-2.5" />
                           </button>
                         )}
 
-                        {/* Convert to Invoice Button - only shown after Approved and not yet converted */}
+                        {/* Convert to Invoice Button */}
                         {q.status === 'Approved' && !q.isConverted && (
                           <button
                             type="button"
@@ -1175,11 +1158,11 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                                 onOpenInvoiceModal(inv.id);
                               }
                             }}
-                            className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-1 rounded-lg transition-colors cursor-pointer"
-                            title={language === 'bn' ? 'ইনভয়েসে রূপান্তর করুন' : 'Convert to Invoice'}
+                            className="flex items-center gap-0.5 text-[8.5px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-1 py-0 h-5 rounded transition-colors cursor-pointer"
+                            title="Convert to Invoice"
                           >
-                            <span>{language === 'bn' ? 'ইনভয়েস' : 'Convert'}</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
+                            <span>Convert</span>
+                            <ArrowRight className="w-2.5 h-2.5" />
                           </button>
                         )}
 
@@ -1187,10 +1170,10 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                         <button
                           type="button"
                           onClick={() => setQuotationToDelete(q)}
-                          className="p-1.5 text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
-                          title={language === 'bn' ? 'কোটেশন মুছুন' : 'Delete Quotation'}
+                          className="w-5 h-5 p-0.5 flex items-center justify-center text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded border border-slate-200 transition-colors cursor-pointer"
+                          title="Delete Quotation"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-2.5 h-2.5" />
                         </button>
                       </div>
                     </td>
