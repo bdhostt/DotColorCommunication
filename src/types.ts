@@ -198,7 +198,31 @@ export type ProductionStatus =
   | 'Ready'
   | 'Delivered';
 
-export type PaymentMethod = 'Cash' | 'bKash / Nagad' | 'Bank Transfer' | 'Cheque' | 'Credit Card' | 'bKash' | 'Nagad';
+export type PaymentMethodType = 'cash' | 'bank' | 'mfs' | 'gateway' | 'cheque' | 'other';
+
+export interface PaymentMethodConfig {
+  id: string;
+  name: string;
+  nameBn?: string;
+  type: PaymentMethodType;
+  accountNumber?: string;
+  accountTitle?: string;
+  bankName?: string;
+  branchName?: string;
+  routingNumber?: string;
+  provider?: 'sslcommerz' | 'bkash_pgw' | 'shurjopay' | 'aamarpay' | 'other' | string;
+  gatewayMode?: 'sandbox' | 'live';
+  storeId?: string;
+  secretKey?: string;
+  notes?: string;
+  chargePercent?: number;
+  linkedAccountId?: string;
+  isEnabled: boolean;
+  isDefault?: boolean;
+  sortOrder?: number;
+}
+
+export type PaymentMethod = string;
 
 export type PaymentStatus = 'Paid' | 'Partial' | 'Due';
 
@@ -235,11 +259,12 @@ export interface SalesInvoice {
   discountType?: 'amount' | 'percent';
   discountValue?: number;
   splitPayments?: {
-    cash: number;
-    card: number;
-    bkash: number;
-    nagad: number;
-    due: number;
+    cash?: number;
+    card?: number;
+    bkash?: number;
+    nagad?: number;
+    due?: number;
+    [key: string]: number | undefined;
   };
   isQuote?: boolean;
 }
@@ -332,6 +357,8 @@ export interface AccountBalances {
   cash: number;
   bank: number;
   mobile: number;
+  factoryCash?: number;
+  [key: string]: number | undefined;
 }
 
 export interface AccountingTransaction {

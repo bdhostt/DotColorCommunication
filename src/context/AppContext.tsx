@@ -23,6 +23,7 @@ import {
   Project,
   ProjectExpenseItem,
   ProjectSalesItem,
+  PaymentMethodConfig,
 } from '../types';
 import {
   INITIAL_COMPANY_PROFILE,
@@ -45,6 +46,7 @@ import {
   INITIAL_JOURNAL_ENTRIES,
   INITIAL_PROJECTS,
   ALL_SYSTEM_PERMISSIONS,
+  INITIAL_PAYMENT_METHODS,
 } from '../data/accountingAndConfigData';
 
 const STORAGE_KEY = 'DOT_COLOR_ERP_V1_STATE';
@@ -65,6 +67,14 @@ interface AppContextType {
   setLanguage: (lang: Language) => void;
   setActiveLocation: (loc: 'All' | 'Factory' | 'Office') => void;
   updateProfile: (profile: Partial<CompanyProfile>) => void;
+
+  // Payment Gateways & Methods
+  paymentMethods: PaymentMethodConfig[];
+  addPaymentMethod: (pm: Omit<PaymentMethodConfig, 'id'>) => PaymentMethodConfig;
+  updatePaymentMethod: (id: string, updates: Partial<PaymentMethodConfig>) => void;
+  deletePaymentMethod: (id: string) => { success: boolean; message?: string };
+  togglePaymentMethod: (id: string) => void;
+  setDefaultPaymentMethod: (id: string) => void;
 
   // Staff & RBAC
   auditLogs: AuditLogEntry[];
@@ -170,7 +180,7 @@ interface AppContextType {
   cleanModuleData: (moduleKey: 'SALES' | 'QUOTATIONS' | 'PURCHASES' | 'INVENTORY_STOCK' | 'CUSTOM_PRODUCTS' | 'TRANSACTIONS' | 'JOURNALS' | 'AUDIT_LOGS' | 'PROJECTS' | 'ALL' | 'WIPE_ALL_EXCEPT_PRODUCTS') => void;
   resetToDefaultData: () => void;
   exportDatabase: () => string;
-  importDatabase: (jsonString: string) => boolean;
+  importDatabase: (jsonString: string, isCloudSync?: boolean) => boolean;
 
   // Cloud & MongoDB Synchronization
   cloudSyncStatus: 'idle' | 'syncing' | 'synced' | 'offline' | 'error';
@@ -353,6 +363,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return safeGetLocalStorage<Project[]>(`${STORAGE_KEY}_PROJECTS`, INITIAL_PROJECTS);
   });
 
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodConfig[]>(() => {
+    return safeGetLocalStorage<PaymentMethodConfig[]>(
+      `${STORAGE_KEY}_PAYMENT_METHODS`,
+      INITIAL_PAYMENT_METHODS
+    );
+  });
+
   const [activeStaff, setActiveStaff] = useState<StaffMember>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_ACTIVE_STAFF`);
@@ -448,6 +465,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [projects]);
 
   useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY}_PAYMENT_METHODS`, JSON.stringify(paymentMethods));
+  }, [paymentMethods]);
+
+  useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_ACTIVE_STAFF`, JSON.stringify(activeStaff));
   }, [activeStaff]);
 
@@ -477,6 +498,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_IS_AUTHENTICATED`, String(isAuthenticated));
   }, [isAuthenticated]);
+
+  // Real-time synchronization across multiple open browser tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (!e.key || !e.newValue) return;
+      try {
+        if (e.key === `${STORAGE_KEY}_STAFF`) {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setStaffMembers(parsed);
+          }
+        } else if (e.key === `${STORAGE_KEY}_PAYMENT_METHODS`) {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setPaymentMethods(parsed);
+          }
+        } else if (e.key === `${STORAGE_KEY}_ROLES`) {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setUserRoles(parsed);
+          }
+        }
+      } catch {}
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const login = (staffId: string, passcode: string): { success: boolean; message: string } => {
     const staff = staffMembers.find((s) => s.id === staffId);
@@ -551,6 +600,91 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setProfile((prev) => ({ ...prev, ...updates }));
   };
 
+  // Payment Gateways & Methods Management
+  const addPaymentMethod = (pm: Omit<PaymentMethodConfig, 'id'>): PaymentMethodConfig => {
+    const newPm: PaymentMethodConfig = {
+      ...pm,
+      id: `pm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      sortOrder: paymentMethods.length + 1,
+    };
+
+    if (newPm.isDefault) {
+      setPaymentMethods((prev) => [...prev.map((p) => ({ ...p, isDefault: false })), newPm]);
+    } else {
+      setPaymentMethods((prev) => [...prev, newPm]);
+    }
+
+    addAuditLog({
+      staffId: activeStaff?.id || 'sys',
+      staffName: activeStaff?.name || 'Admin',
+      staffRole: activeStaff?.role || 'Admin',
+      location: 'All',
+      actionType: 'PROFILE_UPDATED',
+      entityType: 'Configuration',
+      refNo: newPm.id,
+      details: `Created payment gateway/method: ${newPm.name} (${newPm.type})`,
+      detailsBn: `নতুন পেমেন্ট মেথড তৈরি করা হয়েছে: ${newPm.name} (${newPm.type})`,
+    });
+
+    return newPm;
+  };
+
+  const updatePaymentMethod = (id: string, updates: Partial<PaymentMethodConfig>) => {
+    setPaymentMethods((prev) =>
+      prev.map((pm) => {
+        if (pm.id === id) {
+          return { ...pm, ...updates };
+        }
+        if (updates.isDefault) {
+          return { ...pm, isDefault: false };
+        }
+        return pm;
+      })
+    );
+  };
+
+  const deletePaymentMethod = (id: string): { success: boolean; message?: string } => {
+    const target = paymentMethods.find((p) => p.id === id);
+    if (!target) return { success: false, message: 'Payment method not found' };
+    const remaining = paymentMethods.filter((p) => p.id !== id);
+    if (remaining.length === 0) {
+      return { success: false, message: 'At least one payment method must remain active in the system.' };
+    }
+    if (target.isDefault && remaining.length > 0) {
+      remaining[0].isDefault = true;
+    }
+    setPaymentMethods(remaining);
+
+    addAuditLog({
+      staffId: activeStaff?.id || 'sys',
+      staffName: activeStaff?.name || 'Admin',
+      staffRole: activeStaff?.role || 'Admin',
+      location: 'All',
+      actionType: 'PROFILE_UPDATED',
+      entityType: 'Configuration',
+      refNo: id,
+      details: `Deleted payment method: ${target.name}`,
+      detailsBn: `পেমেন্ট মেথড মুছে ফেলা হয়েছে: ${target.name}`,
+    });
+
+    return { success: true };
+  };
+
+  const togglePaymentMethod = (id: string) => {
+    setPaymentMethods((prev) =>
+      prev.map((pm) => (pm.id === id ? { ...pm, isEnabled: !pm.isEnabled } : pm))
+    );
+  };
+
+  const setDefaultPaymentMethod = (id: string) => {
+    setPaymentMethods((prev) =>
+      prev.map((pm) => ({
+        ...pm,
+        isDefault: pm.id === id,
+      }))
+    );
+  };
+
   // Add Sales Invoice
   const addInvoice = (data: Omit<SalesInvoice, 'id' | 'invoiceNo'>): SalesInvoice => {
     const id = `inv-${Date.now()}`;
@@ -582,52 +716,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const txs: AccountingTransaction[] = [];
       const cashAcct = data.warehouseLocation === 'Factory' ? 'Factory Cash' : 'Office Cash';
 
-      if (data.splitPayments.cash > 0) {
+      if ((data.splitPayments.cash || 0) > 0) {
         txs.push({
           id: generateUniqueId('tx'),
           date: data.date,
           type: 'INCOME',
           category: 'Sales Revenue',
-          amount: data.splitPayments.cash,
+          amount: data.splitPayments.cash!,
           paymentAccount: cashAcct,
           refNo: invoiceNo,
           customerOrSupplier: data.customerName,
           description: `POS Payment: Cash (${data.paymentStatus}) - ${(data.items || []).map((i) => i.name).join(', ')}`,
         });
       }
-      if (data.splitPayments.card > 0) {
+      if ((data.splitPayments.card || 0) > 0) {
         txs.push({
           id: generateUniqueId('tx'),
           date: data.date,
           type: 'INCOME',
           category: 'Sales Revenue',
-          amount: data.splitPayments.card,
+          amount: data.splitPayments.card!,
           paymentAccount: 'BRAC Bank',
           refNo: invoiceNo,
           customerOrSupplier: data.customerName,
           description: `POS Payment: Card (${data.paymentStatus}) - ${(data.items || []).map((i) => i.name).join(', ')}`,
         });
       }
-      if (data.splitPayments.bkash > 0) {
+      if ((data.splitPayments.bkash || 0) > 0) {
         txs.push({
           id: generateUniqueId('tx'),
           date: data.date,
           type: 'INCOME',
           category: 'Sales Revenue',
-          amount: data.splitPayments.bkash,
+          amount: data.splitPayments.bkash!,
           paymentAccount: 'bKash / Nagad',
           refNo: invoiceNo,
           customerOrSupplier: data.customerName,
           description: `POS Payment: bKash (${data.paymentStatus}) - ${(data.items || []).map((i) => i.name).join(', ')}`,
         });
       }
-      if (data.splitPayments.nagad > 0) {
+      if ((data.splitPayments.nagad || 0) > 0) {
         txs.push({
           id: generateUniqueId('tx'),
           date: data.date,
           type: 'INCOME',
           category: 'Sales Revenue',
-          amount: data.splitPayments.nagad,
+          amount: data.splitPayments.nagad!,
           paymentAccount: 'bKash / Nagad',
           refNo: invoiceNo,
           customerOrSupplier: data.customerName,
@@ -635,23 +769,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
 
+      // Check any dynamic split payment keys
+      Object.entries(data.splitPayments).forEach(([key, val]) => {
+        if (!['cash', 'card', 'bkash', 'nagad', 'due'].includes(key) && typeof val === 'number' && val > 0) {
+          const matchedPm = paymentMethods.find((p) => p.id === key || p.name.toLowerCase() === key.toLowerCase());
+          let acctName = 'Office Cash';
+          if (matchedPm) {
+            if (matchedPm.type === 'bank' || matchedPm.type === 'cheque') acctName = matchedPm.bankName || 'BRAC Bank';
+            else if (matchedPm.type === 'mfs' || matchedPm.type === 'gateway') acctName = matchedPm.name || 'bKash / Nagad';
+            else if (matchedPm.type === 'cash') acctName = cashAcct;
+            else acctName = matchedPm.name;
+          } else {
+            acctName = key;
+          }
+          txs.push({
+            id: generateUniqueId('tx'),
+            date: data.date,
+            type: 'INCOME',
+            category: 'Sales Revenue',
+            amount: val,
+            paymentAccount: acctName,
+            refNo: invoiceNo,
+            customerOrSupplier: data.customerName,
+            description: `Payment: ${matchedPm?.name || key} (${data.paymentStatus}) - ${(data.items || []).map((i) => i.name).join(', ')}`,
+          });
+        }
+      });
+
       if (txs.length > 0) {
         setTransactions((prev) => ensureUniqueTransactions([...txs, ...prev]));
       }
     } else if (data.paidAmount > 0) {
-      const accountMap: Record<string, AccountingTransaction['paymentAccount']> = {
-        'Cash': data.warehouseLocation === 'Factory' ? 'Factory Cash' : 'Office Cash',
-        'bKash / Nagad': 'bKash / Nagad',
-        'Bank Transfer': 'BRAC Bank',
-        'Cheque': 'BRAC Bank',
-      };
+      let resolvedAcct = 'Office Cash';
+      const pmObj = paymentMethods.find((p) => p.name.toLowerCase() === (data.paymentMethod || '').toLowerCase());
+      if (pmObj) {
+        if (pmObj.type === 'bank' || pmObj.type === 'cheque') resolvedAcct = pmObj.bankName || 'BRAC Bank';
+        else if (pmObj.type === 'mfs' || pmObj.type === 'gateway') resolvedAcct = pmObj.name || 'bKash / Nagad';
+        else if (pmObj.type === 'cash') resolvedAcct = data.warehouseLocation === 'Factory' ? 'Factory Cash' : 'Office Cash';
+        else resolvedAcct = pmObj.name;
+      } else {
+        const legacyMap: Record<string, string> = {
+          'Cash': data.warehouseLocation === 'Factory' ? 'Factory Cash' : 'Office Cash',
+          'bKash / Nagad': 'bKash / Nagad',
+          'bKash': 'bKash / Nagad',
+          'Nagad': 'bKash / Nagad',
+          'Bank Transfer': 'BRAC Bank',
+          'Credit Card': 'BRAC Bank',
+          'Cheque': 'BRAC Bank',
+        };
+        resolvedAcct = legacyMap[data.paymentMethod] || 'Office Cash';
+      }
+
       const newTx: AccountingTransaction = {
         id: generateUniqueId('tx'),
         date: data.date,
         type: 'INCOME',
         category: 'Sales Revenue',
         amount: data.paidAmount,
-        paymentAccount: accountMap[data.paymentMethod] || 'Office Cash',
+        paymentAccount: resolvedAcct,
         refNo: invoiceNo,
         customerOrSupplier: data.customerName,
         description: `Sales Invoice payment (${data.paymentStatus}) - ${(data.items || []).map((i) => i.name).join(', ')}`,
@@ -759,13 +934,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // Add transaction with guaranteed unique ID
+    const matchedPm = paymentMethods.find(
+      (p) => p.id === method || p.name.toLowerCase() === (method || '').toLowerCase()
+    );
+    let resolvedAccount = 'Office Cash';
+    if (matchedPm?.linkedAccountId) {
+      resolvedAccount = matchedPm.linkedAccountId;
+    } else {
+      const lower = (method || '').toLowerCase();
+      if (lower.includes('bank') || lower.includes('card') || lower.includes('cheque')) {
+        resolvedAccount = 'BRAC Bank';
+      } else if (lower.includes('bkash') || lower.includes('nagad') || lower.includes('rocket') || lower.includes('upay')) {
+        resolvedAccount = 'bKash / Nagad';
+      }
+    }
+
     const newTx: AccountingTransaction = {
       id: generateUniqueId('tx'),
       date: new Date().toISOString().slice(0, 10),
       type: 'INCOME',
       category: 'Client Due Collection',
       amount: amount,
-      paymentAccount: method === 'Cash' ? 'Office Cash' : method === 'Bank Transfer' ? 'BRAC Bank' : 'bKash / Nagad',
+      paymentAccount: resolvedAccount,
       refNo: targetInv.invoiceNo,
       customerOrSupplier: targetInv.customerName,
       description: `Due collection against invoice ${targetInv.invoiceNo}`,
@@ -1753,7 +1943,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `staff-${Date.now()}`,
       isActive: staff.isActive ?? true,
     };
-    setStaffMembers((prev) => [...prev, newStaff]);
+    setStaffMembers((prev) => {
+      const next = [...prev, newStaff];
+      try {
+        localStorage.setItem(`${STORAGE_KEY}_STAFF`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
     addAuditLog({
       staffId: activeStaff.id,
       staffName: activeStaff.name,
@@ -1765,13 +1961,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       detailsBn: `নতুন ইউজার ও স্টাফ যুক্ত করা হয়েছে: ${newStaff.nameBn || newStaff.name} (${newStaff.roleBn || newStaff.role})`,
       severity: 'info',
     });
+    // Immediately ensure cloud sync is active and flush to MongoDB Atlas
+    isCloudLoadedRef.current = true;
+    setTimeout(() => {
+      syncWithCloud();
+    }, 100);
     return newStaff;
   };
 
   const updateStaffMember = (id: string, updates: Partial<StaffMember>) => {
     let updatedActiveMember: StaffMember | null = null;
-    setStaffMembers((prev) =>
-      prev.map((s) => {
+    setStaffMembers((prev) => {
+      const next = prev.map((s) => {
         if (s.id === id) {
           const updated = { ...s, ...updates };
           if (activeStaff?.id === id) {
@@ -1780,8 +1981,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return updated;
         }
         return s;
-      })
-    );
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY}_STAFF`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
 
     if (updatedActiveMember) {
       setActiveStaff(updatedActiveMember);
@@ -1798,6 +2003,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       detailsBn: `ইউজার ও স্টাফ তথ্য বা রোল আপডেট করা হয়েছে (${id})`,
       severity: 'info',
     });
+
+    isCloudLoadedRef.current = true;
+    setTimeout(() => {
+      syncWithCloud();
+    }, 100);
   };
 
   const deleteStaffMember = (id: string): { success: boolean; message?: string } => {
@@ -1816,7 +2026,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (staff.id === activeStaff.id) {
       return { success: false, message: 'You cannot delete the currently logged-in active user. Please switch user profile first.' };
     }
-    setStaffMembers((prev) => prev.filter((s) => s.id !== id));
+    setStaffMembers((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      try {
+        localStorage.setItem(`${STORAGE_KEY}_STAFF`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
     addAuditLog({
       staffId: activeStaff.id,
       staffName: activeStaff.name,
@@ -1828,6 +2044,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       detailsBn: `ইউজার মুছে ফেলা হয়েছে: ${staff.nameBn || staff.name}`,
       severity: 'warning',
     });
+
+    isCloudLoadedRef.current = true;
+    setTimeout(() => {
+      syncWithCloud();
+    }, 100);
+
     return { success: true };
   };
 
@@ -2284,35 +2506,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setProductCategories(INITIAL_PRODUCT_CATEGORIES);
     setJournalEntries(INITIAL_JOURNAL_ENTRIES);
     setProjects(INITIAL_PROJECTS);
+    setPaymentMethods(INITIAL_PAYMENT_METHODS);
     localStorage.clear();
   };
 
+  // Keep an always-up-to-date ref of state to avoid stale closure bugs during debounced/async cloud sync
+  const latestStateRef = React.useRef({
+    profile,
+    products,
+    customers,
+    suppliers,
+    invoices,
+    quotations,
+    purchaseOrders,
+    transactions,
+    stockMovements,
+    auditLogs,
+    staffMembers,
+    userRoles,
+    chartOfAccounts,
+    expenseHeads,
+    productCategories,
+    journalEntries,
+    projects,
+    paymentMethods,
+  });
+
+  latestStateRef.current = {
+    profile,
+    products,
+    customers,
+    suppliers,
+    invoices,
+    quotations,
+    purchaseOrders,
+    transactions,
+    stockMovements,
+    auditLogs,
+    staffMembers,
+    userRoles,
+    chartOfAccounts,
+    expenseHeads,
+    productCategories,
+    journalEntries,
+    projects,
+    paymentMethods,
+  };
+
   const exportDatabase = (): string => {
+    const s = latestStateRef.current;
     const state = {
-      profile,
-      products,
-      customers,
-      suppliers,
-      invoices,
-      quotations,
-      purchaseOrders,
-      transactions,
-      stockMovements,
-      auditLogs,
-      staffMembers,
-      userRoles,
-      chartOfAccounts,
-      expenseHeads,
-      productCategories,
-      journalEntries,
-      projects,
+      profile: s.profile,
+      products: s.products,
+      customers: s.customers,
+      suppliers: s.suppliers,
+      invoices: s.invoices,
+      quotations: s.quotations,
+      purchaseOrders: s.purchaseOrders,
+      transactions: s.transactions,
+      stockMovements: s.stockMovements,
+      auditLogs: s.auditLogs,
+      staffMembers: s.staffMembers,
+      userRoles: s.userRoles,
+      chartOfAccounts: s.chartOfAccounts,
+      expenseHeads: s.expenseHeads,
+      productCategories: s.productCategories,
+      journalEntries: s.journalEntries,
+      projects: s.projects,
+      paymentMethods: s.paymentMethods,
       exportedAt: new Date().toISOString(),
       version: '2.0',
     };
     return JSON.stringify(state, null, 2);
   };
 
-  const importDatabase = (jsonString: string): boolean => {
+  const importDatabase = (jsonString: string, isCloudSync: boolean = false): boolean => {
     try {
       const data = JSON.parse(jsonString);
       if (data.profile) {
@@ -2331,17 +2599,138 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         setProfile(data.profile);
       }
-      if (data.products) setProducts(data.products);
-      if (data.customers) setCustomers(data.customers);
-      if (data.suppliers) setSuppliers(data.suppliers);
-      if (data.invoices) setInvoices(data.invoices);
-      if (data.quotations) setQuotations(data.quotations);
-      if (data.purchaseOrders) setPurchaseOrders(data.purchaseOrders);
-      if (data.transactions) setTransactions(ensureUniqueTransactions(data.transactions));
-      if (data.stockMovements) setStockMovements(data.stockMovements);
-      if (data.auditLogs) setAuditLogs(data.auditLogs);
+      if (data.products) {
+        if (isCloudSync && Array.isArray(data.products)) {
+          setProducts((prev) => {
+            const map = new Map<string, ProductItem>();
+            data.products.forEach((p: ProductItem) => map.set(p.id, p));
+            prev.forEach((p) => { if (!map.has(p.id)) map.set(p.id, p); });
+            return Array.from(map.values());
+          });
+        } else {
+          setProducts(data.products);
+        }
+      }
+      if (data.customers) {
+        if (isCloudSync && Array.isArray(data.customers)) {
+          setCustomers((prev) => {
+            const map = new Map<string, Customer>();
+            data.customers.forEach((c: Customer) => map.set(c.id, c));
+            prev.forEach((c) => { if (!map.has(c.id)) map.set(c.id, c); });
+            return Array.from(map.values());
+          });
+        } else {
+          setCustomers(data.customers);
+        }
+      }
+      if (data.suppliers) {
+        if (isCloudSync && Array.isArray(data.suppliers)) {
+          setSuppliers((prev) => {
+            const map = new Map<string, Supplier>();
+            data.suppliers.forEach((s: Supplier) => map.set(s.id, s));
+            prev.forEach((s) => { if (!map.has(s.id)) map.set(s.id, s); });
+            return Array.from(map.values());
+          });
+        } else {
+          setSuppliers(data.suppliers);
+        }
+      }
+      if (data.invoices) {
+        if (isCloudSync && Array.isArray(data.invoices)) {
+          setInvoices((prev) => {
+            const map = new Map<string, SalesInvoice>();
+            data.invoices.forEach((inv: SalesInvoice) => map.set(inv.id, inv));
+            prev.forEach((inv) => { if (!map.has(inv.id)) map.set(inv.id, inv); });
+            return Array.from(map.values());
+          });
+        } else {
+          setInvoices(data.invoices);
+        }
+      }
+      if (data.quotations) {
+        if (isCloudSync && Array.isArray(data.quotations)) {
+          setQuotations((prev) => {
+            const map = new Map<string, Quotation>();
+            data.quotations.forEach((q: Quotation) => map.set(q.id, q));
+            prev.forEach((q) => { if (!map.has(q.id)) map.set(q.id, q); });
+            return Array.from(map.values());
+          });
+        } else {
+          setQuotations(data.quotations);
+        }
+      }
+      if (data.purchaseOrders) {
+        if (isCloudSync && Array.isArray(data.purchaseOrders)) {
+          setPurchaseOrders((prev) => {
+            const map = new Map<string, PurchaseOrder>();
+            data.purchaseOrders.forEach((po: PurchaseOrder) => map.set(po.id, po));
+            prev.forEach((po) => { if (!map.has(po.id)) map.set(po.id, po); });
+            return Array.from(map.values());
+          });
+        } else {
+          setPurchaseOrders(data.purchaseOrders);
+        }
+      }
+      if (data.transactions) {
+        if (isCloudSync && Array.isArray(data.transactions)) {
+          setTransactions((prev) => {
+            const map = new Map<string, AccountingTransaction>();
+            data.transactions.forEach((tx: AccountingTransaction) => map.set(tx.id, tx));
+            prev.forEach((tx) => { if (!map.has(tx.id)) map.set(tx.id, tx); });
+            return ensureUniqueTransactions(Array.from(map.values()));
+          });
+        } else {
+          setTransactions(ensureUniqueTransactions(data.transactions));
+        }
+      }
+      if (data.stockMovements) {
+        if (isCloudSync && Array.isArray(data.stockMovements)) {
+          setStockMovements((prev) => {
+            const map = new Map<string, StockMovement>();
+            data.stockMovements.forEach((sm: StockMovement) => map.set(sm.id, sm));
+            prev.forEach((sm) => { if (!map.has(sm.id)) map.set(sm.id, sm); });
+            return Array.from(map.values());
+          });
+        } else {
+          setStockMovements(data.stockMovements);
+        }
+      }
+      if (data.auditLogs) {
+        if (isCloudSync && Array.isArray(data.auditLogs)) {
+          setAuditLogs((prev) => {
+            const map = new Map<string, AuditLogEntry>();
+            data.auditLogs.forEach((a: AuditLogEntry) => map.set(a.id, a));
+            prev.forEach((a) => { if (!map.has(a.id)) map.set(a.id, a); });
+            return Array.from(map.values());
+          });
+        } else {
+          setAuditLogs(data.auditLogs);
+        }
+      }
       if (data.staffMembers && Array.isArray(data.staffMembers) && data.staffMembers.length > 0) {
-        setStaffMembers(data.staffMembers);
+        if (isCloudSync) {
+          setStaffMembers((prevLocal) => {
+            const cloudList: StaffMember[] = data.staffMembers;
+            const mergedMap = new Map<string, StaffMember>();
+            cloudList.forEach((s) => mergedMap.set(s.id, s));
+            let hasLocalUnsynced = false;
+            prevLocal.forEach((s) => {
+              if (!mergedMap.has(s.id)) {
+                mergedMap.set(s.id, s);
+                hasLocalUnsynced = true;
+              }
+            });
+            const merged = Array.from(mergedMap.values());
+            if (hasLocalUnsynced) {
+              setTimeout(() => {
+                syncWithCloud();
+              }, 400);
+            }
+            return merged;
+          });
+        } else {
+          setStaffMembers(data.staffMembers);
+        }
         setActiveStaff((prev) => {
           if (prev?.id) {
             const found = data.staffMembers.find((s: StaffMember) => s.id === prev.id);
@@ -2350,12 +2739,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return prev;
         });
       }
-      if (data.userRoles) setUserRoles(data.userRoles);
+      if (data.userRoles) {
+        if (isCloudSync && Array.isArray(data.userRoles)) {
+          setUserRoles((prev) => {
+            const map = new Map<string, UserRole>();
+            data.userRoles.forEach((r: UserRole) => map.set(r.id, r));
+            prev.forEach((r) => { if (!map.has(r.id)) map.set(r.id, r); });
+            return Array.from(map.values());
+          });
+        } else {
+          setUserRoles(data.userRoles);
+        }
+      }
       if (data.chartOfAccounts) setChartOfAccounts(data.chartOfAccounts);
       if (data.expenseHeads) setExpenseHeads(data.expenseHeads);
       if (data.productCategories) setProductCategories(data.productCategories);
       if (data.journalEntries) setJournalEntries(data.journalEntries);
       if (data.projects) setProjects(data.projects);
+      if (data.paymentMethods && Array.isArray(data.paymentMethods) && data.paymentMethods.length > 0) {
+        if (isCloudSync) {
+          setPaymentMethods((prev) => {
+            const map = new Map<string, PaymentMethodConfig>();
+            data.paymentMethods.forEach((p: PaymentMethodConfig) => map.set(p.id, p));
+            prev.forEach((p) => { if (!map.has(p.id)) map.set(p.id, p); });
+            return Array.from(map.values());
+          });
+        } else {
+          setPaymentMethods(data.paymentMethods);
+        }
+      }
       return true;
     } catch (e) {
       console.error('Import error', e);
@@ -2388,7 +2800,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const stateData = await stateRes.json();
             if (stateData.success && stateData.data) {
               if (!isCancelled) {
-                importDatabase(JSON.stringify(stateData.data));
+                importDatabase(JSON.stringify(stateData.data), true);
                 setCloudSyncStatus('synced');
                 setLastSyncedAt(
                   stateData.updatedAt
@@ -2432,11 +2844,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const syncWithCloud = async () => {
     try {
       setCloudSyncStatus('syncing');
-      const stateJson = exportDatabase();
+      const payload = latestStateRef.current;
       const res = await fetch('/api/state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: JSON.parse(stateJson) }),
+        body: JSON.stringify({ data: payload }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -2486,6 +2898,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     productCategories,
     journalEntries,
     projects,
+    paymentMethods,
   ]);
 
   const accountBalances: AccountBalances = useMemo(() => {
@@ -2536,6 +2949,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setLanguage,
         setActiveLocation,
         updateProfile,
+        paymentMethods,
+        addPaymentMethod,
+        updatePaymentMethod,
+        deletePaymentMethod,
+        togglePaymentMethod,
+        setDefaultPaymentMethod,
         auditLogs,
         staffMembers,
         activeStaff,

@@ -7,6 +7,7 @@ import {
   CompanyProfile,
   StaffMember,
 } from '../../types';
+import { useApp } from '../../context/AppContext';
 import {
   DollarSign,
   TrendingUp,
@@ -43,6 +44,7 @@ export const SalesReports: React.FC<SalesReportsProps> = ({
   language,
 }) => {
   const isBn = language === 'bn';
+  const { paymentMethods = [] } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
 
@@ -233,15 +235,33 @@ export const SalesReports: React.FC<SalesReportsProps> = ({
   // 4. PAYMENT-WISE SALES REPORT
   // -------------------------------------------------------------
   const paymentSalesData = useMemo(() => {
-    const methods: { method: string; methodBn: string }[] = [
-      { method: 'Cash', methodBn: 'নগদ ক্যাশ' },
-      { method: 'Bank Transfer', methodBn: 'ব্যাংক ট্রান্সফার' },
-      { method: 'bKash / Nagad', methodBn: 'বিকাশ / নগদ' },
-      { method: 'Cheque', methodBn: 'চেক' },
-    ];
+    const methodMap = new Map<string, { method: string; methodBn: string }>();
 
-    return methods.map(({ method, methodBn }) => {
-      const matchingInvoices = invoices.filter((inv) => inv.paymentMethod === method);
+    (paymentMethods || []).forEach((pm) => {
+      methodMap.set(pm.name.toLowerCase(), {
+        method: pm.name,
+        methodBn: pm.nameBn || pm.name,
+      });
+    });
+
+    (invoices || []).forEach((inv) => {
+      if (inv.paymentMethod && !methodMap.has(inv.paymentMethod.toLowerCase())) {
+        methodMap.set(inv.paymentMethod.toLowerCase(), {
+          method: inv.paymentMethod,
+          methodBn: inv.paymentMethod,
+        });
+      }
+    });
+
+    const list = Array.from(methodMap.values());
+    if (list.length === 0) {
+      list.push({ method: 'Cash', methodBn: 'নগদ ক্যাশ' });
+    }
+
+    return list.map(({ method, methodBn }) => {
+      const matchingInvoices = (invoices || []).filter(
+        (inv) => (inv.paymentMethod || '').toLowerCase() === method.toLowerCase()
+      );
       const invoiceCount = matchingInvoices.length;
       const totalAmount = matchingInvoices.reduce((acc, inv) => acc + (inv.grandTotal || 0), 0);
       const paidCollected = matchingInvoices.reduce((acc, inv) => acc + (inv.paidAmount || 0), 0);
@@ -257,7 +277,7 @@ export const SalesReports: React.FC<SalesReportsProps> = ({
         collectionRate: totalAmount > 0 ? (paidCollected / totalAmount) * 100 : 0,
       };
     });
-  }, [invoices]);
+  }, [invoices, paymentMethods]);
 
   // -------------------------------------------------------------
   // 5. CUSTOMER-WISE SALES REPORT

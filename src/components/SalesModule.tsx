@@ -51,6 +51,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
     products,
     profile,
     language,
+    paymentMethods = [],
     updateProductionStatus,
     updateInvoice,
     deleteInvoice,
@@ -64,6 +65,11 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
     updateCustomer,
     deleteCustomer,
   } = useApp();
+
+  const activePaymentMethods = useMemo(() => {
+    const list = (paymentMethods || []).filter((p) => p.isEnabled);
+    return list.length > 0 ? list : [{ id: 'pm-cash', name: 'Cash', nameBn: 'নগদ গ্রহণ', type: 'cash' as const, isEnabled: true }];
+  }, [paymentMethods]);
 
   const [activeSubTab, setActiveSubTab] = useState<'invoices' | 'quotations' | 'customers'>('invoices');
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -291,7 +297,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
   // Collect Payment Modal
   const [paymentModalInvoice, setPaymentModalInvoice] = useState<SalesInvoice | null>(null);
   const [collectAmount, setCollectAmount] = useState<number>(0);
-  const [collectMethod, setCollectMethod] = useState<'Cash' | 'bKash / Nagad' | 'Bank Transfer'>('Cash');
+  const [collectMethod, setCollectMethod] = useState<string>('Cash');
 
   // New Quotation Modal
   const [showNewQuoteModal, setShowNewQuoteModal] = useState(false);
@@ -1427,12 +1433,14 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                 </label>
                 <select
                   value={collectMethod}
-                  onChange={(e) => setCollectMethod(e.target.value as any)}
+                  onChange={(e) => setCollectMethod(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium"
                 >
-                  <option value="Cash">Cash (নগদ গ্রহণ)</option>
-                  <option value="bKash / Nagad">bKash / Nagad (মোবাইল ব্যাংকিং)</option>
-                  <option value="Bank Transfer">BRAC Bank (ব্যাংক একাউন্ট)</option>
+                  {activePaymentMethods.map((pm) => (
+                    <option key={pm.id} value={pm.name}>
+                      {pm.name} {pm.nameBn ? `(${pm.nameBn})` : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

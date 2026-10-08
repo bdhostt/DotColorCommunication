@@ -35,9 +35,15 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
     products,
     profile,
     language,
+    paymentMethods = [],
     addInvoice,
     addCustomer,
   } = useApp();
+
+  const activePaymentMethods = useMemo(() => {
+    const list = (paymentMethods || []).filter((p) => p.isEnabled);
+    return list.length > 0 ? list : [{ id: 'pm-cash', name: 'Cash', nameBn: 'ক্যাশ', type: 'cash' as const, isEnabled: true }];
+  }, [paymentMethods]);
 
   // Customer Mode: 'existing' or 'new'
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing');
@@ -302,11 +308,12 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
       notes: notes.trim() || undefined,
       jobSpecs: jobSpecs.trim() || undefined,
       splitPayments: {
-        cash: paymentMethod === 'Cash' ? effectivePaid : 0,
-        card: paymentMethod === 'Credit Card' || paymentMethod === 'Bank Transfer' ? effectivePaid : 0,
-        bkash: paymentMethod === 'bKash / Nagad' ? effectivePaid : 0,
-        nagad: 0,
+        cash: paymentMethod.toLowerCase().includes('cash') ? effectivePaid : 0,
+        card: paymentMethod.toLowerCase().includes('card') || paymentMethod.toLowerCase().includes('bank') ? effectivePaid : 0,
+        bkash: paymentMethod.toLowerCase().includes('bkash') ? effectivePaid : 0,
+        nagad: paymentMethod.toLowerCase().includes('nagad') ? effectivePaid : 0,
         due: dueAmount,
+        [paymentMethod]: effectivePaid,
       },
     });
 
@@ -1136,13 +1143,16 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
               </label>
               <select
                 value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as any)}
+                onChange={(e) => setPaymentMethod(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-xs"
               >
-                <option value="Cash">Cash (ক্যাশ)</option>
-                <option value="bKash / Nagad">bKash / Nagad (বিকাশ / নগদ)</option>
-                <option value="Bank Transfer">Bank Transfer (ব্যাংক ট্রান্সফার)</option>
-                <option value="Credit Card">Credit / Debit Card</option>
+                {activePaymentMethods.map((pm) => (
+                  <option key={pm.id} value={pm.name}>
+                    {pm.name}
+                    {pm.accountNumber ? ` (${pm.accountNumber})` : ''}
+                    {pm.nameBn && language === 'bn' ? ` - ${pm.nameBn}` : ''}
+                  </option>
+                ))}
               </select>
             </div>
 

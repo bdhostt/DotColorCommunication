@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { PurchaseOrder, Supplier, PaymentMethod, PurchaseItem } from '../types';
 import {
@@ -39,6 +39,7 @@ export const SupplyChainModule: React.FC = () => {
     profile,
     language,
     accountBalances,
+    paymentMethods = [],
     addPurchaseOrder,
     updatePurchaseOrder,
     deletePurchaseOrder,
@@ -50,6 +51,11 @@ export const SupplyChainModule: React.FC = () => {
     updateSupplier,
     deleteSupplier,
   } = useApp();
+
+  const activePaymentMethods = useMemo(() => {
+    const list = (paymentMethods || []).filter((p) => p.isEnabled);
+    return list.length > 0 ? list : [{ id: 'pm-bank', name: 'Bank Transfer', nameBn: 'ব্যাংক ট্রান্সফার', type: 'bank' as const, isEnabled: true }];
+  }, [paymentMethods]);
 
   const [activeSubTab, setActiveSubTab] = useState<'orders' | 'suppliers'>('orders');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1420,13 +1426,14 @@ export const SupplyChainModule: React.FC = () => {
                     </label>
                     <select
                       value={poPaymentMethod}
-                      onChange={(e) => setPoPaymentMethod(e.target.value as any)}
+                      onChange={(e) => setPoPaymentMethod(e.target.value)}
                       className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
                     >
-                      <option value="Bank Transfer">Bank Transfer (ব্র্যাক ব্যাংক)</option>
-                      <option value="Cash">Cash (নগদ)</option>
-                      <option value="Cheque">Bank Cheque (চেক)</option>
-                      <option value="bKash / Nagad">bKash / Nagad</option>
+                      {activePaymentMethods.map((pm) => (
+                        <option key={pm.id} value={pm.name}>
+                          {pm.name} {pm.nameBn ? `(${pm.nameBn})` : ''}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -2506,16 +2513,24 @@ export const SupplyChainModule: React.FC = () => {
                       onChange={(e) => {
                         const m = e.target.value as PaymentMethod;
                         setPoPayMethod(m);
-                        if (m === 'Cash') setPoPayAccount('Office Cash');
-                        else if (m === 'Bank Transfer' || m === 'Cheque') setPoPayAccount('BRAC Bank');
-                        else if (m === 'bKash / Nagad') setPoPayAccount('bKash / Nagad');
+                        const matched = activePaymentMethods.find((p) => p.name === m);
+                        if (matched?.linkedAccountId) {
+                          setPoPayAccount(matched.linkedAccountId);
+                        } else if (m.toLowerCase().includes('cash')) {
+                          setPoPayAccount('Office Cash');
+                        } else if (m.toLowerCase().includes('bank') || m.toLowerCase().includes('brac') || m.toLowerCase().includes('cheque')) {
+                          setPoPayAccount('BRAC Bank');
+                        } else if (m.toLowerCase().includes('bkash') || m.toLowerCase().includes('nagad') || m.toLowerCase().includes('rocket')) {
+                          setPoPayAccount('bKash / Nagad');
+                        }
                       }}
                       className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-hidden"
                     >
-                      <option value="Bank Transfer">Bank Transfer (ব্যাংক)</option>
-                      <option value="Cash">Cash (নগদ)</option>
-                      <option value="bKash / Nagad">bKash / Nagad (বিকাশ / নগদ)</option>
-                      <option value="Cheque">Cheque (চেক)</option>
+                      {activePaymentMethods.map((pm) => (
+                        <option key={pm.id} value={pm.name}>
+                          {pm.name} {pm.nameBn ? `(${pm.nameBn})` : ''}
+                        </option>
+                      ))}
                     </select>
                   </div>
 

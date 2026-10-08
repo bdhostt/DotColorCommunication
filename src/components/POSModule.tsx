@@ -43,9 +43,15 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
     profile,
     language,
     activeLocation,
+    paymentMethods = [],
     addInvoice,
     addCustomer,
   } = useApp();
+
+  const activePaymentMethods = useMemo(() => {
+    const list = (paymentMethods || []).filter((p) => p.isEnabled);
+    return list.length > 0 ? list : [{ id: 'pm-cash', name: 'Cash', nameBn: 'নগদ ক্যাশ', type: 'cash' as const, isEnabled: true, isDefault: true }];
+  }, [paymentMethods]);
 
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -88,11 +94,8 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
   const [paidAmount, setPaidAmount] = useState<number | ''>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Cash');
 
-  // Split Payment Inputs State
-  const [splitCash, setSplitCash] = useState<string>('');
-  const [splitCard, setSplitCard] = useState<string>('');
-  const [splitBkash, setSplitBkash] = useState<string>('');
-  const [splitNagad, setSplitNagad] = useState<string>('');
+  // Split Payment Inputs State - Fully dynamic for all configured gateways & methods
+  const [splitAmounts, setSplitAmounts] = useState<Record<string, string>>({});
   const [splitDue, setSplitDue] = useState<string>('');
   const [warehouseLocation, setWarehouseLocation] = useState<'Factory' | 'Office'>(
     activeLocation === 'Factory' ? 'Factory' : 'Office'
@@ -163,65 +166,96 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
 
   const grandTotal = taxableAmount + effectiveVat;
 
+  // Helper for Payment Method Icons
+  const getMethodIcon = (type?: string, name: string = '') => {
+    const n = name.toLowerCase();
+    if (type === 'cash' || n.includes('cash')) return '💵';
+    if (type === 'bank' || n.includes('bank')) return '🏦';
+    if (type === 'card' || n.includes('card')) return '💳';
+    if (n.includes('bkash')) return '📱';
+    if (n.includes('nagad')) return '🍊';
+    if (n.includes('rocket')) return '🚀';
+    if (n.includes('upay')) return '📲';
+    if (type === 'gateway' || n.includes('gateway') || n.includes('ssl')) return '🌐';
+    if (type === 'cheque' || n.includes('cheque') || n.includes('check')) return '📜';
+    return '💰';
+  };
+
+  const getMethodColorClass = (type?: string, name: string = '') => {
+    const n = name.toLowerCase();
+    if (n.includes('bkash')) return { border: 'border-pink-200', bg: 'bg-pink-50/50 hover:bg-pink-100/60', text: 'text-pink-800', ring: 'focus:ring-pink-500' };
+    if (n.includes('nagad')) return { border: 'border-orange-200', bg: 'bg-orange-50/50 hover:bg-orange-100/60', text: 'text-orange-800', ring: 'focus:ring-orange-500' };
+    if (n.includes('rocket')) return { border: 'border-purple-200', bg: 'bg-purple-50/50 hover:bg-purple-100/60', text: 'text-purple-800', ring: 'focus:ring-purple-500' };
+    if (type === 'bank') return { border: 'border-sky-200', bg: 'bg-sky-50/50 hover:bg-sky-100/60', text: 'text-sky-800', ring: 'focus:ring-sky-500' };
+    if (type === 'card') return { border: 'border-blue-200', bg: 'bg-blue-50/50 hover:bg-blue-100/60', text: 'text-blue-800', ring: 'focus:ring-blue-500' };
+    if (type === 'gateway') return { border: 'border-indigo-200', bg: 'bg-indigo-50/50 hover:bg-indigo-100/60', text: 'text-indigo-800', ring: 'focus:ring-indigo-500' };
+    if (type === 'cheque') return { border: 'border-slate-200', bg: 'bg-slate-50/50 hover:bg-slate-100/60', text: 'text-slate-800', ring: 'focus:ring-slate-500' };
+    return { border: 'border-emerald-200', bg: 'bg-emerald-50/50 hover:bg-emerald-100/60', text: 'text-emerald-800', ring: 'focus:ring-emerald-500' };
+  };
+
   // Numerical values of split payments
-  const numCash = Number(splitCash) || 0;
-  const numCard = Number(splitCard) || 0;
-  const numBkash = Number(splitBkash) || 0;
-  const numNagad = Number(splitNagad) || 0;
+  const totalSplitPaid = useMemo(() => {
+    return activePaymentMethods.reduce((sum, pm) => {
+      const val = Number(splitAmounts[pm.id]) || 0;
+      return sum + val;
+    }, 0);
+  }, [activePaymentMethods, splitAmounts]);
+
   const numDue = Number(splitDue) || 0;
 
   // Reactively auto-initialize / adjust payment split when grandTotal changes
   useEffect(() => {
     if (subtotal === 0) {
-      setSplitCash('');
-      setSplitCard('');
-      setSplitBkash('');
-      setSplitNagad('');
+      setSplitAmounts({});
       setSplitDue('');
     } else {
-      // If all are blank/empty or cash equals the previous grandTotal, auto-balance
-      if (!splitCash && !splitCard && !splitBkash && !splitNagad && !splitDue) {
-        setSplitCash(grandTotal.toString());
-        setSplitCard('0');
-        setSplitBkash('0');
-        setSplitNagad('0');
+      const defaultPm = activePaymentMethods.find((p) => p.isDefault) || activePaymentMethods[0];
+      const hasAnyValue = Object.values(splitAmounts).some((v) => Number(v) > 0) || Number(splitDue) > 0;
+
+      if (!hasAnyValue) {
+        if (defaultPm) {
+          setSplitAmounts({ [defaultPm.id]: grandTotal.toString() });
+        }
         setSplitDue('0');
       } else {
         // Balance the due remainder
-        const currentPaid = numCash + numCard + numBkash + numNagad;
-        const remainder = Math.max(0, grandTotal - currentPaid);
+        const remainder = Math.max(0, grandTotal - totalSplitPaid);
         setSplitDue(remainder.toString());
       }
     }
-  }, [grandTotal]);
+  }, [grandTotal, activePaymentMethods]);
 
-  const updatePaymentField = (field: 'cash' | 'card' | 'bkash' | 'nagad' | 'due', valStr: string) => {
+  const handleSelectFullPayment = (methodId: string) => {
+    setSplitAmounts({ [methodId]: grandTotal.toString() });
+    setSplitDue('0');
+  };
+
+  const handleSelectFullDue = () => {
+    setSplitAmounts({});
+    setSplitDue(grandTotal.toString());
+  };
+
+  const handleUpdateMethodAmount = (methodId: string, valStr: string) => {
     const val = Number(valStr) || 0;
-    if (field === 'cash') {
-      setSplitCash(valStr);
-      const otherPaid = (Number(splitCard) || 0) + (Number(splitBkash) || 0) + (Number(splitNagad) || 0);
-      const remainder = Math.max(0, grandTotal - (val + otherPaid));
-      setSplitDue(remainder.toString());
-    } else if (field === 'card') {
-      setSplitCard(valStr);
-      const otherPaid = (Number(splitCash) || 0) + (Number(splitBkash) || 0) + (Number(splitNagad) || 0);
-      const remainder = Math.max(0, grandTotal - (val + otherPaid));
-      setSplitDue(remainder.toString());
-    } else if (field === 'bkash') {
-      setSplitBkash(valStr);
-      const otherPaid = (Number(splitCash) || 0) + (Number(splitCard) || 0) + (Number(splitNagad) || 0);
-      const remainder = Math.max(0, grandTotal - (val + otherPaid));
-      setSplitDue(remainder.toString());
-    } else if (field === 'nagad') {
-      setSplitNagad(valStr);
-      const otherPaid = (Number(splitCash) || 0) + (Number(splitCard) || 0) + (Number(splitBkash) || 0);
-      const remainder = Math.max(0, grandTotal - (val + otherPaid));
-      setSplitDue(remainder.toString());
-    } else if (field === 'due') {
-      setSplitDue(valStr);
-      const otherPaid = (Number(splitCard) || 0) + (Number(splitBkash) || 0) + (Number(splitNagad) || 0);
-      const remainder = Math.max(0, grandTotal - (val + otherPaid));
-      setSplitCash(remainder > 0 ? remainder.toString() : '0');
+    const nextAmounts = { ...splitAmounts, [methodId]: valStr };
+    setSplitAmounts(nextAmounts);
+
+    const otherPaid = activePaymentMethods.reduce((sum, pm) => {
+      if (pm.id === methodId) return sum;
+      return sum + (Number(nextAmounts[pm.id]) || 0);
+    }, 0);
+
+    const remainder = Math.max(0, grandTotal - (val + otherPaid));
+    setSplitDue(remainder.toString());
+  };
+
+  const handleUpdateDueAmount = (valStr: string) => {
+    setSplitDue(valStr);
+    const dueVal = Number(valStr) || 0;
+    const remainder = Math.max(0, grandTotal - dueVal);
+    const defaultPm = activePaymentMethods.find((p) => p.isDefault) || activePaymentMethods[0];
+    if (defaultPm) {
+      setSplitAmounts({ [defaultPm.id]: remainder > 0 ? remainder.toString() : '0' });
     }
   };
 
@@ -383,20 +417,27 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
       }
 
       const safeGrandTotal = Math.max(0, Number(grandTotal) || 0);
-      const finalPaid = Math.max(0, (Number(numCash) || 0) + (Number(numCard) || 0) + (Number(numBkash) || 0) + (Number(numNagad) || 0));
-      const finalDue = Math.max(0, safeGrandTotal - finalPaid);
-      const payStatus = finalDue <= 0 ? 'Paid' : finalPaid <= 0 ? 'Due' : 'Partial';
+      let calculatedTotalPaid = 0;
+      let maxPaidMethod = activePaymentMethods[0]?.name || 'Cash';
+      let maxPaidVal = -1;
+      const splitPaymentsRecord: Record<string, number> = {};
 
-      // Find largest paid method to set main paymentMethod field
-      let finalMethod: PaymentMethod = 'Cash';
-      const maxPaid = Math.max(numCash, numCard, numBkash, numNagad);
-      if (maxPaid === numCash) {
-        finalMethod = 'Cash';
-      } else if (maxPaid === numCard) {
-        finalMethod = 'Bank Transfer';
-      } else if (maxPaid === numBkash || maxPaid === numNagad) {
-        finalMethod = 'bKash / Nagad';
-      }
+      activePaymentMethods.forEach((pm) => {
+        const val = Number(splitAmounts[pm.id]) || 0;
+        splitPaymentsRecord[pm.id] = val;
+        splitPaymentsRecord[pm.name.toLowerCase().replace(/\s+/g, '_')] = val;
+        splitPaymentsRecord[pm.name] = val;
+        calculatedTotalPaid += val;
+        if (val > maxPaidVal && val > 0) {
+          maxPaidVal = val;
+          maxPaidMethod = pm.name;
+        }
+      });
+
+      const finalPaid = Math.max(0, calculatedTotalPaid);
+      const finalDue = Math.max(0, safeGrandTotal - finalPaid);
+      splitPaymentsRecord['due'] = finalDue;
+      const payStatus = finalDue <= 0 ? 'Paid' : finalPaid <= 0 ? 'Due' : 'Partial';
 
       const newInvoice = addInvoice({
         date: new Date().toISOString().slice(0, 10),
@@ -418,19 +459,13 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
         grandTotal: safeGrandTotal,
         paidAmount: finalPaid,
         dueAmount: finalDue,
-        paymentMethod: finalMethod,
+        paymentMethod: maxPaidVal > 0 ? maxPaidMethod : (activePaymentMethods[0]?.name || 'Cash'),
         paymentStatus: payStatus,
         productionStatus: 'Queued',
         warehouseLocation,
         notes: notes || undefined,
         jobSpecs: jobSpecs || undefined,
-        splitPayments: {
-          cash: Number(numCash) || 0,
-          card: Number(numCard) || 0,
-          bkash: Number(numBkash) || 0,
-          nagad: Number(numNagad) || 0,
-          due: finalDue,
-        },
+        splitPayments: splitPaymentsRecord,
       });
 
       // Reset Cart and state
@@ -441,10 +476,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
       setVatAmountInput(0);
       setVatType('percent');
       setPaidAmount('');
-      setSplitCash('');
-      setSplitCard('');
-      setSplitBkash('');
-      setSplitNagad('');
+      setSplitAmounts({});
       setSplitDue('');
       setNotes('');
       setJobSpecs('');
@@ -1089,88 +1121,43 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
               </div>
 
               {/* ⚡ 1-CLICK FULL PAYMENT SHORTCUT */}
-              <div className="space-y-3 pt-3 border-t border-slate-200">
-                <div className="text-[10px] font-black tracking-wider text-slate-500 uppercase flex items-center gap-1">
-                  <span className="text-amber-500 text-xs">⚡</span>
-                  <span>{language === 'bn' ? '১-ক্লিক সম্পূর্ণ পেমেন্ট শর্টকাট' : '1-CLICK FULL PAYMENT SHORTCUT'}</span>
+              <div className="space-y-2 pt-3 border-t border-slate-200">
+                <div className="text-[10px] font-black tracking-wider text-slate-500 uppercase flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <span className="text-amber-500 text-xs">⚡</span>
+                    <span>{language === 'bn' ? '১-ক্লিক সম্পূর্ণ পেমেন্ট শর্টকাট' : '1-CLICK FULL PAYMENT SHORTCUT'}</span>
+                  </div>
+                  <span className="text-[9px] font-medium text-slate-400">
+                    {activePaymentMethods.length} {language === 'bn' ? 'টি মেথড সক্রিয়' : 'active methods'}
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-5 gap-1">
-                  {/* Full Cash */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSplitCash(grandTotal.toString());
-                      setSplitCard('0');
-                      setSplitBkash('0');
-                      setSplitNagad('0');
-                      setSplitDue('0');
-                    }}
-                    className="flex flex-col items-center justify-center p-2 rounded-xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 text-emerald-800 transition-all font-bold text-[10px] space-y-1"
-                  >
-                    <span className="text-xs">💵</span>
-                    <span className="leading-tight text-center">Full Cash</span>
-                  </button>
-
-                  {/* Full bKash */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSplitCash('0');
-                      setSplitCard('0');
-                      setSplitBkash(grandTotal.toString());
-                      setSplitNagad('0');
-                      setSplitDue('0');
-                    }}
-                    className="flex flex-col items-center justify-center p-2 rounded-xl border border-pink-200 bg-pink-50/40 hover:bg-pink-50 text-pink-800 transition-all font-bold text-[10px] space-y-1"
-                  >
-                    <span className="text-xs">📱</span>
-                    <span className="leading-tight text-center">Full bKash</span>
-                  </button>
-
-                  {/* Full Nagad */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSplitCash('0');
-                      setSplitCard('0');
-                      setSplitBkash('0');
-                      setSplitNagad(grandTotal.toString());
-                      setSplitDue('0');
-                    }}
-                    className="flex flex-col items-center justify-center p-2 rounded-xl border border-orange-200 bg-orange-50/40 hover:bg-orange-50 text-orange-800 transition-all font-bold text-[10px] space-y-1"
-                  >
-                    <span className="text-xs">🍊</span>
-                    <span className="leading-tight text-center">Full Nagad</span>
-                  </button>
-
-                  {/* Full Card */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSplitCash('0');
-                      setSplitCard(grandTotal.toString());
-                      setSplitBkash('0');
-                      setSplitNagad('0');
-                      setSplitDue('0');
-                    }}
-                    className="flex flex-col items-center justify-center p-2 rounded-xl border border-blue-200 bg-blue-50/40 hover:bg-blue-50 text-blue-800 transition-all font-bold text-[10px] space-y-1"
-                  >
-                    <span className="text-xs">💳</span>
-                    <span className="leading-tight text-center">Full Card</span>
-                  </button>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5 max-h-36 overflow-y-auto p-0.5">
+                  {activePaymentMethods.map((pm) => {
+                    const icon = getMethodIcon(pm.type, pm.name);
+                    const color = getMethodColorClass(pm.type, pm.name);
+                    return (
+                      <button
+                        key={`quick-${pm.id}`}
+                        type="button"
+                        onClick={() => handleSelectFullPayment(pm.id)}
+                        className={`flex flex-col items-center justify-center p-2 rounded-xl border ${color.border} ${color.bg} ${color.text} transition-all font-bold text-[10px] space-y-1 shadow-2xs hover:shadow-xs`}
+                        title={`Full ${pm.name}`}
+                      >
+                        <span className="text-xs">{icon}</span>
+                        <span className="leading-tight text-center truncate max-w-full px-1">
+                          Full {pm.name}
+                        </span>
+                      </button>
+                    );
+                  })}
 
                   {/* Full Due */}
                   <button
                     type="button"
-                    onClick={() => {
-                      setSplitCash('0');
-                      setSplitCard('0');
-                      setSplitBkash('0');
-                      setSplitNagad('0');
-                      setSplitDue(grandTotal.toString());
-                    }}
-                    className="flex flex-col items-center justify-center p-2 rounded-xl border border-amber-200 bg-amber-50/40 hover:bg-amber-50 text-amber-800 transition-all font-bold text-[10px] space-y-1"
+                    onClick={handleSelectFullDue}
+                    className="flex flex-col items-center justify-center p-2 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-100/60 text-amber-800 transition-all font-bold text-[10px] space-y-1 shadow-2xs hover:shadow-xs"
+                    title="Full Due"
                   >
                     <span className="text-xs">👤</span>
                     <span className="leading-tight text-center">Full Due</span>
@@ -1180,74 +1167,34 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
 
               {/* Split Payment Fields */}
               <div className="space-y-3 pt-2">
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  {/* Cash */}
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 flex items-center gap-1">
-                      <span className="text-xs">💵</span>
-                      <span>{language === 'bn' ? 'নগদ (Cash)' : 'Cash'}</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      placeholder="0"
-                      value={splitCash}
-                      onChange={(e) => updatePaymentField('cash', e.target.value)}
-                      className="w-full px-2.5 py-1.5 border border-slate-200 bg-slate-50 rounded-xl font-mono font-bold text-xs text-slate-800 focus:bg-white focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                    />
-                  </div>
-
-                  {/* Card */}
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 flex items-center gap-1">
-                      <span className="text-xs">💳</span>
-                      <span>{language === 'bn' ? 'কার্ড (Card)' : 'Card'}</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      placeholder="0"
-                      value={splitCard}
-                      onChange={(e) => updatePaymentField('card', e.target.value)}
-                      className="w-full px-2.5 py-1.5 border border-slate-200 bg-slate-50 rounded-xl font-mono font-bold text-xs text-slate-800 focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
-                    />
-                  </div>
-
-                  {/* bKash */}
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 flex items-center gap-1">
-                      <span className="text-xs">📱</span>
-                      <span>{language === 'bn' ? 'বিকাশ (bKash)' : 'bKash'}</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      placeholder="0"
-                      value={splitBkash}
-                      onChange={(e) => updatePaymentField('bkash', e.target.value)}
-                      className="w-full px-2.5 py-1.5 border border-slate-200 bg-slate-50 rounded-xl font-mono font-bold text-xs text-slate-800 focus:bg-white focus:ring-1 focus:ring-pink-500 focus:outline-hidden"
-                    />
-                  </div>
-
-                  {/* Nagad */}
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 flex items-center gap-1">
-                      <span className="text-xs">🍊</span>
-                      <span>{language === 'bn' ? 'নগদ (Nagad)' : 'Nagad'}</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      placeholder="0"
-                      value={splitNagad}
-                      onChange={(e) => updatePaymentField('nagad', e.target.value)}
-                      className="w-full px-2.5 py-1.5 border border-slate-200 bg-slate-50 rounded-xl font-mono font-bold text-xs text-slate-800 focus:bg-white focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
-                    />
-                  </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] max-h-52 overflow-y-auto p-0.5">
+                  {activePaymentMethods.map((pm) => {
+                    const icon = getMethodIcon(pm.type, pm.name);
+                    const color = getMethodColorClass(pm.type, pm.name);
+                    const currentVal = splitAmounts[pm.id] ?? '';
+                    return (
+                      <div key={`split-${pm.id}`} className="space-y-1">
+                        <label className="font-bold text-slate-700 flex items-center gap-1 justify-between">
+                          <span className="flex items-center gap-1 truncate">
+                            <span className="text-xs">{icon}</span>
+                            <span className="truncate">{language === 'bn' ? (pm.nameBn || pm.name) : pm.name}</span>
+                          </span>
+                          {pm.isDefault && (
+                            <span className="text-[9px] bg-slate-100 text-slate-500 px-1 py-0.2 rounded font-normal shrink-0">Default</span>
+                          )}
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          placeholder="0"
+                          value={currentVal}
+                          onChange={(e) => handleUpdateMethodAmount(pm.id, e.target.value)}
+                          className={`w-full px-2.5 py-1.5 border border-slate-200 bg-slate-50 rounded-xl font-mono font-bold text-xs text-slate-800 focus:bg-white focus:ring-1 ${color.ring} focus:outline-hidden`}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Due Amount input */}
@@ -1266,7 +1213,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                     min="0"
                     placeholder="0"
                     value={splitDue}
-                    onChange={(e) => updatePaymentField('due', e.target.value)}
+                    onChange={(e) => handleUpdateDueAmount(e.target.value)}
                     className="w-full px-3 py-2 border border-amber-300 bg-amber-50/20 rounded-xl font-mono font-extrabold text-xs text-rose-700 focus:bg-white focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
                   />
                 </div>
@@ -1276,7 +1223,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                   <span className="text-slate-500">
                     {language === 'bn' ? 'মোট সংগৃহীত পেমেন্ট:' : 'Total Received:'}{' '}
                     <strong className="text-slate-800 text-xs font-mono font-bold">
-                      {profile.currencySymbol}{(numCash + numCard + numBkash + numNagad).toLocaleString()}
+                      {profile.currencySymbol}{totalSplitPaid.toLocaleString()}
                     </strong>
                   </span>
                   <span className="text-slate-500">

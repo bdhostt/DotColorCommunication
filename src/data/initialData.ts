@@ -467,7 +467,7 @@ export const INITIAL_PRODUCTS: ProductItem[] = [
     unitPrice: 0,
     costPrice: 9200,
     stockFactory: 14,
-    stockOffice: 2,
+    stockOffice: 2, 
     minStockAlert: 4,
     description: 'Original grade eco-solvent ink for high resolution printing',
   },

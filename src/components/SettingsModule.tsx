@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { StaffMember, UserRole, StaffRole } from '../types';
+import { StaffMember, UserRole, StaffRole, PaymentMethodConfig, PaymentMethodType } from '../types';
 import { ALL_SYSTEM_PERMISSIONS, ALL_SYSTEM_PERMISSIONS as SYSTEM_PERMISSIONS } from '../data/accountingAndConfigData';
 import {
   Users,
@@ -40,6 +40,10 @@ import {
   Save,
   Copy,
   Check,
+  Star,
+  Banknote,
+  X,
+  Wallet,
 } from 'lucide-react';
 
 export const SettingsModule: React.FC = () => {
@@ -51,6 +55,13 @@ export const SettingsModule: React.FC = () => {
     language,
     profile,
     updateProfile,
+    paymentMethods = [],
+    accountBalances,
+    addPaymentMethod,
+    updatePaymentMethod,
+    deletePaymentMethod,
+    togglePaymentMethod,
+    setDefaultPaymentMethod,
     addAuditLog,
     addStaffMember,
     updateStaffMember,
@@ -70,6 +81,7 @@ export const SettingsModule: React.FC = () => {
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [showUserPassword, setShowUserPassword] = useState(false);
+  const [userSaveSuccess, setUserSaveSuccess] = useState<string | null>(null);
   const [userFormData, setUserFormData] = useState({
     name: '',
     nameBn: '',
@@ -168,6 +180,164 @@ export const SettingsModule: React.FC = () => {
     window.addEventListener('open-payment-settings', handleOpenPayment);
     return () => window.removeEventListener('open-payment-settings', handleOpenPayment);
   }, []);
+
+  // Dynamic Payment Method State & Handlers
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState<PaymentMethodConfig | null>(null);
+  const [paymentFilterType, setPaymentFilterType] = useState<string>('ALL');
+  const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
+  const [paymentViewMode, setPaymentViewMode] = useState<'table' | 'cards'>('table');
+  const [deleteConfirmPaymentId, setDeleteConfirmPaymentId] = useState<string | null>(null);
+
+  const filteredPaymentMethods = useMemo(() => {
+    return paymentMethods
+      .filter((pm) => {
+        if (paymentFilterType === 'ALL') return true;
+        if (paymentFilterType === 'cash') return pm.type === 'cash';
+        if (paymentFilterType === 'mfs') return pm.type === 'mfs';
+        if (paymentFilterType === 'bank') return pm.type === 'bank';
+        if (paymentFilterType === 'credit') return pm.name.toLowerCase().includes('due') || pm.name.toLowerCase().includes('credit') || pm.type === 'cheque';
+        if (paymentFilterType === 'gateway') return pm.type === 'gateway' || pm.name.toLowerCase().includes('qr') || pm.name.toLowerCase().includes('ssl');
+        return true;
+      })
+      .filter((pm) => {
+        if (!paymentSearchQuery.trim()) return true;
+        const q = paymentSearchQuery.toLowerCase().trim();
+        return (
+          pm.name.toLowerCase().includes(q) ||
+          (pm.nameBn && pm.nameBn.toLowerCase().includes(q)) ||
+          (pm.accountNumber && pm.accountNumber.toLowerCase().includes(q)) ||
+          (pm.bankName && pm.bankName.toLowerCase().includes(q)) ||
+          (pm.provider && pm.provider.toLowerCase().includes(q))
+        );
+      });
+  }, [paymentMethods, paymentFilterType, paymentSearchQuery]);
+  const [paymentMethodFormData, setPaymentMethodFormData] = useState<Partial<PaymentMethodConfig>>({
+    name: '',
+    nameBn: '',
+    type: 'bank',
+    bankName: '',
+    accountNumber: '',
+    accountTitle: '',
+    branchName: '',
+    routingNumber: '',
+    provider: 'sslcommerz',
+    gatewayMode: 'sandbox',
+    storeId: '',
+    secretKey: '',
+    chargePercent: 0,
+    notes: '',
+    isEnabled: true,
+    isDefault: false,
+  });
+
+  const handleOpenAddPaymentMethod = (presetType: PaymentMethodType = 'bank') => {
+    setEditingPaymentMethod(null);
+    setPaymentMethodFormData({
+      name:
+        presetType === 'bank'
+          ? 'Corporate Bank'
+          : presetType === 'mfs'
+          ? 'bKash Merchant'
+          : presetType === 'gateway'
+          ? 'SSLCommerz Gateway'
+          : presetType === 'cash'
+          ? 'Cash Counter'
+          : presetType === 'cheque'
+          ? 'Bank Cheque'
+          : 'New Payment Method',
+      nameBn:
+        presetType === 'bank'
+          ? 'কর্পোরেট ব্যাংক হিসাব'
+          : presetType === 'mfs'
+          ? 'বিকাশ মার্চেন্ট'
+          : presetType === 'gateway'
+          ? 'অনলাইন পেমেন্ট গেটওয়ে'
+          : presetType === 'cash'
+          ? 'ক্যাশ কাউন্টার'
+          : presetType === 'cheque'
+          ? 'ব্যাংক চেক'
+          : 'পেমেন্ট মেথড',
+      type: presetType,
+      bankName: presetType === 'bank' ? 'City Bank PLC' : '',
+      accountNumber: '',
+      accountTitle: profile.name || 'Dot Color Communication',
+      branchName: '',
+      routingNumber: '',
+      provider: presetType === 'gateway' ? 'sslcommerz' : presetType === 'mfs' ? 'bKash' : '',
+      gatewayMode: 'sandbox',
+      storeId: '',
+      secretKey: '',
+      chargePercent: 0,
+      notes: '',
+      isEnabled: true,
+      isDefault: (paymentMethods || []).length === 0,
+    });
+    setShowPaymentModal(true);
+  };
+
+  const handleOpenEditPaymentMethod = (pm: PaymentMethodConfig) => {
+    setEditingPaymentMethod(pm);
+    setPaymentMethodFormData({
+      name: pm.name,
+      nameBn: pm.nameBn || '',
+      type: pm.type,
+      bankName: pm.bankName || '',
+      accountNumber: pm.accountNumber || '',
+      accountTitle: pm.accountTitle || '',
+      branchName: pm.branchName || '',
+      routingNumber: pm.routingNumber || '',
+      provider: pm.provider || '',
+      gatewayMode: pm.gatewayMode || 'sandbox',
+      storeId: pm.storeId || '',
+      secretKey: pm.secretKey || '',
+      chargePercent: pm.chargePercent || 0,
+      notes: pm.notes || '',
+      isEnabled: pm.isEnabled !== false,
+      isDefault: pm.isDefault || false,
+    });
+    setShowPaymentModal(true);
+  };
+
+  const handleSavePaymentMethod = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentMethodFormData.name?.trim()) return;
+
+    if (editingPaymentMethod) {
+      updatePaymentMethod(editingPaymentMethod.id, paymentMethodFormData);
+    } else {
+      addPaymentMethod({
+        name: paymentMethodFormData.name.trim(),
+        nameBn: paymentMethodFormData.nameBn?.trim(),
+        type: paymentMethodFormData.type || 'bank',
+        bankName: paymentMethodFormData.bankName?.trim(),
+        accountNumber: paymentMethodFormData.accountNumber?.trim(),
+        accountTitle: paymentMethodFormData.accountTitle?.trim(),
+        branchName: paymentMethodFormData.branchName?.trim(),
+        routingNumber: paymentMethodFormData.routingNumber?.trim(),
+        provider: paymentMethodFormData.provider?.trim(),
+        gatewayMode: paymentMethodFormData.gatewayMode || 'sandbox',
+        storeId: paymentMethodFormData.storeId?.trim(),
+        secretKey: paymentMethodFormData.secretKey?.trim(),
+        chargePercent: Number(paymentMethodFormData.chargePercent) || 0,
+        notes: paymentMethodFormData.notes?.trim(),
+        isEnabled: paymentMethodFormData.isEnabled !== false,
+        isDefault: Boolean(paymentMethodFormData.isDefault),
+      });
+    }
+
+    setShowPaymentModal(false);
+    setPaymentSaveSuccess(true);
+    setTimeout(() => setPaymentSaveSuccess(false), 3000);
+  };
+
+  const handleDeletePaymentMethod = (id: string) => {
+    const res = deletePaymentMethod(id);
+    if (!res.success && res.message) {
+      alert(res.message);
+    }
+    setDeleteConfirmPaymentId(null);
+  };
 
   const handleSavePaymentSettings = (e: React.FormEvent) => {
     e.preventDefault();
@@ -288,6 +458,13 @@ export const SettingsModule: React.FC = () => {
         isActive: userFormData.isActive,
       });
     }
+
+    setUserSaveSuccess(
+      language === 'bn'
+        ? `ইউজার "${userFormData.name.trim()}" সফলভাবে সংরক্ষিত হয়েছে এবং ক্লাউড ডাটাবেজে সিঙ্ক করা হয়েছে!`
+        : `User "${userFormData.name.trim()}" saved and synced to cloud database successfully!`
+    );
+    setTimeout(() => setUserSaveSuccess(null), 4000);
 
     setShowUserModal(false);
   };
@@ -544,7 +721,7 @@ export const SettingsModule: React.FC = () => {
             <CreditCard className="w-4 h-4 text-emerald-500" />
             <span>{language === 'bn' ? 'পেমেন্ট গেটওয়ে ও মেথড' : 'Payment Gateways & Methods'}</span>
             <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800">
-              {paymentFormData.paymentGatewayIsEnabled ? 'Active API' : 'Bank & MFS'}
+              {paymentMethods.filter((p) => p.isEnabled).length} Active
             </span>
           </button>
         )}
@@ -608,6 +785,13 @@ export const SettingsModule: React.FC = () => {
               </button>
             )}
           </div>
+
+          {userSaveSuccess && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-semibold text-emerald-800 shadow-2xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{userSaveSuccess}</span>
+            </div>
+          )}
 
           {/* Users & Staff Table List */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
@@ -967,34 +1151,38 @@ export const SettingsModule: React.FC = () => {
 
       {/* TAB: PAYMENT GATEWAYS & METHODS */}
       {activeTab === 'payment-gateways' && canManagePayments && (
-        <form onSubmit={handleSavePaymentSettings} className="space-y-6">
-          {/* Header Banner */}
-          <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white p-5 rounded-3xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
-                <CreditCard className="w-4 h-4" />
-                <span>{language === 'bn' ? 'পেমেন্ট গেটওয়ে ও মেথড কনফিগারেশন' : 'Payment Gateways & Banking Configuration'}</span>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
-                  {language === 'bn' ? '🔒 সুরক্ষিত অ্যাক্সেস' : '🔒 RBAC Protected'}
-                </span>
+        <div className="space-y-6">
+          {/* Header Banner - Exactly matching Image 1 */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/70 flex items-center justify-center shrink-0 shadow-2xs">
+                <CreditCard className="w-5 h-5 text-amber-600" />
               </div>
-              <h3 className="text-xl sm:text-2xl font-black mt-1">
-                {language === 'bn' ? 'অফিসিয়াল পেমেন্ট মেথড ও অনলাইন গেটওয়ে' : 'Enterprise Payment Methods & Online Gateway'}
-              </h3>
-              <p className="text-xs text-slate-300 mt-1 max-w-2xl">
-                {language === 'bn'
-                  ? 'ইনভয়েস পেমেন্ট, অনলাইন গেটওয়ে এপিআই (SSLCommerz, bKash PGW), ব্যাংক অ্যাকাউন্ট ও বিকাশ/নগদ মার্চেন্ট নাম্বার কনফিগার করুন। শুধুমাত্র সুপার অ্যাডমিন ও অনুমতিপ্রাপ্ত অ্যাকাউন্টিং স্টাফ এই তথ্য দেখতে ও পরিবর্তন করতে পারে।'
-                  : 'Configure corporate bank accounts, mobile merchant wallets (bKash/Nagad), and automated online payment gateway APIs. Only Super Admin and authorized staff can view or update.'}
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
+                    Payment Methods & Digital Channels
+                  </h3>
+                  <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold border border-emerald-200">
+                    {paymentMethods.filter((p) => p.isEnabled).length} {language === 'bn' ? 'সক্রিয়' : 'Active'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Configure Cash drawer, Mobile Financial Services (MFS), Bank POS swipe terminals, and ledger mapping
+                </p>
+              </div>
             </div>
 
-            <button
-              type="submit"
-              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs sm:text-sm shadow-md transition-all cursor-pointer shrink-0"
-            >
-              <Save className="w-4 h-4" />
-              <span>{language === 'bn' ? 'সকল পরিবর্তন সংরক্ষণ করুন' : 'Save All Changes'}</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleOpenAddPaymentMethod('bank')}
+                className="flex items-center gap-2 px-5 py-2.5 bg-[#0b1e36] hover:bg-[#133054] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4 text-emerald-400" />
+                <span>+ Add Payment Method</span>
+              </button>
+            </div>
           </div>
 
           {paymentSaveSuccess && (
@@ -1002,361 +1190,1090 @@ export const SettingsModule: React.FC = () => {
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
               <span>
                 {language === 'bn'
-                  ? 'পেমেন্ট গেটওয়ে, ব্যাংকিং ও মার্চেন্ট তথ্য সফলভাবে সংরক্ষিত ও আপডেট হয়েছে!'
-                  : 'Payment gateway, bank accounts, and merchant settings have been successfully updated!'}
+                  ? 'পেমেন্ট গেটওয়ে ও মেথড তথ্য সফলভাবে সংরক্ষিত ও আপডেট হয়েছে! সমগ্র সিস্টেমে এটি তাৎক্ষণিক কার্যকর।'
+                  : 'Payment methods & gateway configuration successfully saved! Updated across the entire system.'}
               </span>
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Card 1: Official Bank Accounts */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                    <Landmark className="w-5 h-5" />
+          {/* Quick Stats Overview - Exactly matching Image 1 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* TOTAL METHODS */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                TOTAL METHODS
+              </span>
+              <div className="text-2xl font-black text-slate-900 mt-1">
+                {paymentMethods.length}
+              </div>
+              <span className="text-[11px] text-slate-500 font-medium mt-0.5 block">
+                {paymentMethods.filter((p) => p.isEnabled).length} Active in POS Checkout
+              </span>
+            </div>
+
+            {/* CASH DRAWER (LIVE) */}
+            <div className="bg-emerald-50/20 p-4 rounded-2xl border border-emerald-200/80 shadow-2xs">
+              <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider block">
+                CASH DRAWER (LIVE)
+              </span>
+              <div className="text-2xl font-black text-emerald-800 mt-1">
+                {profile.currencySymbol || '৳'}{((accountBalances?.cash || 0) + (accountBalances?.factoryCash || 0)).toLocaleString()}
+              </div>
+              <span className="text-[11px] text-emerald-600 font-medium mt-0.5 block">
+                Available in register cash drawer
+              </span>
+            </div>
+
+            {/* MFS INFLOW (BKASH/NAGAD) */}
+            <div className="bg-pink-50/20 p-4 rounded-2xl border border-pink-200/80 shadow-2xs">
+              <span className="text-[10px] font-black text-pink-700 uppercase tracking-wider block">
+                MFS INFLOW (BKASH/NAGAD)
+              </span>
+              <div className="text-2xl font-black text-pink-800 mt-1">
+                {profile.currencySymbol || '৳'}{(accountBalances?.mobile || 0).toLocaleString()}
+              </div>
+              <span className="text-[11px] text-pink-600 font-medium mt-0.5 block">
+                bKash: {profile.currencySymbol || '৳'}{(accountBalances?.mobile || 0).toLocaleString()} | Nagad: {profile.currencySymbol || '৳'}0
+              </span>
+            </div>
+
+            {/* BANK & POS CARD SALES */}
+            <div className="bg-blue-50/20 p-4 rounded-2xl border border-blue-200/80 shadow-2xs">
+              <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider block">
+                BANK & POS CARD SALES
+              </span>
+              <div className="text-2xl font-black text-blue-800 mt-1">
+                {profile.currencySymbol || '৳'}{(accountBalances?.bank || 0).toLocaleString()}
+              </div>
+              <span className="text-[11px] text-blue-600 font-medium mt-0.5 block">
+                Corporate Banks & Card Swipe
+              </span>
+            </div>
+          </div>
+
+          {/* Filter Bar & Search - Exactly matching Image 1 */}
+          <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            {/* Filter Pills */}
+            <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+              {[
+                { id: 'ALL', label: 'All Methods', count: paymentMethods.length },
+                { id: 'cash', label: 'Cash in Hand', count: paymentMethods.filter((p) => p.type === 'cash').length },
+                { id: 'mfs', label: 'Mobile Banking (MFS)', count: paymentMethods.filter((p) => p.type === 'mfs').length },
+                { id: 'bank', label: 'Bank Wire Transfer', count: paymentMethods.filter((p) => p.type === 'bank').length },
+                { id: 'credit', label: 'Customer Due / Credit', count: paymentMethods.filter((p) => p.name.toLowerCase().includes('due') || p.name.toLowerCase().includes('credit') || p.type === 'cheque').length || 1 },
+                { id: 'gateway', label: 'Bangla QR (Universal QR)', count: paymentMethods.filter((p) => p.type === 'gateway' || p.name.toLowerCase().includes('qr') || p.name.toLowerCase().includes('ssl')).length },
+              ].map((tab) => {
+                const isActive = paymentFilterType === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setPaymentFilterType(tab.id)}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                      isActive
+                        ? 'bg-[#0b1e36] text-white shadow-xs'
+                        : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${
+                        isActive ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search and View Mode Switcher */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 md:w-64">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={paymentSearchQuery}
+                  onChange={(e) => setPaymentSearchQuery(e.target.value)}
+                  placeholder="Search method or account..."
+                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* View Switcher: Table vs Cards */}
+              <div className="flex items-center p-0.5 bg-slate-100 rounded-xl border border-slate-200 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setPaymentViewMode('table')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    paymentViewMode === 'table'
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                  title="Table View"
+                >
+                  📋 Table
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentViewMode('cards')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    paymentViewMode === 'cards'
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                  title="Cards View"
+                >
+                  🎴 Cards
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* TABLE VIEW (Default matching Picture 1) */}
+          {paymentViewMode === 'table' && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[#0b1e36] text-white text-[11px] font-bold uppercase tracking-wider">
+                      <th className="py-3 px-4">Payment Method</th>
+                      <th className="py-3 px-3">Type</th>
+                      <th className="py-3 px-3">Provider / Terminal</th>
+                      <th className="py-3 px-3">Account / Mobile No.</th>
+                      <th className="py-3 px-3">Ledger Link</th>
+                      <th className="py-3 px-3 text-right">Live Balance / Collected (৳)</th>
+                      <th className="py-3 px-3 text-center">Service Fee</th>
+                      <th className="py-3 px-3 text-center">Status</th>
+                      <th className="py-3 px-3 text-center">Default</th>
+                      <th className="py-3 px-4 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                    {filteredPaymentMethods.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="py-12 text-center text-slate-400 font-medium">
+                          {language === 'bn' ? 'কোনো পেমেন্ট মেথড পাওয়া যায়নি' : 'No payment methods found'}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredPaymentMethods.map((pm) => {
+                        const isBank = pm.type === 'bank';
+                        const isMfs = pm.type === 'mfs';
+                        const isGateway = pm.type === 'gateway';
+                        const isCash = pm.type === 'cash';
+                        const isCheque = pm.type === 'cheque';
+                        const isDue = pm.name.toLowerCase().includes('due') || pm.name.toLowerCase().includes('credit');
+                        const isQr = pm.name.toLowerCase().includes('qr');
+
+                        const methodIcon = isCash ? '💵' : isBank ? '🏦' : isMfs ? '📱' : isGateway ? '🌐' : isCheque ? '📜' : isQr ? '📲' : isDue ? '👤' : '💳';
+
+                        const typeBadgeClass = isQr
+                          ? 'bg-purple-50 text-purple-700 border-purple-200'
+                          : isDue
+                          ? 'bg-amber-50 text-amber-800 border-amber-200'
+                          : isCash
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : isBank
+                          ? 'bg-blue-50 text-blue-700 border-blue-200'
+                          : isMfs
+                          ? 'bg-pink-50 text-pink-700 border-pink-200'
+                          : isGateway
+                          ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                          : 'bg-slate-50 text-slate-700 border-slate-200';
+
+                        const typeDisplayName = isQr
+                          ? 'Bangla QR'
+                          : isDue
+                          ? 'Credit / Due'
+                          : isCash
+                          ? 'Cash'
+                          : isBank
+                          ? 'Bank Transfer'
+                          : isMfs
+                          ? 'MFS / Mobile'
+                          : isGateway
+                          ? 'Online Gateway'
+                          : isCheque
+                          ? 'Bank Cheque'
+                          : 'Custom';
+
+                        const providerName = pm.provider || pm.bankName || (isCash ? 'Cash' : isCheque ? 'Cheque' : isDue ? 'Credit' : 'Direct');
+                        const accountNo = pm.accountNumber || (isCash ? '1010' : isDue ? '1030' : '—');
+                        const ledgerLink = pm.linkedAccountId || (isCash ? '1010 - Cash' : isBank ? '1030 - Bank' : isMfs ? '1040 - Mobile MFS' : isDue ? '1050 - Accounts' : '1030 - Bank');
+                        const liveBal = isCash
+                          ? (accountBalances?.cash || 0) + (accountBalances?.factoryCash || 0)
+                          : isBank
+                          ? (accountBalances?.bank || 0)
+                          : isMfs
+                          ? (accountBalances?.mobile || 0)
+                          : 0;
+
+                        return (
+                          <tr key={pm.id} className="hover:bg-slate-50/80 transition-colors">
+                            {/* Payment Method */}
+                            <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="text-base">{methodIcon}</span>
+                                <span>{pm.name}</span>
+                                {pm.isDefault && (
+                                  <span className="px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-800 font-extrabold text-[9px] border border-amber-300">
+                                    Primary
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Type */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] border ${typeBadgeClass}`}>
+                                {typeDisplayName}
+                              </span>
+                            </td>
+
+                            {/* Provider / Terminal */}
+                            <td className="py-3 px-3 text-slate-600 font-medium whitespace-nowrap">
+                              {providerName}
+                            </td>
+
+                            {/* Account / Mobile No. */}
+                            <td className="py-3 px-3 font-mono font-semibold text-slate-800 whitespace-nowrap">
+                              {accountNo}
+                            </td>
+
+                            {/* Ledger Link */}
+                            <td className="py-3 px-3 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                              {ledgerLink}
+                            </td>
+
+                            {/* Live Balance / Collected */}
+                            <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                              {profile.currencySymbol || '৳'} {liveBal.toLocaleString()}
+                            </td>
+
+                            {/* Service Fee */}
+                            <td className="py-3 px-3 text-center font-semibold text-slate-500 whitespace-nowrap">
+                              {pm.chargePercent ? `${pm.chargePercent}%` : '0%'}
+                            </td>
+
+                            {/* Status */}
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              {pm.isEnabled ? (
+                                <button
+                                  type="button"
+                                  onClick={() => togglePaymentMethod(pm.id)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all cursor-pointer"
+                                  title="Click to Disable"
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                  <span>Active</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => togglePaymentMethod(pm.id)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer"
+                                  title="Click to Activate"
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                  <span>Inactive</span>
+                                </button>
+                              )}
+                            </td>
+
+                            {/* Default */}
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              {pm.isDefault ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                                  <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                                  <span>Default</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setDefaultPaymentMethod(pm.id)}
+                                  className="text-[11px] text-slate-400 hover:text-amber-700 font-semibold cursor-pointer hover:underline transition-colors"
+                                >
+                                  Set Default
+                                </button>
+                              )}
+                            </td>
+
+                            {/* Action */}
+                            <td className="py-3 px-4 text-center whitespace-nowrap">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditPaymentMethod(pm)}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                                  title="Edit Payment Method"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteConfirmPaymentId(pm.id)}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                  title="Delete Payment Method"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Cards Grid: Dynamic Payment Methods */}
+          {paymentViewMode === 'cards' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paymentMethods
+              .filter((pm) => {
+                if (paymentFilterType === 'ALL') return true;
+                if (paymentFilterType === 'cash') return pm.type === 'cash' || pm.type === 'cheque';
+                return pm.type === paymentFilterType;
+              })
+              .filter((pm) => {
+                if (!paymentSearchQuery.trim()) return true;
+                const q = paymentSearchQuery.toLowerCase().trim();
+                return (
+                  pm.name.toLowerCase().includes(q) ||
+                  (pm.nameBn && pm.nameBn.toLowerCase().includes(q)) ||
+                  (pm.accountNumber && pm.accountNumber.toLowerCase().includes(q)) ||
+                  (pm.bankName && pm.bankName.toLowerCase().includes(q)) ||
+                  (pm.provider && pm.provider.toLowerCase().includes(q))
+                );
+              })
+              .map((pm) => {
+                const isBank = pm.type === 'bank';
+                const isMfs = pm.type === 'mfs';
+                const isGateway = pm.type === 'gateway';
+                const isCash = pm.type === 'cash';
+                const isCheque = pm.type === 'cheque';
+
+                const badgeBg = isBank
+                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                  : isMfs
+                  ? 'bg-pink-50 text-pink-700 border-pink-200'
+                  : isGateway
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : isCash
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                  : 'bg-amber-50 text-amber-700 border-amber-200';
+
+                const icon = isBank ? (
+                  <Landmark className="w-5 h-5 text-blue-600" />
+                ) : isMfs ? (
+                  <Smartphone className="w-5 h-5 text-pink-600" />
+                ) : isGateway ? (
+                  <Zap className="w-5 h-5 text-emerald-600" />
+                ) : isCash ? (
+                  <Banknote className="w-5 h-5 text-emerald-600" />
+                ) : isCheque ? (
+                  <FileSpreadsheet className="w-5 h-5 text-amber-600" />
+                ) : (
+                  <CreditCard className="w-5 h-5 text-indigo-600" />
+                );
+
+                return (
+                  <div
+                    key={pm.id}
+                    className={`bg-white rounded-2xl border transition-all shadow-2xs hover:shadow-md flex flex-col justify-between p-5 relative ${
+                      pm.isEnabled ? 'border-slate-200' : 'border-slate-200 bg-slate-50/60 opacity-75'
+                    }`}
+                  >
+                    <div>
+                      {/* Top Bar inside card */}
+                      <div className="flex items-start justify-between gap-2 pb-3 border-b border-slate-100">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
+                            {icon}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="font-extrabold text-slate-900 text-sm leading-tight">{pm.name}</h4>
+                              {pm.isDefault && (
+                                <span className="flex items-center gap-0.5 text-[9px] font-black bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-md">
+                                  <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                                  Default
+                                </span>
+                              )}
+                            </div>
+                            {pm.nameBn && <p className="text-[11px] text-slate-500">{pm.nameBn}</p>}
+                          </div>
+                        </div>
+
+                        {/* Enable/Disable Toggle */}
+                        <div className="flex items-center gap-1.5">
+                          <label className="relative inline-flex items-center cursor-pointer select-none" title={pm.isEnabled ? 'Method is Active' : 'Method is Disabled'}>
+                            <input
+                              type="checkbox"
+                              checked={pm.isEnabled}
+                              onChange={() => togglePaymentMethod(pm.id)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-8 h-4 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-600"></div>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Card Details Body */}
+                      <div className="py-3 space-y-2 text-xs">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-slate-400 font-medium">{language === 'bn' ? 'ধরন' : 'Method Type'}:</span>
+                          <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] border ${badgeBg}`}>
+                            {isBank
+                              ? 'Corporate Bank'
+                              : isMfs
+                              ? 'Mobile Wallet (MFS)'
+                              : isGateway
+                              ? 'Online API Gateway'
+                              : isCash
+                              ? 'Cash Counter'
+                              : isCheque
+                              ? 'Bank Cheque'
+                              : 'Custom'}
+                          </span>
+                        </div>
+
+                        {/* Bank specific info */}
+                        {isBank && (
+                          <>
+                            {pm.bankName && (
+                              <div className="flex justify-between items-baseline text-slate-700">
+                                <span className="text-slate-400 font-medium text-[11px]">Bank:</span>
+                                <span className="font-bold text-right">{pm.bankName}</span>
+                              </div>
+                            )}
+                            {pm.accountNumber && (
+                              <div className="flex justify-between items-baseline text-slate-700">
+                                <span className="text-slate-400 font-medium text-[11px]">A/C No:</span>
+                                <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">
+                                  {pm.accountNumber}
+                                </span>
+                              </div>
+                            )}
+                            {pm.accountTitle && (
+                              <div className="flex justify-between items-baseline text-slate-700">
+                                <span className="text-slate-400 font-medium text-[11px]">Title:</span>
+                                <span className="text-[11px] font-semibold text-slate-600 text-right truncate max-w-[160px]">{pm.accountTitle}</span>
+                              </div>
+                            )}
+                            {pm.branchName && (
+                              <div className="flex justify-between items-baseline text-slate-700 text-[11px]">
+                                <span className="text-slate-400 font-medium">Branch:</span>
+                                <span className="text-slate-600">{pm.branchName}</span>
+                              </div>
+                            )}
+                            {pm.routingNumber && (
+                              <div className="flex justify-between items-baseline text-slate-700 text-[11px]">
+                                <span className="text-slate-400 font-medium">Routing:</span>
+                                <span className="font-mono text-slate-600">{pm.routingNumber}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {/* MFS specific info */}
+                        {isMfs && (
+                          <>
+                            {pm.provider && (
+                              <div className="flex justify-between items-baseline text-slate-700">
+                                <span className="text-slate-400 font-medium text-[11px]">Wallet:</span>
+                                <span className="font-bold text-pink-700">{pm.provider}</span>
+                              </div>
+                            )}
+                            {pm.accountNumber && (
+                              <div className="flex justify-between items-baseline text-slate-700">
+                                <span className="text-slate-400 font-medium text-[11px]">Number:</span>
+                                <span className="font-mono font-black text-pink-800 bg-pink-50 border border-pink-200 px-2 py-0.5 rounded text-xs">
+                                  {pm.accountNumber}
+                                </span>
+                              </div>
+                            )}
+                            {pm.accountTitle && (
+                              <div className="flex justify-between items-baseline text-slate-700 text-[11px]">
+                                <span className="text-slate-400 font-medium">Title:</span>
+                                <span className="text-slate-600 truncate max-w-[160px]">{pm.accountTitle}</span>
+                              </div>
+                            )}
+                            {Boolean(pm.chargePercent) && (
+                              <div className="flex justify-between items-baseline text-slate-700 text-[11px]">
+                                <span className="text-slate-400 font-medium">Surcharge:</span>
+                                <span className="font-bold text-amber-700">{pm.chargePercent}%</span>
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {/* Gateway API specific info */}
+                        {isGateway && (
+                          <>
+                            <div className="flex justify-between items-baseline text-slate-700">
+                              <span className="text-slate-400 font-medium text-[11px]">Provider:</span>
+                              <span className="font-bold text-emerald-800 uppercase">{pm.provider || 'SSLCommerz'}</span>
+                            </div>
+                            <div className="flex justify-between items-baseline text-slate-700 text-[11px]">
+                              <span className="text-slate-400 font-medium">Mode:</span>
+                              <span className={`font-bold px-1.5 py-0.2 rounded text-[10px] ${pm.gatewayMode === 'live' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                                {pm.gatewayMode === 'live' ? 'Live / Production' : 'Sandbox / Test'}
+                              </span>
+                            </div>
+                            {pm.storeId && (
+                              <div className="flex justify-between items-baseline text-slate-700 text-[11px]">
+                                <span className="text-slate-400 font-medium">Store ID:</span>
+                                <span className="font-mono font-bold text-slate-700">{pm.storeId}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {/* Cash & Cheque info */}
+                        {(isCash || isCheque) && (
+                          <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                            {pm.notes || (isCash ? 'Physical cash drawer at counter' : 'Customer bank cheque clearing')}
+                          </div>
+                        )}
+
+                        {pm.notes && !isCash && !isCheque && (
+                          <p className="text-[10.5px] text-slate-500 italic truncate pt-1 border-t border-slate-100">
+                            {pm.notes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Card Footer Actions */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 mt-2">
+                      <div>
+                        {!pm.isDefault ? (
+                          <button
+                            type="button"
+                            onClick={() => setDefaultPaymentMethod(pm.id)}
+                            className="text-[10px] font-bold text-slate-500 hover:text-amber-700 flex items-center gap-1 cursor-pointer transition-colors"
+                            title="Set as Default Payment Method"
+                          >
+                            <Star className="w-3 h-3 text-slate-400" />
+                            <span>{language === 'bn' ? 'ডিফল্ট করুন' : 'Make Default'}</span>
+                          </button>
+                        ) : (
+                          <span className="text-[10px] font-extrabold text-amber-700 flex items-center gap-1">
+                            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                            <span>{language === 'bn' ? 'প্রাথমিক ডিফল্ট' : 'Primary Default'}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditPaymentMethod(pm)}
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer"
+                          title="Edit Payment Method"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirmPaymentId(pm.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Delete Payment Method"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+          )}
+
+          {/* Delete Confirmation Popup */}
+          {deleteConfirmPaymentId && (
+            <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold shrink-0">
+                    <AlertTriangle className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-900 text-sm">
-                      {language === 'bn' ? '১. কর্পোরেট ব্যাংক অ্যাকাউন্ট' : '1. Corporate Bank Account'}
+                    <h4 className="font-extrabold text-slate-900 text-sm">
+                      {language === 'bn' ? 'পেমেন্ট মেথড মুছে ফেলতে চান?' : 'Delete Payment Method?'}
                     </h4>
-                    <p className="text-[11px] text-slate-500">
-                      {language === 'bn' ? 'ক্লায়েন্ট ডিপোজিট ও ইনভয়েস ব্যাংক ট্রান্সফার' : 'Client deposits and wire transfers'}
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {language === 'bn'
+                        ? 'এটি মুছে ফেললে পিওএস ও ইনভয়েস থেকে এটি বাদ যাবে। পূর্ববর্তী ট্রানজেকশনের রেকর্ড অক্ষত থাকবে।'
+                        : 'This will remove the method from POS checkout and sales forms.'}
                     </p>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
-                  Bank Transfer
-                </span>
-              </div>
 
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    {language === 'bn' ? 'ব্যাংকের নাম (Bank Name)' : 'Bank Name'}
-                  </label>
-                  <input
-                    type="text"
-                    value={paymentFormData.bankName}
-                    onChange={(e) => setPaymentFormData({ ...paymentFormData, bankName: e.target.value })}
-                    placeholder="e.g. City Bank PLC / BRAC Bank PLC"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">
-                      {language === 'bn' ? 'হিসাব নম্বর (Account Number)' : 'Account Number'}
-                    </label>
-                    <input
-                      type="text"
-                      value={paymentFormData.bankAccount}
-                      onChange={(e) => setPaymentFormData({ ...paymentFormData, bankAccount: e.target.value })}
-                      placeholder="e.g. 1504058517001"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">
-                      {language === 'bn' ? 'হিসাবের শিরোনাম (Beneficiary Name)' : 'Account Title'}
-                    </label>
-                    <input
-                      type="text"
-                      value={paymentFormData.bankAccountTitle}
-                      onChange={(e) => setPaymentFormData({ ...paymentFormData, bankAccountTitle: e.target.value })}
-                      placeholder="e.g. Dot Color Communication"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">
-                      {language === 'bn' ? 'শাখা (Branch Name)' : 'Branch Name'}
-                    </label>
-                    <input
-                      type="text"
-                      value={paymentFormData.bankBranch}
-                      onChange={(e) => setPaymentFormData({ ...paymentFormData, bankBranch: e.target.value })}
-                      placeholder="e.g. Pabartek Mor / Agrabad"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">
-                      {language === 'bn' ? 'রাউটিং / SWIFT কোড' : 'Routing / SWIFT Code'}
-                    </label>
-                    <input
-                      type="text"
-                      value={paymentFormData.routingNumber}
-                      onChange={(e) => setPaymentFormData({ ...paymentFormData, routingNumber: e.target.value })}
-                      placeholder="e.g. 225156326"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                  </div>
+                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmPaymentId(null)}
+                    className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  >
+                    {language === 'bn' ? 'বাতিল' : 'Cancel'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePaymentMethod(deleteConfirmPaymentId)}
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    {language === 'bn' ? 'হ্যাঁ, মুছুন' : 'Delete'}
+                  </button>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Card 2: Mobile Financial Services (MFS / Wallets) */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center font-bold">
-                    <Smartphone className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900 text-sm">
-                      {language === 'bn' ? '২. মোবাইল ব্যাংকিং ও মার্চেন্ট ওয়ালেট (MFS)' : '2. Mobile Financial Wallets (MFS)'}
-                    </h4>
-                    <p className="text-[11px] text-slate-500">
-                      {language === 'bn' ? 'বিকাশ, নগদ ও রকেট পেমেন্ট গ্রহণের নম্বর' : 'bKash, Nagad, and Rocket collection numbers'}
-                    </p>
-                  </div>
+          {/* Section: Client Invoicing Instructions & Banking Notes */}
+          <form onSubmit={handleSavePaymentSettings} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                  <SlidersHorizontal className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-bold bg-pink-50 text-pink-700 px-2 py-0.5 rounded border border-pink-200">
-                  Instant MFS
-                </span>
-              </div>
-
-              <div className="space-y-3 text-xs">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    {language === 'bn' ? 'বিকাশ মার্চেন্ট / পার্সোনাল নম্বর (bKash)' : 'bKash Merchant / Personal No'}
-                  </label>
-                  <input
-                    type="text"
-                    value={paymentFormData.bkashNagadNumber}
-                    onChange={(e) => setPaymentFormData({ ...paymentFormData, bkashNagadNumber: e.target.value })}
-                    placeholder="e.g. 01841581887"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-pink-700 focus:bg-white focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                  />
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">
-                    {language === 'bn' ? 'ইনভয়েস এবং পিওএস স্লিপে এই বিকাশ নম্বরটি প্রদর্শিত হবে।' : 'Displayed on printed invoices and POS slips.'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">
-                      {language === 'bn' ? 'নগদ মার্চেন্ট নম্বর (Nagad)' : 'Nagad Merchant No'}
-                    </label>
-                    <input
-                      type="text"
-                      value={paymentFormData.nagadNumber}
-                      onChange={(e) => setPaymentFormData({ ...paymentFormData, nagadNumber: e.target.value })}
-                      placeholder="e.g. 01841581887"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-orange-700 focus:bg-white focus:ring-2 focus:ring-orange-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">
-                      {language === 'bn' ? 'রকেট / উপায় নম্বর (Rocket/Upay)' : 'Rocket / Upay No'}
-                    </label>
-                    <input
-                      type="text"
-                      value={paymentFormData.rocketNumber}
-                      onChange={(e) => setPaymentFormData({ ...paymentFormData, rocketNumber: e.target.value })}
-                      placeholder="e.g. 01841581887-9"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-purple-700 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 3: Automated Online Payment Gateway API */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                    <Zap className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900 text-sm">
-                      {language === 'bn' ? '৩. অটোমেটেড অনলাইন পেমেন্ট গেটওয়ে API' : '3. Online Payment Gateway API'}
-                    </h4>
-                    <p className="text-[11px] text-slate-500">
-                      {language === 'bn' ? 'SSLCommerz, bKash Checkout, Shurjopay বা AamarPay ইন্টিগ্রেশন' : 'Automated online customer payments'}
-                    </p>
-                  </div>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={paymentFormData.paymentGatewayIsEnabled}
-                    onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentGatewayIsEnabled: e.target.checked })}
-                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span className={`text-[11px] font-bold ${paymentFormData.paymentGatewayIsEnabled ? 'text-emerald-700' : 'text-slate-400'}`}>
-                    {paymentFormData.paymentGatewayIsEnabled ? 'Active' : 'Disabled'}
-                  </span>
-                </label>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">
-                      {language === 'bn' ? 'গেটওয়ে প্রভাইডার (Provider)' : 'Gateway Provider'}
-                    </label>
-                    <select
-                      value={paymentFormData.paymentGatewayProvider}
-                      onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentGatewayProvider: e.target.value as any })}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
-                    >
-                      <option value="none">{language === 'bn' ? 'কোনো গেটওয়ে নেই (শুধু ম্যানুয়াল)' : 'None (Manual Only)'}</option>
-                      <option value="sslcommerz">SSLCommerz (Cards & Wallets)</option>
-                      <option value="bkash_pgw">bKash Direct Checkout (PGW)</option>
-                      <option value="shurjopay">Shurjopay Gateway</option>
-                      <option value="aamarpay">AamarPay Payment Gateway</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">
-                      {language === 'bn' ? 'মোড (Environment)' : 'Environment Mode'}
-                    </label>
-                    <select
-                      value={paymentFormData.paymentGatewayMode}
-                      onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentGatewayMode: e.target.value as any })}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
-                    >
-                      <option value="sandbox">Sandbox / Test Mode</option>
-                      <option value="live">Live / Production</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    {language === 'bn' ? 'স্টোর আইডি / মার্চেন্ট অ্যাপ কি (Store ID / App Key)' : 'Store ID / App Key'}
-                  </label>
-                  <input
-                    type="text"
-                    value={paymentFormData.paymentGatewayStoreId}
-                    onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentGatewayStoreId: e.target.value })}
-                    placeholder="e.g. dotcolor_live_store"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-bold text-slate-700">
-                      {language === 'bn' ? 'সিক্রেট কি / পাসওয়ার্ড (Store Password / Secret Key)' : 'Store Password / Secret Key'}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowSecretKey(!showSecretKey)}
-                      className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
-                    >
-                      {showSecretKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      <span>{showSecretKey ? (language === 'bn' ? 'লুকান' : 'Hide') : (language === 'bn' ? 'দেখান' : 'Show')}</span>
-                    </button>
-                  </div>
-                  <input
-                    type={showSecretKey ? 'text' : 'password'}
-                    value={paymentFormData.paymentGatewaySecret}
-                    onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentGatewaySecret: e.target.value })}
-                    placeholder="••••••••••••••••••••••••"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    {language === 'bn' ? 'আইপিএন কলব্যাক ইউআরএল (IPN / Webhook Callback URL)' : 'IPN Webhook Callback URL'}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={`${window.location.origin}/api/payment/callback`}
-                      className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-mono text-[11px] select-all cursor-text"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/api/payment/callback`);
-                        setCopiedCallback(true);
-                        setTimeout(() => setCopiedCallback(false), 2000);
-                      }}
-                      className="px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded-xl text-slate-700 font-bold shrink-0 flex items-center gap-1 cursor-pointer"
-                      title={language === 'bn' ? 'ইউআরএল কপি করুন' : 'Copy URL'}
-                    >
-                      {copiedCallback ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedCallback ? (language === 'bn' ? 'কপি হয়েছে' : 'Copied') : (language === 'bn' ? 'কপি' : 'Copy')}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 4: Invoicing Client Instructions */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                    <SlidersHorizontal className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900 text-sm">
-                      {language === 'bn' ? '৪. ইনভয়েস ও বিলের পেমেন্ট নির্দেশিকা' : '4. Client Invoicing Instructions'}
-                    </h4>
-                    <p className="text-[11px] text-slate-500">
-                      {language === 'bn' ? 'প্রিন্ট ও ডিজিটাল বিলে ক্লায়েন্টকে পেমেন্ট করার নোট' : 'Printed instructions on invoices & quotes'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    {language === 'bn' ? 'পেমেন্ট নির্দেশিকা টেক্সট (Banking Notes)' : 'Payment Notes & Notice'}
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={paymentFormData.bankingNotes}
-                    onChange={(e) => setPaymentFormData({ ...paymentFormData, bankingNotes: e.target.value })}
-                    placeholder="Clients can transfer invoices via City Bank PLC, bKash Merchant (01841581887), or Cash counters."
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none leading-relaxed"
-                  />
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    {language === 'bn'
-                      ? 'এই লেখাটি কাস্টমারের প্রিন্ট ইনভয়েস, চালান এবং হিসাব মেমোতে ব্যাংক ও পেমেন্ট বিবরণী হিসেবে স্বয়ংক্রিয়ভাবে দেখাবে।'
-                      : 'This note is automatically printed at the bottom of client invoices and challans.'}
+                  <h4 className="font-bold text-slate-900 text-sm">
+                    {language === 'bn' ? 'ইনভয়েস ও বিলের পেমেন্ট নির্দেশিকা' : 'Client Invoicing & Payment Instructions'}
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    {language === 'bn' ? 'প্রিন্ট ও ডিজিটাল বিলে ক্লায়েন্টকে পেমেন্ট করার সাধারণ নির্দেশিকা ও ফুটনোট' : 'Global banking notice printed on customer invoices and slips'}
                   </p>
                 </div>
+              </div>
 
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <span className="font-bold text-slate-700 text-xs block">
-                    {language === 'bn' ? 'লাইভ প্রিভিউ (ইনভয়েসে যেমন দেখাবে):' : 'Live Preview (As seen on invoices):'}
-                  </span>
-                  <div className="bg-white p-3 rounded-lg border border-slate-200 text-slate-700 text-xs font-mono leading-relaxed">
-                    <div>🏦 <strong>Bank:</strong> {paymentFormData.bankName || 'Not Set'} {paymentFormData.bankAccount ? `(A/C: ${paymentFormData.bankAccount})` : ''}</div>
-                    <div>📱 <strong>bKash / Nagad:</strong> {paymentFormData.bkashNagadNumber || '---'}</div>
-                    {paymentFormData.bankingNotes && (
-                      <div className="text-[11px] text-slate-500 mt-1">💬 {paymentFormData.bankingNotes}</div>
-                    )}
-                  </div>
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs shadow-xs transition-all cursor-pointer"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{language === 'bn' ? 'নির্দেশিকা সংরক্ষণ' : 'Save Notice'}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  {language === 'bn' ? 'পেমেন্ট নির্দেশিকা টেক্সট (Banking Notes on Invoices)' : 'Payment Notes & Notice on Invoices'}
+                </label>
+                <textarea
+                  rows={4}
+                  value={paymentFormData.bankingNotes}
+                  onChange={(e) => setPaymentFormData({ ...paymentFormData, bankingNotes: e.target.value })}
+                  placeholder="Clients can transfer invoices via Bank Transfer, bKash Merchant (01841581887), or Cash counters."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none leading-relaxed"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  {language === 'bn'
+                    ? 'এই লেখাটি কাস্টমারের প্রিন্ট ইনভয়েস, চালান এবং হিসাব মেমোতে ব্যাংক ও পেমেন্ট বিবরণী হিসেবে স্বয়ংক্রিয়ভাবে দেখাবে।'
+                    : 'This note is automatically printed at the bottom of customer invoices, challans, and payment receipts.'}
+                </p>
+              </div>
+
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <span className="font-bold text-slate-700 text-xs block">
+                  {language === 'bn' ? 'লাইভ প্রিভিউ (ইনভয়েসের নিচে যেমন দেখাবে):' : 'Live Preview (As printed on invoices):'}
+                </span>
+                <div className="bg-white p-3 rounded-lg border border-slate-200 text-slate-700 text-xs font-mono leading-relaxed space-y-1">
+                  {paymentMethods.filter((p) => p.isEnabled).map((pm) => (
+                    <div key={pm.id} className="text-[11px]">
+                      • <strong>{pm.name}:</strong> {pm.accountNumber ? `${pm.accountNumber}` : ''} {pm.bankName ? `(${pm.bankName})` : ''} {pm.accountTitle ? `- ${pm.accountTitle}` : ''}
+                    </div>
+                  ))}
+                  {paymentFormData.bankingNotes && (
+                    <div className="text-[11px] text-slate-500 mt-2 pt-1 border-t border-slate-100">
+                      💬 {paymentFormData.bankingNotes}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-          </div>
+          </form>
 
-          <div className="flex justify-end pt-2">
-            <button
-              type="submit"
-              className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-sm shadow-md transition-all cursor-pointer"
-            >
-              <Save className="w-4 h-4" />
-              <span>{language === 'bn' ? 'সকল পেমেন্ট ও ব্যাংকিং সেটিংস সংরক্ষণ করুন' : 'Save & Apply Payment Settings'}</span>
-            </button>
-          </div>
-        </form>
+          {/* MODAL: CREATE / EDIT PAYMENT METHOD */}
+          {showPaymentModal && (
+            <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+              <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 my-8">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-slate-900 text-base sm:text-lg">
+                        {editingPaymentMethod
+                          ? language === 'bn' ? 'পেমেন্ট মেথড এডিট করুন' : 'Edit Payment Method'
+                          : language === 'bn' ? 'নতুন পেমেন্ট মেথড বা গেটওয়ে তৈরি করুন' : 'Create New Payment Method / Gateway'}
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        {language === 'bn' ? 'সমগ্র সিস্টেমের জন্য পেমেন্ট মাধ্যম কনফিগার করুন' : 'Configure dynamic payment channels for the entire system'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPaymentModal(false)}
+                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSavePaymentMethod} className="space-y-4">
+                  {/* Step 1: Select Type */}
+                  <div>
+                    <label className="font-bold text-slate-700 text-xs block mb-1.5">
+                      {language === 'bn' ? '১. মেথডের ধরন নির্বাচন করুন *' : '1. Select Payment Method Type *'}
+                    </label>
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                      {[
+                        { type: 'bank' as PaymentMethodType, label: 'Bank', icon: Landmark, color: 'text-blue-600' },
+                        { type: 'mfs' as PaymentMethodType, label: 'MFS / Wallet', icon: Smartphone, color: 'text-pink-600' },
+                        { type: 'gateway' as PaymentMethodType, label: 'Online API', icon: Zap, color: 'text-emerald-600' },
+                        { type: 'cash' as PaymentMethodType, label: 'Cash', icon: Banknote, color: 'text-emerald-700' },
+                        { type: 'cheque' as PaymentMethodType, label: 'Cheque', icon: FileSpreadsheet, color: 'text-amber-600' },
+                      ].map((item) => {
+                        const IconComponent = item.icon;
+                        const isSelected = paymentMethodFormData.type === item.type;
+                        return (
+                          <button
+                            key={item.type}
+                            type="button"
+                            onClick={() => {
+                              setPaymentMethodFormData({
+                                ...paymentMethodFormData,
+                                type: item.type,
+                                name:
+                                  paymentMethodFormData.name && paymentMethodFormData.name !== 'Corporate Bank' && paymentMethodFormData.name !== 'bKash Merchant' && paymentMethodFormData.name !== 'SSLCommerz Gateway' && paymentMethodFormData.name !== 'Cash Counter' && paymentMethodFormData.name !== 'Bank Cheque'
+                                    ? paymentMethodFormData.name
+                                    : item.type === 'bank'
+                                    ? 'Corporate Bank'
+                                    : item.type === 'mfs'
+                                    ? 'bKash Merchant'
+                                    : item.type === 'gateway'
+                                    ? 'SSLCommerz Gateway'
+                                    : item.type === 'cash'
+                                    ? 'Cash Counter'
+                                    : 'Bank Cheque',
+                              });
+                            }}
+                            className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer text-center ${
+                              isSelected
+                                ? 'bg-slate-900 border-slate-900 text-white shadow-xs'
+                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                            }`}
+                          >
+                            <IconComponent className={`w-4 h-4 ${isSelected ? 'text-amber-400' : item.color}`} />
+                            <span className="text-[10px] font-bold leading-tight">{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Method Names */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">
+                        {language === 'bn' ? 'পেমেন্ট মেথডের নাম (English Name) *' : 'Display Name (English) *'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={paymentMethodFormData.name || ''}
+                        onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, name: e.target.value })}
+                        placeholder="e.g. City Bank PLC / bKash Merchant"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">
+                        {language === 'bn' ? 'বাংলা নাম (Bangla Name)' : 'Display Name (Bangla)'}
+                      </label>
+                      <input
+                        type="text"
+                        value={paymentMethodFormData.nameBn || ''}
+                        onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, nameBn: e.target.value })}
+                        placeholder="e.g. সিটি ব্যাংক / বিকাশ মার্চেন্ট"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Contextual Fields by Type */}
+                  {paymentMethodFormData.type === 'bank' && (
+                    <div className="p-3.5 bg-blue-50/40 border border-blue-200 rounded-2xl space-y-3 text-xs">
+                      <div className="flex items-center gap-1.5 font-bold text-blue-900 text-xs">
+                        <Landmark className="w-4 h-4 text-blue-600" />
+                        <span>{language === 'bn' ? 'ব্যাংক অ্যাকাউন্টের বিবরণ' : 'Bank Account Credentials'}</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'ব্যাংকের নাম' : 'Bank Name'}</label>
+                          <input
+                            type="text"
+                            value={paymentMethodFormData.bankName || ''}
+                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, bankName: e.target.value })}
+                            placeholder="e.g. BRAC Bank PLC / City Bank"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'হিসাব নম্বর' : 'Account Number'}</label>
+                          <input
+                            type="text"
+                            value={paymentMethodFormData.accountNumber || ''}
+                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, accountNumber: e.target.value })}
+                            placeholder="e.g. 1504058517001"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'হিসাবের শিরোনাম (Title)' : 'Account Title'}</label>
+                          <input
+                            type="text"
+                            value={paymentMethodFormData.accountTitle || ''}
+                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, accountTitle: e.target.value })}
+                            placeholder="e.g. Dot Color Communication"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'শাখা' : 'Branch'}</label>
+                          <input
+                            type="text"
+                            value={paymentMethodFormData.branchName || ''}
+                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, branchName: e.target.value })}
+                            placeholder="e.g. Agrabad / Pabartek"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'রাউটিং কোড' : 'Routing Code'}</label>
+                          <input
+                            type="text"
+                            value={paymentMethodFormData.routingNumber || ''}
+                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, routingNumber: e.target.value })}
+                            placeholder="e.g. 060150341"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentMethodFormData.type === 'mfs' && (
+                    <div className="p-3.5 bg-pink-50/40 border border-pink-200 rounded-2xl space-y-3 text-xs">
+                      <div className="flex items-center gap-1.5 font-bold text-pink-900 text-xs">
+                        <Smartphone className="w-4 h-4 text-pink-600" />
+                        <span>{language === 'bn' ? 'মোবাইল ওয়ালেট বিবরণ (bKash/Nagad/Rocket)' : 'Mobile Financial Wallet Details'}</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'ওয়ালেট প্রোভাইডার' : 'Wallet Provider'}</label>
+                          <select
+                            value={paymentMethodFormData.provider || 'bKash'}
+                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, provider: e.target.value })}
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-pink-700 focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                          >
+                            <option value="bKash">bKash (বিকাশ)</option>
+                            <option value="Nagad">Nagad (নগদ)</option>
+                            <option value="Rocket">Rocket (রকেট)</option>
+                            <option value="Upay">Upay (উপায়)</option>
+                            <option value="Cellfin">Cellfin (সেলফিন)</option>
+                            <option value="Other">Other Wallet</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'মোবাইল / অ্যাকাউন্ট নম্বর *' : 'Account / Mobile No *'}</label>
+                          <input
+                            type="text"
+                            required
+                            value={paymentMethodFormData.accountNumber || ''}
+                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, accountNumber: e.target.value })}
+                            placeholder="e.g. 01841581887"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono font-black text-pink-700 focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'সারচার্জ ফি (%)' : 'Surcharge / Fee (%)'}</label>
+                          <input
+                            type="number"
+                            step="any"
+                            min="0"
+                            value={paymentMethodFormData.chargePercent || ''}
+                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, chargePercent: Number(e.target.value) || 0 })}
+                            placeholder="0 (Free)"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'মার্চেন্ট / অ্যাকাউন্টের নাম' : 'Merchant / Beneficiary Title'}</label>
+                        <input
+                          type="text"
+                          value={paymentMethodFormData.accountTitle || ''}
+                          onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, accountTitle: e.target.value })}
+                          placeholder="e.g. Dot Color Communication (Merchant)"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentMethodFormData.type === 'gateway' && (
+                    <div className="p-3.5 bg-emerald-50/40 border border-emerald-200 rounded-2xl space-y-3 text-xs">
+                      <div className="flex items-center gap-1.5 font-bold text-emerald-900 text-xs">
+                        <Zap className="w-4 h-4 text-emerald-600" />
+                        <span>{language === 'bn' ? 'অনলাইন পেমেন্ট গেটওয়ে API ইন্টিগ্রেশন' : 'Online Payment Gateway API Integration'}</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'গেটওয়ে ইঞ্জিন' : 'Gateway Engine'}</label>
+                          <select
+                            value={paymentMethodFormData.provider || 'sslcommerz'}
+                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, provider: e.target.value })}
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-emerald-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                          >
+                            <option value="sslcommerz">SSLCommerz (Cards & Wallets)</option>
+                            <option value="bkash_pgw">bKash Direct Checkout (PGW)</option>
+                            <option value="shurjopay">Shurjopay Gateway</option>
+                            <option value="aamarpay">AamarPay Payment Gateway</option>
+                            <option value="custom">Custom Online Gateway</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'এনভায়রনমেন্ট মোড' : 'Environment Mode'}</label>
+                          <select
+                            value={paymentMethodFormData.gatewayMode || 'sandbox'}
+                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, gatewayMode: e.target.value as any })}
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                          >
+                            <option value="sandbox">Sandbox / Test Mode</option>
+                            <option value="live">Live / Production</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'স্টোর আইডি / মার্চেন্ট অ্যাপ কি' : 'Store ID / App Key'}</label>
+                          <input
+                            type="text"
+                            value={paymentMethodFormData.storeId || ''}
+                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, storeId: e.target.value })}
+                            placeholder="e.g. dotcolor_live_store"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'সিক্রেট কি / পাসওয়ার্ড' : 'Secret Key / Password'}</label>
+                          <input
+                            type="password"
+                            value={paymentMethodFormData.secretKey || ''}
+                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, secretKey: e.target.value })}
+                            placeholder="••••••••••••••••••••••••"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes / Instructions */}
+                  <div className="text-xs">
+                    <label className="font-bold text-slate-700 block mb-1">
+                      {language === 'bn' ? 'গ্রাহক নির্দেশিকা বা অতিরিক্ত নোট (Optional)' : 'Customer Instructions / Internal Note'}
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentMethodFormData.notes || ''}
+                      onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, notes: e.target.value })}
+                      placeholder="e.g. Deposit slip must include invoice number as reference."
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Switches: Is Active and Is Default */}
+                  <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4 text-xs">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={paymentMethodFormData.isEnabled !== false}
+                        onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, isEnabled: e.target.checked })}
+                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="font-bold text-slate-800">
+                        {language === 'bn' ? 'সিস্টেমে সক্রিয় রাখুন (Active in POS & Checkout)' : 'Active in POS & Checkout'}
+                      </span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(paymentMethodFormData.isDefault)}
+                        onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, isDefault: e.target.checked })}
+                        className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
+                      />
+                      <span className="font-bold text-amber-800 flex items-center gap-1">
+                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                        <span>{language === 'bn' ? 'ডিফল্ট পেমেন্ট মেথড হিসেবে সেট করুন' : 'Set as Default Method'}</span>
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Modal Action Buttons */}
+                  <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowPaymentModal(false)}
+                      className="px-5 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                    >
+                      {language === 'bn' ? 'বাতিল' : 'Cancel'}
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>
+                        {editingPaymentMethod
+                          ? language === 'bn' ? 'মেথড আপডেট করুন' : 'Update Method'
+                          : language === 'bn' ? 'মেথড তৈরি করুন' : 'Create Method'}
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* TAB 3: MODULE DATA CLEAN & PURGE */}

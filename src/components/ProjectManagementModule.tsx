@@ -60,6 +60,7 @@ export const ProjectManagementModule: React.FC = () => {
     expenseHeads,
     language,
     profile,
+    paymentMethods = [],
   } = useApp();
 
   const isBn = language === 'bn';
@@ -88,17 +89,31 @@ export const ProjectManagementModule: React.FC = () => {
     notes: '',
   });
 
-  // Payment method options for sales breakdown
-  const paymentMethodOptions = [
-    { id: 'Cash', nameEn: 'Cash in Hand', nameBn: 'ক্যাশ ইন হ্যান্ড (Cash)' },
-    { id: 'Bank Transfer', nameEn: 'Bank Transfer / Deposit', nameBn: 'ব্যাংক ট্রান্সফার / চেক' },
-    { id: 'bKash', nameEn: 'bKash', nameBn: 'বিকাশ (bKash)' },
-    { id: 'Nagad', nameEn: 'Nagad', nameBn: 'নগদ (Nagad)' },
-    { id: 'Rocket', nameEn: 'Rocket', nameBn: 'রকেট (Rocket)' },
-    { id: 'Cheque', nameEn: 'Cheque / Pay Order', nameBn: 'চেক / পে-অর্ডার' },
-    { id: 'Due', nameEn: 'Due / Receivable', nameBn: 'বাকি (Due / Receivable)' },
-    { id: 'Other', nameEn: 'Other / Adjustment', nameBn: 'অন্যান্য (Other)' },
-  ];
+  // Dynamic Payment method options for sales breakdown
+  const activePaymentMethods = useMemo(() => {
+    return (paymentMethods || []).filter((p) => p.isEnabled);
+  }, [paymentMethods]);
+
+  const paymentMethodOptions = useMemo(() => {
+    if (activePaymentMethods.length === 0) {
+      return [
+        { id: 'Cash', nameEn: 'Cash in Hand', nameBn: 'ক্যাশ ইন হ্যান্ড (Cash)' },
+        { id: 'Due', nameEn: 'Due / Receivable', nameBn: 'বাকি (Due / Receivable)' },
+      ];
+    }
+    const list = activePaymentMethods.map((pm) => ({
+      id: pm.name,
+      nameEn: pm.name,
+      nameBn: pm.nameBn ? `${pm.nameBn} (${pm.name})` : pm.name,
+    }));
+    if (!list.some((item) => item.id.toLowerCase() === 'due')) {
+      list.push({ id: 'Due', nameEn: 'Due / Receivable', nameBn: 'বাকি (Due / Receivable)' });
+    }
+    if (!list.some((item) => item.id.toLowerCase() === 'other')) {
+      list.push({ id: 'Other', nameEn: 'Other / Adjustment', nameBn: 'অন্যান্য (Other)' });
+    }
+    return list;
+  }, [activePaymentMethods]);
 
   // Sales Form State with Multi-Payment Breakdown
   const [salesForm, setSalesForm] = useState({
