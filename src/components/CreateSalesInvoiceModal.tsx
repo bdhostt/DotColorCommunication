@@ -16,6 +16,7 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
     // Customer Mode: 'existing' or 'new'
     const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing');
     const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+    const [existingCustAddress, setExistingCustAddress] = useState<string>('');
     const [customerSearchQuery, setCustomerSearchQuery] = useState('');
     const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
     // New Customer Fields
@@ -168,7 +169,7 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
             finalCustId = existing.id;
             finalCustName = existing.company ? `${existing.company} (${existing.name})` : existing.name;
             finalCustPhone = existing.phone;
-            finalCustAddress = existing.address || '';
+            finalCustAddress = existingCustAddress.trim() || existing.address || '';
         }
         else {
             if (!newCustName.trim()) {
@@ -380,7 +381,12 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
                     <label className="font-bold text-slate-700 block mb-1">
                       {'Select Customer *'}
                     </label>
-                    <select required value={selectedCustomerId} onChange={(e) => setSelectedCustomerId(e.target.value)} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-xs focus:ring-1 focus:ring-amber-500/30">
+                    <select required value={selectedCustomerId} onChange={(e) => {
+                      const cid = e.target.value;
+                      setSelectedCustomerId(cid);
+                      const sel = customers.find((c) => c.id === cid);
+                      setExistingCustAddress(sel?.address || '');
+                    }} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-xs focus:ring-1 focus:ring-amber-500/30">
                       <option value="">{'-- Choose Customer --'}</option>
                       {filteredExistingCustomers.map((c) => (<option key={c.id} value={c.id}>
                           {c.name} {c.company ? `(${c.company})` : ''} - {c.phone} {c.dueAmount > 0 ? `[Due: Tk ${c.dueAmount}]` : ''}
@@ -399,7 +405,13 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
                           <div>
                             <span className="font-black text-slate-900">{sel.name}</span>
                             {sel.company && <span className="text-amber-800 font-semibold ml-1.5">({sel.company})</span>}
-                            <span className="text-slate-500 block font-mono mt-0.5">{sel.phone} {sel.address ? `• ${sel.address}` : ''}</span>
+                            <span className="text-slate-500 block font-mono mt-0.5">{sel.phone}</span>
+                            <div className="mt-2">
+                              <label className="font-bold text-slate-700 block mb-0.5">
+                                {'Delivery / Billing Address (Editable):'}
+                              </label>
+                              <input type="text" value={existingCustAddress} onChange={(e) => setExistingCustAddress(e.target.value)} placeholder="e.g. Baizid Bostami I/A, Chattogram, Bangladesh" className="w-full px-2.5 py-1 bg-white border border-amber-300 rounded-lg text-xs font-medium focus:ring-1 focus:ring-amber-500"/>
+                            </div>
                           </div>
                           {sel.dueAmount > 0 && (<span className="font-extrabold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
                               {'Past Due'}: Tk{sel.dueAmount.toLocaleString()}

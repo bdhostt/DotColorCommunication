@@ -278,6 +278,7 @@ export interface Quotation {
   customerName: string;
   customerPhone: string;
   customerCompany?: string;
+  customerAddress?: string;
   items: InvoiceItem[];
   subtotal: number;
   discount: number;

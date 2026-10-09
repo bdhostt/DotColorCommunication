@@ -892,6 +892,7 @@ export const INITIAL_QUOTATIONS: Quotation[] = [
         customerName: 'Karnaphuli Trading Group',
         customerPhone: '01711-876543',
         customerCompany: 'Karnaphuli Group',
+        customerAddress: 'Agrabad C/A, Chattogram',
         items: [
             {
                 productId: 'prod-ex-01',

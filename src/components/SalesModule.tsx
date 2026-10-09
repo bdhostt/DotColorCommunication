@@ -242,6 +242,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({ onOpenInvoiceModal, on
     const [quoteCustomerName, setQuoteCustomerName] = useState('');
     const [quoteCustomerPhone, setQuoteCustomerPhone] = useState('');
     const [quoteCustomerCompany, setQuoteCustomerCompany] = useState('');
+    const [quoteCustomerAddress, setQuoteCustomerAddress] = useState('');
     const [quoteReferenceNo, setQuoteReferenceNo] = useState('');
     const [quoteItemName, setQuoteItemName] = useState('');
     const [quoteItemQty, setQuoteItemQty] = useState(1);
@@ -345,6 +346,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({ onOpenInvoiceModal, on
                 customerName: quoteCustomerName,
                 customerPhone: quoteCustomerPhone,
                 customerCompany: quoteCustomerCompany,
+                customerAddress: quoteCustomerAddress.trim() || undefined,
                 referenceNo: quoteReferenceNo.trim() || undefined,
                 items: finalItems,
                 subtotal: sub,
@@ -369,6 +371,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({ onOpenInvoiceModal, on
                 customerName: quoteCustomerName,
                 customerPhone: quoteCustomerPhone,
                 customerCompany: quoteCustomerCompany,
+                customerAddress: quoteCustomerAddress.trim() || undefined,
                 items: finalItems,
                 subtotal: sub,
                 discount: effectiveQuoteDiscount,
@@ -391,6 +394,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({ onOpenInvoiceModal, on
         setQuoteCustomerName('');
         setQuoteCustomerPhone('');
         setQuoteCustomerCompany('');
+        setQuoteCustomerAddress('');
         setQuoteReferenceNo('');
         setQuoteItemName('');
         setQuoteItemQty(1);
@@ -863,6 +867,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({ onOpenInvoiceModal, on
                         setQuoteCustomerName(q.customerName);
                         setQuoteCustomerPhone(q.customerPhone);
                         setQuoteCustomerCompany(q.customerCompany || '');
+                        setQuoteCustomerAddress(q.customerAddress || '');
                         setQuoteReferenceNo(q.referenceNo || '');
                         setQuoteType(q.quoteType || 'Sales');
                         setQuoteItemName('');
@@ -1419,6 +1424,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({ onOpenInvoiceModal, on
                         setQuoteCustomerName(c.name);
                         setQuoteCustomerPhone(c.phone || '');
                         setQuoteCustomerCompany(c.company || '');
+                        setQuoteCustomerAddress(c.address || '');
                         setQuoteCustomerSearch('');
                         setIsQuoteCustomerDropdownOpen(false);
                     }} className="w-full text-left p-2.5 hover:bg-amber-50/80 transition-colors flex items-center justify-between gap-2">
@@ -1468,6 +1474,14 @@ export const SalesModule: React.FC<SalesModuleProps> = ({ onOpenInvoiceModal, on
                   </label>
                   <input type="text" value={quoteReferenceNo} onChange={(e) => setQuoteReferenceNo(e.target.value)} placeholder={'e.g. QT-REF-2024, PO-77'} className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold"/>
                 </div>
+              </div>
+
+              {/* Customer Address Field */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  {'Delivery / Customer Address'}
+                </label>
+                <input type="text" value={quoteCustomerAddress} onChange={(e) => setQuoteCustomerAddress(e.target.value)} placeholder="e.g. Baizid Bostami I/A, Chattogram, Bangladesh" className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium"/>
               </div>
 
               {/* Quotation Type Selection */}

@@ -111,7 +111,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                             customerName: q.customerName,
                             customerPhone: q.customerPhone,
                             customerCompany: q.customerCompany || '',
-                            customerAddress: '',
+                            customerAddress: q.customerAddress || '',
                             items: (q.items || []).map((item: any) => ({
                                 ...item,
                                 totalSqft: 0,
@@ -168,7 +168,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
         customerName: quote.customerName,
         customerPhone: quote.customerPhone,
         customerCompany: quote.customerCompany || '',
-        customerAddress: '',
+        customerAddress: quote.customerAddress || '',
         items: quote.items.map((item) => ({
             ...item,
             totalSqft: 0,
@@ -633,13 +633,21 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                 box-sizing: border-box !important;
               }
               .a4-page-footer {
+                margin-top: auto !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 box-sizing: border-box !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
               }
               table {
                 border-collapse: collapse !important;
                 width: 100% !important;
+                page-break-inside: auto !important;
+              }
+              tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
               }
               ${template === 'POS' ? `
                 * {
@@ -933,10 +941,17 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
               width: 100% !important;
               max-width: 100% !important;
               box-sizing: border-box !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
             table {
               border-collapse: collapse !important;
               width: 100% !important;
+              page-break-inside: auto !important;
+            }
+            tr {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
           `}
           ${isPadMode ? `
@@ -1260,8 +1275,16 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
               </div>
 
               {/* Totals & Financials */}
-              <div className="grid grid-cols-12 gap-6 pt-2">
+              <div className="grid grid-cols-12 gap-6 pt-2 print:break-inside-avoid">
                 <div className="col-span-7 space-y-3">
+                  {invoice.notes && (<div className="bg-white p-3 rounded-xl border-2 border-black text-xs shadow-2xs">
+                      <strong className="text-black font-black block mb-1 uppercase tracking-wider text-[11px]">
+                        {'Terms & Conditions / Remarks:'}
+                      </strong>
+                      <div className="text-black font-medium whitespace-pre-line leading-relaxed text-xs">
+                        {invoice.notes}
+                      </div>
+                    </div>)}
                   {invoice.jobSpecs && (<div className="bg-white p-3 rounded-xl border-2 border-black text-xs shadow-2xs">
                       <strong className="text-black font-black block mb-0.5">Job Instructions:</strong>
                       <span className="text-black font-medium">{invoice.jobSpecs}</span>
@@ -1356,7 +1379,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
               </div>
 
               {/* Signatures & Footer pinned to bottom (Mark 1 & Mark 2) */}
-              <div className="a4-page-footer mt-auto pt-10 sm:pt-14 space-y-4">
+              <div className="a4-page-footer mt-auto pt-8 sm:pt-10 space-y-3 print:break-inside-avoid">
                 {/* Signatures (Mark 2) */}
                 <div className="flex justify-between items-end text-center text-xs text-black px-2">
                   <div>
@@ -1369,8 +1392,13 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                   </div>
                 </div>
 
+                {/* System generated document notice (Image 2 marked sys) */}
+                <div className="text-center text-[10px] sm:text-[11px] font-semibold text-slate-700 tracking-wide pt-1">
+                  {'This is system generated document no signature required'}
+                </div>
+
                 {/* Company Address & Contact Details Footer (Mark 1) */}
-                <div className={`text-center text-[10.5px] sm:text-[11px] text-black font-medium leading-relaxed pt-2 ${isPadMode ? 'hidden print:hidden' : ''}`}>
+                <div className={`text-center text-[10.5px] sm:text-[11px] text-black font-medium leading-relaxed pt-1 border-t border-slate-300 ${isPadMode ? 'hidden print:hidden' : ''}`}>
                   <div>
                     {profile.officeAddress && !profile.officeAddress.includes('South Noya Para')
                 ? profile.officeAddress
