@@ -1147,13 +1147,15 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                 : undefined} className="a4-page-sheet bg-white w-[794px] min-w-[794px] print:w-full print:min-w-0 print:max-w-full print:shrink min-h-[1123px] print:min-h-0 mx-auto print:mx-0 p-8 print:p-0 rounded-xl print:rounded-none shadow-md print:shadow-none border-2 border-black print:border-none flex flex-col justify-between text-black text-xs shrink-0">
                 <div className="a4-page-content space-y-6 flex-1">
                 
-                {/* Header: Company Logo & BILL/Invoice pill badge on Right (matching Image 2) */}
-                <DocumentHeader badgeStyle={true} documentTitle={(invoice as any).isQuote
-                ? 'BILL/Quotation'
-                : 'BILL/Invoice'} documentNo={invoice.invoiceNo} documentDate={invoice.date} referenceNo={invoice.referenceNo} invoiceId={invoice.id} isPadMode={isPadMode} padTopMarginMm={padTopMarginMm}/>
+                {/* Top Header & Customer Box Group with zero gap */}
+                <div className="space-y-0.5">
+                  {/* Header: Company Logo & BILL/Invoice pill badge on Right (matching Image 2) */}
+                  <DocumentHeader badgeStyle={true} documentTitle={(invoice as any).isQuote
+                  ? 'BILL/Quotation'
+                  : 'BILL/Invoice'} documentNo={invoice.invoiceNo} documentDate={invoice.date} referenceNo={invoice.referenceNo} invoiceId={invoice.id} isPadMode={isPadMode} padTopMarginMm={padTopMarginMm}/>
 
-                {/* Bill To & Invoice Meta Box: 2 Columns Side-by-Side (Image 2 format) */}
-                <div style={{ marginTop: "3px" }} className="bg-white p-4 rounded-xl border-2 border-black shadow-2xs grid grid-cols-2 gap-4 text-xs">
+                  {/* Bill To & Invoice Meta Box: 2 Columns Side-by-Side (Image 2 format) */}
+                  <div style={{ marginTop: "0px" }} className="bg-white p-4 rounded-xl border-2 border-black shadow-2xs grid grid-cols-2 gap-4 text-xs">
                   {/* Left Column: BILL TO */}
                   <div className="space-y-1.5">
                     <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
@@ -1212,6 +1214,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                       </div>
                     </div>
                   </div>
+                </div>
                 </div>
 
               {/* Items Table Container */}
