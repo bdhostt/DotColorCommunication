@@ -17,6 +17,83 @@ interface InvoicePrintModalProps {
     initialPadMode?: boolean;
     isPublicView?: boolean;
 }
+interface InvoicePageData {
+    pageNumber: number;
+    totalPages: number;
+    items: any[];
+    startIndex: number;
+    isFirstPage: boolean;
+    isLastPage: boolean;
+}
+
+const getInvoicePages = (items: any[]): InvoicePageData[] => {
+    const safeItems = items || [];
+    if (safeItems.length <= 7) {
+        return [{
+            pageNumber: 1,
+            totalPages: 1,
+            items: safeItems,
+            startIndex: 0,
+            isFirstPage: true,
+            isLastPage: true,
+        }];
+    }
+
+    const pages: { items: any[]; startIndex: number }[] = [];
+    let p1Count = 10;
+    if (safeItems.length <= 10) {
+        p1Count = Math.max(4, safeItems.length - 3);
+    }
+
+    pages.push({
+        items: safeItems.slice(0, p1Count),
+        startIndex: 0,
+    });
+    let currentStartIndex = p1Count;
+
+    while (currentStartIndex < safeItems.length) {
+        const left = safeItems.length - currentStartIndex;
+        if (left <= 7) {
+            pages.push({
+                items: safeItems.slice(currentStartIndex, safeItems.length),
+                startIndex: currentStartIndex,
+            });
+            currentStartIndex = safeItems.length;
+        } else if (left <= 21) {
+            if (left <= 14) {
+                const take = Math.max(4, left - 4);
+                pages.push({
+                    items: safeItems.slice(currentStartIndex, currentStartIndex + take),
+                    startIndex: currentStartIndex,
+                });
+                currentStartIndex += take;
+            } else {
+                pages.push({
+                    items: safeItems.slice(currentStartIndex, currentStartIndex + 14),
+                    startIndex: currentStartIndex,
+                });
+                currentStartIndex += 14;
+            }
+        } else {
+            pages.push({
+                items: safeItems.slice(currentStartIndex, currentStartIndex + 14),
+                startIndex: currentStartIndex,
+            });
+            currentStartIndex += 14;
+        }
+    }
+
+    const totalPages = pages.length;
+    return pages.map((p, idx) => ({
+        pageNumber: idx + 1,
+        totalPages,
+        items: p.items,
+        startIndex: p.startIndex,
+        isFirstPage: idx === 0,
+        isLastPage: idx === totalPages - 1,
+    }));
+};
+
 export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId, mode = 'invoice', onClose, autoPrint = false, initialPadMode = false, isPublicView = false, }) => {
     const { invoices, quotations, profile, language, cloudSyncStatus, syncWithCloud } = useApp();
     const [template, setTemplate] = useState<'A4' | 'POS' | 'WORK_ORDER' | 'CHALLAN'>(mode === 'challan' ? 'CHALLAN' : mode === 'pos' ? 'POS' : 'A4');
@@ -369,7 +446,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                       max-width: 100% !important;
                       min-width: 0 !important;
                       transform: none !important;
-                      min-height: calc(297mm - 16mm) !important;
+                      min-height: calc(297mm - 14mm) !important;
+                      height: calc(297mm - 14mm) !important;
+                      page-break-after: always !important;
+                      break-after: page !important;
                       display: flex !important;
                       flex-direction: column !important;
                       justify-content: space-between !important;
@@ -378,6 +458,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                       margin: 0 auto !important;
                       border: none !important;
                       box-shadow: none !important;
+                    }
+                    .a4-page-sheet:last-child {
+                      page-break-after: auto !important;
+                      break-after: auto !important;
                     }
                     .a4-page-content {
                       flex: 1 0 auto !important;
@@ -390,6 +474,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                       width: 100% !important;
                       max-width: 100% !important;
                       box-sizing: border-box !important;
+                      page-break-inside: avoid !important;
+                      break-inside: avoid !important;
                     }
                     table {
                       border-collapse: collapse !important;
@@ -620,12 +706,19 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                 max-width: 100% !important;
                 min-width: 0 !important;
                 transform: none !important;
-                min-height: calc(297mm - 16mm) !important;
+                min-height: calc(297mm - 14mm) !important;
+                height: calc(297mm - 14mm) !important;
+                page-break-after: always !important;
+                break-after: page !important;
                 border: none !important;
                 box-shadow: none !important;
                 padding: 0 !important;
                 margin: 0 !important;
                 box-sizing: border-box !important;
+              }
+              .a4-page-sheet:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
               }
               .a4-page-content {
                 width: 100% !important;
@@ -713,82 +806,70 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
             return;
         setIsDownloadingPdf(true);
         setPrintError(null);
-        const printableElement = document.getElementById('a4-document-sheet') ||
-            (document.querySelector('.a4-page-sheet') as HTMLElement) ||
-            document.getElementById('printable-invoice-content');
+        const printableElement = document.getElementById('printable-invoice-content');
         if (!printableElement) {
             setPrintError('Document element not found. Please reload the page.');
             setIsDownloadingPdf(false);
             return;
         }
-        // Temporarily remove CSS scale transform & parent height constraint for true 1:1 crisp capture
-        const prevTransform = printableElement.style.transform;
-        const prevTransformOrigin = printableElement.style.transformOrigin;
-        const parentElem = printableElement.parentElement;
-        const prevParentHeight = parentElem?.style.height || '';
-        const prevParentOverflow = parentElem?.style.overflow || '';
+
+        const isPos = template === 'POS';
+        const pageSheets = Array.from(printableElement.querySelectorAll<HTMLElement>(isPos ? '.pos-thermal-sheet' : '.a4-page-sheet'));
+        const targetElements = pageSheets.length > 0 ? pageSheets : [printableElement];
+
         try {
-            printableElement.style.transform = 'none';
-            printableElement.style.transformOrigin = 'initial';
-            if (parentElem) {
-                parentElem.style.height = 'auto';
-                parentElem.style.overflow = 'visible';
-            }
-            let imgData = '';
-            try {
-                imgData = await htmlToImage.toPng(printableElement, {
-                    quality: 1,
-                    backgroundColor: '#ffffff',
-                    pixelRatio: 2,
-                    skipFonts: true,
-                    cacheBust: false,
-                });
-            }
-            catch (pngErr) {
-                console.warn('htmlToImage toPng error, falling back to toJpeg:', pngErr);
-                imgData = await htmlToImage.toJpeg(printableElement, {
-                    quality: 0.95,
-                    backgroundColor: '#ffffff',
-                    pixelRatio: 2,
-                    skipFonts: true,
-                    cacheBust: false,
-                });
-            }
-            // Restore transform and parent styles immediately
-            printableElement.style.transform = prevTransform;
-            printableElement.style.transformOrigin = prevTransformOrigin;
-            if (parentElem) {
-                parentElem.style.height = prevParentHeight;
-                parentElem.style.overflow = prevParentOverflow;
-            }
-            const isPos = template === 'POS';
-            const pdfWidth = isPos ? 80 : 210;
-            const elemWidth = printableElement.offsetWidth || (isPos ? 300 : 794);
-            const elemHeight = printableElement.offsetHeight || (isPos ? 600 : 1123);
-            const pdfHeight = (elemHeight * pdfWidth) / elemWidth;
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
-                format: isPos ? [80, Math.max(100, pdfHeight + 5)] : 'a4',
+                format: isPos ? [80, 200] : 'a4',
                 compress: true,
             });
-            const imgFormat = imgData.startsWith('data:image/png') ? 'PNG' : 'JPEG';
-            if (isPos || pdfHeight <= 300) {
-                pdf.addImage(imgData, imgFormat, 0, 0, pdfWidth, isPos ? pdfHeight : Math.min(297, pdfHeight), undefined, 'FAST');
-            }
-            else {
-                let position = 0;
-                let heightLeft = pdfHeight;
-                const pageHeight = 297;
-                pdf.addImage(imgData, imgFormat, 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
-                heightLeft -= pageHeight;
-                while (heightLeft > 0) {
-                    position -= pageHeight;
+
+            for (let i = 0; i < targetElements.length; i++) {
+                const sheet = targetElements[i];
+                const prevTransform = sheet.style.transform;
+                const prevTransformOrigin = sheet.style.transformOrigin;
+                sheet.style.transform = 'none';
+                sheet.style.transformOrigin = 'initial';
+
+                let imgData = '';
+                try {
+                    imgData = await htmlToImage.toPng(sheet, {
+                        quality: 1,
+                        backgroundColor: '#ffffff',
+                        pixelRatio: 2,
+                        skipFonts: true,
+                        cacheBust: false,
+                    });
+                }
+                catch (pngErr) {
+                    console.warn('htmlToImage toPng error, falling back to toJpeg:', pngErr);
+                    imgData = await htmlToImage.toJpeg(sheet, {
+                        quality: 0.95,
+                        backgroundColor: '#ffffff',
+                        pixelRatio: 2,
+                        skipFonts: true,
+                        cacheBust: false,
+                    });
+                }
+
+                sheet.style.transform = prevTransform;
+                sheet.style.transformOrigin = prevTransformOrigin;
+
+                if (i > 0) {
                     pdf.addPage();
-                    pdf.addImage(imgData, imgFormat, 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
-                    heightLeft -= pageHeight;
+                }
+
+                if (isPos) {
+                    const elemWidth = sheet.offsetWidth || 300;
+                    const elemHeight = sheet.offsetHeight || 600;
+                    const pdfHeight = (elemHeight * 80) / elemWidth;
+                    pdf.addImage(imgData, 'PNG', 0, 0, 80, pdfHeight, undefined, 'FAST');
+                } else {
+                    pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
                 }
             }
+
             const rawNo = (invoice.invoiceNo || 'invoice').trim().replace(/^#/, '');
             const safeDocNo = rawNo.replace(/[/\\?%*:|"<>]/g, '-');
             const filename = `${safeDocNo}.pdf`;
@@ -796,13 +877,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
         }
         catch (err: any) {
             console.error('PDF generation error:', err);
-            // Ensure styles are restored on failure
-            printableElement.style.transform = prevTransform;
-            printableElement.style.transformOrigin = prevTransformOrigin;
-            if (parentElem) {
-                parentElem.style.height = prevParentHeight;
-                parentElem.style.overflow = prevParentOverflow;
-            }
             setPrintError('Failed to generate PDF. Please click "Print" and choose "Save as PDF".');
         }
         finally {
@@ -857,6 +931,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
         </div>
       </div>);
     }
+    const invoicePages = getInvoicePages(invoice.items);
+
     return (<>
       {autoPrint && (<div className="fixed bottom-6 right-6 z-50 bg-slate-900/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 animate-in fade-in slide-in-from-bottom-3 pointer-events-none">
           <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
@@ -920,7 +996,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
               max-width: 100% !important;
               min-width: 0 !important;
               transform: none !important;
-              min-height: calc(297mm - 16mm) !important;
+              min-height: calc(297mm - 14mm) !important;
+              height: calc(297mm - 14mm) !important;
+              page-break-after: always !important;
+              break-after: page !important;
               display: flex !important;
               flex-direction: column !important;
               justify-content: space-between !important;
@@ -929,6 +1008,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
               margin: 0 auto !important;
               border: none !important;
               box-shadow: none !important;
+            }
+            .a4-page-sheet:last-child {
+              page-break-after: auto !important;
+              break-after: auto !important;
             }
             .a4-page-content {
               flex: 1 0 auto !important;
@@ -1018,17 +1101,17 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                     <span>{'Quotation Print & View'}</span>
                   </div>) : (<div className="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl text-xs font-bold">
                     <button type="button" onClick={() => setTemplate('A4')} className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${template === 'A4' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}>A4</button>
-                    <button type="button" onClick={() => setTemplate('WORK_ORDER')} className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${template === 'WORK_ORDER' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}>Factory  Order</button>
+                    <button type="button" onClick={() => setTemplate('WORK_ORDER')} className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${template === 'WORK_ORDER' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}>Factory Work Order</button>
                     <button type="button" onClick={() => setTemplate('CHALLAN')} className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${template === 'CHALLAN' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}>Challan</button>
-                    <button type="button" onClick={() => setTemplate('POS')} className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${template === 'POS' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}>80mm</button>
+                    <button type="button" onClick={() => setTemplate('POS')} className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${template === 'POS' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}>80mm POS</button>
                   </div>)}
 
                 {/* Quick Pad View Toggle */}
                 {template !== 'POS' && (<div className="flex items-center gap-1 bg-white border border-slate-300 rounded-xl p-0.5 shadow-2xs text-xs">
-                    <button type="button" onClick={() => setIsPadMode(false)} className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${!isPadMode ? 'bg-slate-900 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`} title=""></button>
-                    <button type="button" onClick={() => setIsPadMode(true)} className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${isPadMode ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-600 hover:text-indigo-600'}`} title="">
+                    <button type="button" onClick={() => setIsPadMode(false)} className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${!isPadMode ? 'bg-slate-900 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`} title="Normal Mode with Header">Normal</button>
+                    <button type="button" onClick={() => setIsPadMode(true)} className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${isPadMode ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-600 hover:text-indigo-600'}`} title="Pad Mode (No Header/Footer)">
                       <FileSpreadsheet className="w-3.5 h-3.5"/>
-                      <span></span>
+                      <span>Pad</span>
                     </button>
                   </div>)}
               </div>
@@ -1042,7 +1125,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                         <span className="hidden sm:inline">100%</span>
                       </>) : (<>
                         <Maximize2 className="w-4 h-4"/>
-                        <span className="hidden sm:inline"></span>
+                        <span className="hidden sm:inline">Fit</span>
                       </>)}
                   </button>)}
 
@@ -1071,7 +1154,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                   <span>{isPrinting ? ('Printing...') : ('Print Document')}</span>
                 </button>
 
-                {/* Pad Print Button (User request at mark 1) */}
+                {/* Pad Print Button */}
                 {template !== 'POS' && (<button type="button" onClick={handlePadPrint} disabled={isPrinting} className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all ring-2 ring-indigo-300" title={'Print for pre-printed letterhead pad without header & footer'}>
                     <FileSpreadsheet className="w-4 h-4 text-indigo-200"/>
                     <span>{'Pad Print'}</span>
@@ -1146,271 +1229,362 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
         <div id="printable-invoice-content" className={`flex-1 ${isMobile && isMobileFit ? 'overflow-x-hidden' : 'overflow-x-auto'} overflow-y-auto p-1 sm:p-6 bg-slate-200/50 print:bg-white print:p-0 print:overflow-visible print:max-h-none print:block print:w-full print:max-w-full flex justify-center`}>
           
           {/* ============================================================== */}
-          {/* 1. STANDARD A4 TAX / SALES INVOICE */}
+          {/* 1. STANDARD A4 TAX / SALES INVOICE (Paginated) */}
           {/* ============================================================== */}
-          {template === 'A4' && (<div className="w-full flex justify-center print:block print:w-full print:max-w-full print:m-0 print:p-0" style={isMobile && isMobileFit
+          {template === 'A4' && (<div className="w-full flex flex-col items-center gap-6 print:gap-0 print:block print:w-full print:max-w-full print:m-0 print:p-0" style={isMobile && isMobileFit
                 ? {
-                    height: `${Math.ceil((sheetHeight || 1123) * scale)}px`,
+                    height: `${Math.ceil((sheetHeight || 1123) * scale * invoicePages.length)}px`,
                     overflow: 'hidden',
                 }
                 : undefined}>
-              <div ref={sheetRef} id="a4-document-sheet" style={isMobile && isMobileFit
-                ? {
-                    transform: `scale(${scale})`,
-                    transformOrigin: 'top center',
-                }
-                : undefined} className="a4-page-sheet bg-white w-[794px] min-w-[794px] print:w-full print:min-w-0 print:max-w-full print:shrink min-h-[1123px] print:min-h-0 mx-auto print:mx-0 p-8 print:p-0 rounded-xl print:rounded-none shadow-md print:shadow-none border-2 border-black print:border-none flex flex-col justify-between text-black text-xs shrink-0">
-                <div className="a4-page-content space-y-6 flex-1">
-                
-                {/* Top Header & Customer Box Group with zero gap */}
-                <div className="space-y-2.5">
-                  {/* Header: Company Logo & BILL/Invoice pill badge on Right (matching Image 2) */}
-                  <DocumentHeader badgeStyle={true} documentTitle={(invoice as any).isQuote
-                  ? 'BILL/Quotation'
-                  : 'BILL/Invoice'} documentNo={invoice.invoiceNo} documentDate={invoice.date} referenceNo={invoice.referenceNo} invoiceId={invoice.id} isPadMode={isPadMode} padTopMarginMm={padTopMarginMm}/>
+              {invoicePages.map((page, pIdx) => (
+                <div
+                  key={page.pageNumber}
+                  ref={pIdx === 0 ? sheetRef : undefined}
+                  id={pIdx === 0 ? "a4-document-sheet" : undefined}
+                  style={isMobile && isMobileFit
+                    ? {
+                        transform: `scale(${scale})`,
+                        transformOrigin: 'top center',
+                      }
+                    : undefined}
+                  className="a4-page-sheet bg-white w-[794px] min-w-[794px] print:w-full print:min-w-0 print:max-w-full print:shrink min-h-[1123px] print:min-h-0 mx-auto print:mx-0 p-8 print:p-0 rounded-xl print:rounded-none shadow-md print:shadow-none border-2 border-black print:border-none flex flex-col justify-between text-black text-xs shrink-0"
+                >
+                  <div className="a4-page-content space-y-5 flex-1">
+                    {page.isFirstPage ? (
+                      /* Page 1: Full Document Header & BILL TO box */
+                      <div className="space-y-2.5">
+                        <DocumentHeader
+                          badgeStyle={true}
+                          documentTitle={(invoice as any).isQuote ? 'BILL/Quotation' : 'BILL/Invoice'}
+                          documentNo={invoice.invoiceNo}
+                          documentDate={invoice.date}
+                          referenceNo={invoice.referenceNo}
+                          invoiceId={invoice.id}
+                          isPadMode={isPadMode}
+                          padTopMarginMm={padTopMarginMm}
+                        />
 
-                  {/* Bill To & Invoice Meta Box: 2 Columns Side-by-Side (Image 2 format) */}
-                  <div className="bg-white p-4 rounded-xl border-2 border-black shadow-2xs grid grid-cols-2 gap-4 text-xs">
-                  {/* Left Column: BILL TO */}
-                  <div className="space-y-1.5">
-                    <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
-                      BILL TO:
-                    </span>
-                    <div className="space-y-1 text-black">
-                      <div className="flex items-baseline">
-                        <span className="w-28 shrink-0 text-black font-bold">Customer Name :</span>
-                        <span className="font-black text-black text-sm">{invoice.customerName}</span>
-                      </div>
-                      {invoice.customerCompany && (<div className="flex items-baseline">
-                          <span className="w-28 shrink-0 text-black font-bold">Company / Org :</span>
-                          <span className="font-bold text-black">{invoice.customerCompany}</span>
-                        </div>)}
-                      <div className="flex items-baseline">
-                        <span className="w-28 shrink-0 text-black font-bold">Address :</span>
-                        <span className="text-black font-medium">
-                          {invoice.customerAddress || 'Chattogram, Bangladesh'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Column: Invoice Details with Mark 2 QR Code */}
-                  <div className="space-y-1.5 border-l-2 border-black pl-4 flex flex-col justify-between">
-                    <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
-                      DOCUMENT DETAILS:
-                    </span>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="space-y-1 text-black flex-1">
-                        <div className="flex items-baseline">
-                          <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Invoice Date :</span>
-                          <span className="font-black text-black">{invoice.date}</span>
-                        </div>
-                        <div className="flex items-baseline">
-                          <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Invoice # :</span>
-                          <span className="font-black text-black font-mono">#{invoice.invoiceNo}</span>
-                        </div>
-                        {invoice.referenceNo && !['nill', 'nil', 'none', 'null', '-'].includes(invoice.referenceNo.trim().toLowerCase()) && (<div className="flex items-baseline">
-                            <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Ref/PO # :</span>
-                            <span className="font-black text-black font-mono">{invoice.referenceNo}</span>
-                          </div>)}
-                        {invoice.deliveryDate && (<div className="flex items-baseline">
-                            <span className="w-24 sm:w-28 shrink-0 text-black font-bold">
-                              {(invoice as any).isQuote ? 'Valid Until :' : 'Delivery Target :'}
+                        {/* Bill To & Invoice Meta Box */}
+                        <div className="bg-white p-4 rounded-xl border-2 border-black shadow-2xs grid grid-cols-2 gap-4 text-xs">
+                          {/* Left Column: BILL TO */}
+                          <div className="space-y-1.5">
+                            <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
+                              BILL TO:
                             </span>
-                            <span className="font-black text-black">{invoice.deliveryDate}</span>
-                          </div>)}
-                      </div>
+                            <div className="space-y-1 text-black">
+                              <div className="flex items-baseline">
+                                <span className="w-28 shrink-0 text-black font-bold">Customer Name :</span>
+                                <span className="font-black text-black text-sm">{invoice.customerName}</span>
+                              </div>
+                              {invoice.customerCompany && (
+                                <div className="flex items-baseline">
+                                  <span className="w-28 shrink-0 text-black font-bold">Company / Org :</span>
+                                  <span className="font-bold text-black">{invoice.customerCompany}</span>
+                                </div>
+                              )}
+                              <div className="flex items-baseline">
+                                <span className="w-28 shrink-0 text-black font-bold">Address :</span>
+                                <span className="text-black font-medium">
+                                  {invoice.customerAddress || 'Chattogram, Bangladesh'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
 
-                      {/* Mark 2: Scannable Invoice QR Code */}
-                      <div className="shrink-0 p-1 bg-white rounded-lg border-2 border-black flex items-center justify-center shadow-2xs">
-                        {a4QrDataUrl ? (<img src={a4QrDataUrl} alt={`Invoice QR #${invoice.invoiceNo}`} className="w-16 h-16 sm:w-20 sm:h-20 object-contain"/>) : (<div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 flex items-center justify-center text-[9px] text-black font-bold">
-                            QR
-                          </div>)}
+                          {/* Right Column: Invoice Details with Mark 2 QR Code */}
+                          <div className="space-y-1.5 border-l-2 border-black pl-4 flex flex-col justify-between">
+                            <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
+                              DOCUMENT DETAILS:
+                            </span>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="space-y-1 text-black flex-1">
+                                <div className="flex items-baseline">
+                                  <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Invoice Date :</span>
+                                  <span className="font-black text-black">{invoice.date}</span>
+                                </div>
+                                <div className="flex items-baseline">
+                                  <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Invoice # :</span>
+                                  <span className="font-black text-black font-mono">#{invoice.invoiceNo}</span>
+                                </div>
+                                {invoice.referenceNo && !['nill', 'nil', 'none', 'null', '-'].includes(invoice.referenceNo.trim().toLowerCase()) && (
+                                  <div className="flex items-baseline">
+                                    <span className="w-24 sm:w-28 shrink-0 text-black font-bold">Ref/PO # :</span>
+                                    <span className="font-black text-black font-mono">{invoice.referenceNo}</span>
+                                  </div>
+                                )}
+                                {invoice.deliveryDate && (
+                                  <div className="flex items-baseline">
+                                    <span className="w-24 sm:w-28 shrink-0 text-black font-bold">
+                                      {(invoice as any).isQuote ? 'Valid Until :' : 'Delivery Target :'}
+                                    </span>
+                                    <span className="font-black text-black">{invoice.deliveryDate}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Mark 2: Scannable Invoice QR Code */}
+                              <div className="shrink-0 p-1 bg-white rounded-lg border-2 border-black flex items-center justify-center shadow-2xs">
+                                {a4QrDataUrl ? (
+                                  <img src={a4QrDataUrl} alt={`Invoice QR #${invoice.invoiceNo}`} className="w-16 h-16 sm:w-20 sm:h-20 object-contain"/>
+                                ) : (
+                                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 flex items-center justify-center text-[9px] text-black font-bold">
+                                    QR
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
+                    ) : (
+                      /* Subsequent Pages: Header */
+                      <div className="flex items-center justify-between pb-2.5 border-b-2 border-black text-black">
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-sm uppercase tracking-wide">
+                            {profile.name || 'DOT COLOR COMMUNICATION'}
+                          </span>
+                          <span className="text-[11px] font-bold text-slate-700">
+                            • {(invoice as any).isQuote ? 'BILL/Quotation' : 'BILL/Invoice'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs font-mono font-bold">
+                          <span>Invoice #{invoice.invoiceNo}</span>
+                          <span className="px-2 py-0.5 bg-black text-white text-[10px] rounded-sm font-sans font-black">
+                            Page {page.pageNumber} of {page.totalPages}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Line Items Table Container */}
+                    <div className="rounded-xl border-2 border-black overflow-hidden bg-white shadow-2xs">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-black text-white text-[11px] font-black uppercase tracking-wider border-b-2 border-black">
+                            <th className="py-2.5 px-3 text-center border-r border-black font-black w-12 text-white">SL</th>
+                            <th className="py-2.5 px-3 text-left border-r border-black font-black text-white">SERVICE / ITEM DESCRIPTION</th>
+                            <th className="py-2.5 px-3 text-center border-r border-black font-black w-16 text-white">UNIT</th>
+                            <th className="py-2.5 px-3 text-center border-r border-black font-black w-24 text-white">QTY / SQFT</th>
+                            <th className="py-2.5 px-3 text-right border-r border-black font-black w-24 text-white">RATETk</th>
+                            <th className="py-2.5 px-3 text-right font-black w-28 text-white">TOTALTk</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-xs bg-white text-black">
+                          {page.items.map((item, itemIdx) => {
+                            const globalIdx = page.startIndex + itemIdx;
+                            return (
+                              <tr key={itemIdx} className={`border-b border-black last:border-b-0 hover:bg-slate-50/60 ${itemIdx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'}`}>
+                                <td className="py-2.5 px-3 font-bold text-black border-r border-black text-center">
+                                  {globalIdx + 1}
+                                </td>
+                                <td className="py-2.5 px-3 border-r border-black">
+                                  <div className="font-black text-black text-xs">{item.name}</div>
+                                  {Boolean(item.totalSqft && item.width && item.height) && (
+                                    <div className="text-[11px] text-black font-bold mt-0.5">
+                                      Dimensions: {item.width}' × {item.height}' = {item.totalSqft} SqFt
+                                    </div>
+                                  )}
+                                  {item.notes && (<div className="text-[10px] text-black italic font-medium mt-0.5">{item.notes}</div>)}
+                                </td>
+                                <td className="py-2.5 px-3 text-center font-bold text-black border-r border-black">
+                                  {item.unit}
+                                </td>
+                                <td className="py-2.5 px-3 text-center font-black text-black border-r border-black">
+                                  {item.totalSqft ? item.totalSqft : item.qty}
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-black text-black border-r border-black">
+                                  {Number(item.unitPrice).toLocaleString()}
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-black text-black">
+                                  {Number(item.totalPrice).toLocaleString()}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                  </div>
-                </div>
-                </div>
 
-              {/* Items Table Container */}
-              <div className="rounded-xl border-2 border-black overflow-hidden bg-white shadow-2xs">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-black text-white text-[11px] font-black uppercase tracking-wider border-b-2 border-black">
-                      <th className="py-2.5 px-3 text-center border-r border-black font-black w-12 text-white">SL</th>
-                      <th className="py-2.5 px-3 text-left border-r border-black font-black text-white">SERVICE / ITEM DESCRIPTION</th>
-                      <th className="py-2.5 px-3 text-center border-r border-black font-black w-16 text-white">UNIT</th>
-                      <th className="py-2.5 px-3 text-center border-r border-black font-black w-24 text-white">QTY / SQFT</th>
-                      <th className="py-2.5 px-3 text-right border-r border-black font-black w-24 text-white">RATETk</th>
-                      <th className="py-2.5 px-3 text-right font-black w-28 text-white">TOTALTk</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-xs bg-white text-black">
-                    {invoice.items.map((item, idx) => (<tr key={idx} className={`border-b border-black last:border-b-0 hover:bg-slate-50/60 ${idx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'}`}>
-                        <td className="py-2.5 px-3 font-bold text-black border-r border-black text-center">
-                          {idx + 1}
-                        </td>
-                        <td className="py-2.5 px-3 border-r border-black">
-                          <div className="font-black text-black text-xs">{item.name}</div>
-                          {Boolean(item.totalSqft && item.width && item.height) && (<div className="text-[11px] text-black font-bold mt-0.5">
-                              Dimensions: {item.width}' × {item.height}' = {item.totalSqft} SqFt
-                            </div>)}
-                          {item.notes && (<div className="text-[10px] text-black italic font-medium mt-0.5">{item.notes}</div>)}
-                        </td>
-                        <td className="py-2.5 px-3 text-center font-bold text-black border-r border-black">
-                          {item.unit}
-                        </td>
-                        <td className="py-2.5 px-3 text-center font-black text-black border-r border-black">
-                          {item.totalSqft ? item.totalSqft : item.qty}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-black text-black border-r border-black">
-                          {Number(item.unitPrice).toLocaleString()}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-black text-black">
-                          {Number(item.totalPrice).toLocaleString()}
-                        </td>
-                      </tr>))}
-                  </tbody>
-                </table>
-              </div>
+                    {/* Totals & Financials (ONLY ON LAST PAGE) */}
+                    {page.isLastPage && (
+                      <div className="grid grid-cols-12 gap-6 pt-2 print:break-inside-avoid">
+                        <div className="col-span-7 space-y-3">
+                          {invoice.notes && (
+                            <div className="bg-white p-3 rounded-xl border-2 border-black text-xs shadow-2xs">
+                              <strong className="text-black font-black block mb-1 uppercase tracking-wider text-[11px]">
+                                {'Terms & Conditions / Remarks:'}
+                              </strong>
+                              <div className="text-black font-medium whitespace-pre-line leading-relaxed text-xs">
+                                {invoice.notes}
+                              </div>
+                            </div>
+                          )}
+                          {invoice.jobSpecs && (
+                            <div className="bg-white p-3 rounded-xl border-2 border-black text-xs shadow-2xs">
+                              <strong className="text-black font-black block mb-0.5">Job Instructions:</strong>
+                              <span className="text-black font-medium">{invoice.jobSpecs}</span>
+                            </div>
+                          )}
+                        </div>
 
-              {/* Totals & Financials */}
-              <div className="grid grid-cols-12 gap-6 pt-2 print:break-inside-avoid">
-                <div className="col-span-7 space-y-3">
-                  {invoice.notes && (<div className="bg-white p-3 rounded-xl border-2 border-black text-xs shadow-2xs">
-                      <strong className="text-black font-black block mb-1 uppercase tracking-wider text-[11px]">
-                        {'Terms & Conditions / Remarks:'}
-                      </strong>
-                      <div className="text-black font-medium whitespace-pre-line leading-relaxed text-xs">
-                        {invoice.notes}
-                      </div>
-                    </div>)}
-                  {invoice.jobSpecs && (<div className="bg-white p-3 rounded-xl border-2 border-black text-xs shadow-2xs">
-                      <strong className="text-black font-black block mb-0.5">Job Instructions:</strong>
-                      <span className="text-black font-medium">{invoice.jobSpecs}</span>
-                    </div>)}
-                </div>
-
-                <div className="col-span-5 space-y-1 text-xs text-black">
-                  <div className="flex justify-between text-black font-bold pb-1">
-                    <span>Subtotal:</span>
-                    <span className="font-bold text-black">
-                      {profile.currencySymbol}
-                      {invoice.subtotal.toLocaleString()}
-                    </span>
-                  </div>
-
-                  {invoice.discount > 0 && (<div className="flex justify-between text-black font-bold pb-1">
-                      <span>Discount:</span>
-                      <span className="font-bold text-black">
-                        -{profile.currencySymbol}
-                        {invoice.discount.toLocaleString()}
-                      </span>
-                    </div>)}
-
-                  {invoice.vatAmount > 0 && (<div className="flex justify-between text-black font-bold pb-1">
-                      <span>VAT ({invoice.vatRate}%):</span>
-                      <span className="font-bold text-black">
-                        +{profile.currencySymbol}
-                        {invoice.vatAmount.toLocaleString()}
-                      </span>
-                    </div>)}
-
-                  <div className="flex justify-between text-sm font-black py-1.5 border-t border-black text-black">
-                    <span>Grand Total:</span>
-                    <span className="text-black font-black text-base">
-                      {profile.currencySymbol}
-                      {invoice.grandTotal.toLocaleString()}
-                    </span>
-                  </div>
-
-                  {!(invoice as any).isQuote && (<>
-                      {invoice.splitPayments ? (<div className="space-y-1 text-[11px] pt-1 border-t-2 border-double border-black text-black">
-                          {(invoice.splitPayments.cash ?? 0) > 0 && (<div className="flex justify-between text-black">
-                              <span>Paid Cash:</span>
-                              <span className="font-bold text-black">
-                                {profile.currencySymbol}{(invoice.splitPayments.cash ?? 0).toLocaleString()}
-                              </span>
-                            </div>)}
-                          {(invoice.splitPayments.card ?? 0) > 0 && (<div className="flex justify-between text-black">
-                              <span>Paid Card / Bank:</span>
-                              <span className="font-bold text-black">
-                                {profile.currencySymbol}{(invoice.splitPayments.card ?? 0).toLocaleString()}
-                              </span>
-                            </div>)}
-                          {(invoice.splitPayments.bkash ?? 0) > 0 && (<div className="flex justify-between text-black">
-                              <span>Paid bKash:</span>
-                              <span className="font-bold text-black">
-                                {profile.currencySymbol}{(invoice.splitPayments.bkash ?? 0).toLocaleString()}
-                              </span>
-                            </div>)}
-                          {(invoice.splitPayments.nagad ?? 0) > 0 && (<div className="flex justify-between text-black">
-                              <span>Paid Nagad:</span>
-                              <span className="font-bold text-black">
-                                {profile.currencySymbol}{(invoice.splitPayments.nagad ?? 0).toLocaleString()}
-                              </span>
-                            </div>)}
-                          <div className="flex justify-between text-xs py-1 border-t border-black text-black">
-                            <span className="font-bold text-black">Total Paid:</span>
+                        <div className="col-span-5 space-y-1 text-xs text-black">
+                          <div className="flex justify-between text-black font-bold pb-1">
+                            <span>Subtotal:</span>
                             <span className="font-bold text-black">
                               {profile.currencySymbol}
-                              {invoice.paidAmount.toLocaleString()}
+                              {invoice.subtotal.toLocaleString()}
                             </span>
                           </div>
-                        </div>) : (<div className="flex justify-between text-xs py-1 border-t-2 border-double border-black text-black">
-                          <span className="font-bold text-black">Total Paid:</span>
-                          <span className="font-bold text-black">
-                            {profile.currencySymbol}
-                            {invoice.paidAmount.toLocaleString()}
-                          </span>
-                        </div>)}
 
-                      <div className="flex justify-between text-xs font-black text-black pt-1 border-t border-black">
-                        <span>Balance Due:</span>
-                        <span className="font-black text-black">
-                          {profile.currencySymbol}
-                          {invoice.dueAmount.toLocaleString()}
-                        </span>
+                          {invoice.discount > 0 && (
+                            <div className="flex justify-between text-black font-bold pb-1">
+                              <span>Discount:</span>
+                              <span className="font-bold text-black">
+                                -{profile.currencySymbol}
+                                {invoice.discount.toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+
+                          {invoice.vatAmount > 0 && (
+                            <div className="flex justify-between text-black font-bold pb-1">
+                              <span>VAT ({invoice.vatRate}%):</span>
+                              <span className="font-bold text-black">
+                                +{profile.currencySymbol}
+                                {invoice.vatAmount.toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between text-sm font-black py-1.5 border-t border-black text-black">
+                            <span>Grand Total:</span>
+                            <span className="text-black font-black text-base">
+                              {profile.currencySymbol}
+                              {invoice.grandTotal.toLocaleString()}
+                            </span>
+                          </div>
+
+                          {!(invoice as any).isQuote && (
+                            <>
+                              {invoice.splitPayments ? (
+                                <div className="space-y-1 text-[11px] pt-1 border-t-2 border-double border-black text-black">
+                                  {(invoice.splitPayments.cash ?? 0) > 0 && (
+                                    <div className="flex justify-between text-black">
+                                      <span>Paid Cash:</span>
+                                      <span className="font-bold text-black">
+                                        {profile.currencySymbol}{(invoice.splitPayments.cash ?? 0).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {(invoice.splitPayments.card ?? 0) > 0 && (
+                                    <div className="flex justify-between text-black">
+                                      <span>Paid Card / Bank:</span>
+                                      <span className="font-bold text-black">
+                                        {profile.currencySymbol}{(invoice.splitPayments.card ?? 0).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {(invoice.splitPayments.bkash ?? 0) > 0 && (
+                                    <div className="flex justify-between text-black">
+                                      <span>Paid bKash:</span>
+                                      <span className="font-bold text-black">
+                                        {profile.currencySymbol}{(invoice.splitPayments.bkash ?? 0).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {(invoice.splitPayments.nagad ?? 0) > 0 && (
+                                    <div className="flex justify-between text-black">
+                                      <span>Paid Nagad:</span>
+                                      <span className="font-bold text-black">
+                                        {profile.currencySymbol}{(invoice.splitPayments.nagad ?? 0).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="flex justify-between text-xs py-1 border-t border-black text-black">
+                                    <span className="font-bold text-black">Total Paid:</span>
+                                    <span className="font-bold text-black">
+                                      {profile.currencySymbol}
+                                      {invoice.paidAmount.toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex justify-between text-xs py-1 border-t-2 border-double border-black text-black">
+                                  <span className="font-bold text-black">Total Paid:</span>
+                                  <span className="font-bold text-black">
+                                    {profile.currencySymbol}
+                                    {invoice.paidAmount.toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+
+                              <div className="flex justify-between text-xs font-black text-black pt-1 border-t border-black">
+                                <span>Balance Due:</span>
+                                <span className="font-black text-black">
+                                  {profile.currencySymbol}
+                                  {invoice.dueAmount.toLocaleString()}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </>)}
-                </div>
-              </div>
-
-              </div>
-
-              {/* Signatures & Footer pinned to bottom (Mark 1 & Mark 2) */}
-              <div className="a4-page-footer mt-auto pt-8 sm:pt-10 space-y-3 print:break-inside-avoid">
-                {/* Signatures (Mark 2) */}
-                <div className="flex justify-between items-end text-center text-xs text-black px-2">
-                  <div>
-                    <div className="w-40 border-t border-black mx-auto mb-1.5"/>
-                    <span className="font-bold text-black text-xs">Customer's Signature</span>
+                    )}
                   </div>
-                  <div>
-                    <div className="w-48 border-t border-black mx-auto mb-1.5"/>
-                    <span className="font-black text-black text-xs">For Dot Color Communication</span>
-                  </div>
-                </div>
 
-                {/* System generated document notice (Image 2 marked sys) */}
-                <div className="text-center text-[10px] sm:text-[11px] font-semibold text-slate-700 tracking-wide pt-1">
-                  {'This is system generated document no signature required'}
-                </div>
+                  {/* Footer */}
+                  {page.isLastPage ? (
+                    /* Signatures & Footer pinned to bottom of last page (Mark 1 & Mark 2) */
+                    <div className="a4-page-footer mt-auto pt-6 sm:pt-8 space-y-3 print:break-inside-avoid">
+                      {/* Signatures (Mark 2) */}
+                      <div className="flex justify-between items-end text-center text-xs text-black px-2">
+                        <div>
+                          <div className="w-40 border-t border-black mx-auto mb-1.5"/>
+                          <span className="font-bold text-black text-xs">Customer's Signature</span>
+                        </div>
+                        <div>
+                          <div className="w-48 border-t border-black mx-auto mb-1.5"/>
+                          <span className="font-black text-black text-xs">For Dot Color Communication</span>
+                        </div>
+                      </div>
 
-                {/* Company Address & Contact Details Footer (Mark 1) */}
-                <div className={`text-center text-[10.5px] sm:text-[11px] text-black font-medium leading-relaxed pt-1 border-t border-slate-300 ${isPadMode ? 'hidden print:hidden' : ''}`}>
-                  <div>
-                    {profile.officeAddress && !profile.officeAddress.includes('South Noya Para')
-                ? profile.officeAddress
-                : 'Nazir Ahmed Chowdhury Road Raja Pukur By lane, G A Bhaban Mat, Chattogram, Bangladesh.'}
-                  </div>
-                  <div>
-                    Call-{profile.phone && !profile.phone.includes('01846100900') ? profile.phone : '01730581687'}, E-mail : {(profile.emails && profile.emails[0] && !profile.emails[0].includes('info@dotcolorcommunication.com')) ? profile.emails[0] : 'info.dotcolor@gmail.com'}
-                  </div>
+                      {/* System generated document notice (Image 2 marked sys) */}
+                      <div className="text-center text-[10px] sm:text-[11px] font-semibold text-slate-700 tracking-wide pt-1">
+                        {'This is system generated document no signature required'}
+                      </div>
+
+                      {/* Company Address & Contact Details Footer (Mark 1) */}
+                      <div className={`text-center text-[10.5px] sm:text-[11px] text-black font-medium leading-relaxed pt-1 border-t border-slate-300 ${isPadMode ? 'hidden print:hidden' : ''}`}>
+                        <div>
+                          {profile.officeAddress && !profile.officeAddress.includes('South Noya Para')
+                            ? profile.officeAddress
+                            : 'Nazir Ahmed Chowdhury Road Raja Pukur By lane, G A Bhaban Mat, Chattogram, Bangladesh.'}
+                        </div>
+                        <div className="flex items-center justify-between pt-0.5">
+                          <span className="flex-1 text-center">
+                            Call-{profile.phone && !profile.phone.includes('01846100900') ? profile.phone : '01730581687'}, E-mail : {(profile.emails && profile.emails[0] && !profile.emails[0].includes('info@dotcolorcommunication.com')) ? profile.emails[0] : 'info.dotcolor@gmail.com'}
+                          </span>
+                          {page.totalPages > 1 && (
+                            <span className="text-[10px] font-mono font-bold text-slate-600 shrink-0 pl-2">
+                              Page {page.pageNumber} of {page.totalPages}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Non-last page continuation footer */
+                    <div className="a4-page-footer mt-auto pt-4 border-t border-slate-300 flex items-center justify-between text-xs text-black font-semibold print:break-inside-avoid">
+                      <span className="italic">Continued on Page {page.pageNumber + 1}...</span>
+                      <span className="font-mono bg-black text-white px-2 py-0.5 rounded text-[10px]">
+                        Page {page.pageNumber} of {page.totalPages}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
-          </div>)}
+              ))}
+            </div>)}
 
         {/* ============================================================== */}
         {/* 2. FACTORY WORK ORDER / JOB CARD */}
@@ -1627,7 +1801,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
               </div>
 
               <div className="bg-slate-50/80 p-4 rounded-xl border-2 border-slate-400 print:border-slate-600 text-[11px] text-slate-800 leading-relaxed shadow-2xs">
-                <p>:  Product        ।</p>
+                <p>Note: Please inspect goods upon delivery. Goods once delivered and accepted are not returnable.</p>
               </div>
 
               </div>
@@ -1668,8 +1842,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                   {profile.category || 'Printing, Packaging & Signage'}
                 </div>
                 {(profile.officeAddress || profile.factoryAddress) && (<div className="text-[9px] text-black leading-snug">
-                    {profile.officeAddress || profile.factoryAddress}
-                  </div>)}
+                  {profile.officeAddress || profile.factoryAddress}
+                </div>)}
                 <div className="text-[10px] font-black text-black">
                   Hotline: {profile.phone || '01846100900, 01756007600'}
                 </div>
@@ -1777,7 +1951,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                 {invoice.dueAmount > 0 ? (<div className="flex justify-between text-xs font-black py-0.5 border-t border-dotted border-black">
                     <span>DUE:</span>
                     <span className="text-sm font-black">{Number(invoice.dueAmount).toLocaleString()} BDT</span>
-                  </div>) : (<div className="text-center font-black text-[10px] py-0.5 text-black border-t border-dotted border-black">*** PAID IN FULLPayment ***</div>)}
+                  </div>) : (<div className="text-center font-black text-[10px] py-0.5 text-black border-t border-dotted border-black">*** PAID IN FULL ***</div>)}
               </div>
 
               {/* 6. Scannable Verification QR Code */}
@@ -1788,8 +1962,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
 
               {/* 7. Footer Notes & Credit */}
               <div className="text-center pt-1 border-t border-dashed border-black text-[9px] text-black space-y-0.5">
-                <div className="font-bold">Product       ।</div>
-                <div className="font-bold">!  ।</div>
+                <div className="font-bold">Goods once sold cannot be returned.</div>
+                <div className="font-bold">Thank you for your business!</div>
                 <div className="pt-1 text-[8px] font-sans text-black">
                   Software by <strong className="font-bold">BD HOSTT</strong> (Hotline: 01846100900)
                 </div>
@@ -1807,3 +1981,4 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
     </div>
     </>);
 };
+
