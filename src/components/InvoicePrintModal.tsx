@@ -78,6 +78,16 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const isMobile = viewportWidth < 820;
   const scale =
     isMobile && isMobileFit
@@ -891,8 +901,14 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
       cloudSyncStatus === 'idle';
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-        <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 cursor-pointer"
+        onClick={onClose}
+      >
+        <div
+          className="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 cursor-default"
+          onClick={(e) => e.stopPropagation()}
+        >
           {isStillSyncing ? (
             <>
               <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />

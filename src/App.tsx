@@ -41,16 +41,32 @@ const getInitialTab = (): string => {
   return 'pos';
 };
 
+/**
+ * Extracts any invoice query parameter from the URL (?invoiceId=..., ?invoiceNo=..., ?inv=...)
+ * and immediately cleans it from the address bar via window.history.replaceState.
+ * This guarantees that QR scans open the modal once, but refreshes or browser history
+ * autocomplete will NOT continuously re-trigger the modal.
+ */
+const extractAndCleanInvoiceUrlParam = (): string | null => {
+  try {
+    if (typeof window === 'undefined') return null;
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get('invoiceId') || url.searchParams.get('invoiceNo') || url.searchParams.get('inv');
+    if (id) {
+      url.searchParams.delete('invoiceId');
+      url.searchParams.delete('invoiceNo');
+      url.searchParams.delete('inv');
+      const cleanUrl = url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : '') + url.hash;
+      window.history.replaceState(window.history.state || {}, '', cleanUrl);
+      return id.trim();
+    }
+  } catch {}
+  return null;
+};
+
 const MainLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>(getInitialTab);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      return params.get('invoiceId') || params.get('invoiceNo') || params.get('inv');
-    } catch {
-      return null;
-    }
-  });
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(extractAndCleanInvoiceUrlParam);
   const [modalMode, setModalMode] = useState<'invoice' | 'challan' | 'pos'>('invoice');
   const [directPrintOptions, setDirectPrintOptions] = useState<{ autoPrint: boolean; isPadMode: boolean }>({
     autoPrint: false,
@@ -85,18 +101,9 @@ const MainLayout: React.FC = () => {
     }
   }, [profile?.name]);
 
-  // Auto-clean any invoiceId / QR scan query params from the browser address bar
-  // so that future page refreshes or typing domain won't re-trigger the modal indefinitely
+  // Auto-clean any lingering invoiceId / QR scan query params from the browser address bar
   useEffect(() => {
-    try {
-      const url = new URL(window.location.href);
-      if (url.searchParams.has('invoiceId') || url.searchParams.has('invoiceNo') || url.searchParams.has('inv')) {
-        url.searchParams.delete('invoiceId');
-        url.searchParams.delete('invoiceNo');
-        url.searchParams.delete('inv');
-        window.history.replaceState({ tab: activeTab }, '', url.toString());
-      }
-    } catch {}
+    extractAndCleanInvoiceUrlParam();
   }, []);
 
   // Sync activeTab with URL & localStorage whenever it changes
@@ -288,14 +295,12 @@ const MainLayout: React.FC = () => {
 
 const AppContent: React.FC = () => {
   const { isAuthenticated } = useApp();
-  const [publicInvoiceId, setPublicInvoiceId] = useState<string | null>(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      return params.get('invoiceId') || params.get('invoiceNo') || params.get('inv');
-    } catch {
-      return null;
-    }
-  });
+  const [publicInvoiceId, setPublicInvoiceId] = useState<string | null>(extractAndCleanInvoiceUrlParam);
+
+  useEffect(() => {
+    // Extra safety: clean any lingering invoice params from address bar on mount
+    extractAndCleanInvoiceUrlParam();
+  }, []);
 
   if (!isAuthenticated && publicInvoiceId) {
     return (
@@ -305,13 +310,7 @@ const AppContent: React.FC = () => {
           mode="invoice"
           isPublicView={true}
           onClose={() => {
-            try {
-              const url = new URL(window.location.href);
-              url.searchParams.delete('invoiceId');
-              url.searchParams.delete('invoiceNo');
-              url.searchParams.delete('inv');
-              window.history.replaceState({}, '', url.toString());
-            } catch {}
+            extractAndCleanInvoiceUrlParam();
             setPublicInvoiceId(null);
           }}
         />
