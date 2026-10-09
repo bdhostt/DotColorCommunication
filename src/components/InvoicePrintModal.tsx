@@ -1148,14 +1148,14 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                 <div className="a4-page-content space-y-6 flex-1">
                 
                 {/* Top Header & Customer Box Group with zero gap */}
-                <div className="space-y-0.5">
+                <div className="space-y-2.5">
                   {/* Header: Company Logo & BILL/Invoice pill badge on Right (matching Image 2) */}
                   <DocumentHeader badgeStyle={true} documentTitle={(invoice as any).isQuote
                   ? 'BILL/Quotation'
                   : 'BILL/Invoice'} documentNo={invoice.invoiceNo} documentDate={invoice.date} referenceNo={invoice.referenceNo} invoiceId={invoice.id} isPadMode={isPadMode} padTopMarginMm={padTopMarginMm}/>
 
                   {/* Bill To & Invoice Meta Box: 2 Columns Side-by-Side (Image 2 format) */}
-                  <div style={{ marginTop: "0px" }} className="bg-white p-4 rounded-xl border-2 border-black shadow-2xs grid grid-cols-2 gap-4 text-xs">
+                  <div className="bg-white p-4 rounded-xl border-2 border-black shadow-2xs grid grid-cols-2 gap-4 text-xs">
                   {/* Left Column: BILL TO */}
                   <div className="space-y-1.5">
                     <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">

@@ -92,7 +92,7 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({ documentTitle, d
                 : '/dotcolor-official-logo.png'} alt={profile?.name || 'Dot Color Communication'} className="w-full h-auto block select-none"/>
             </div>
             {/* Document Title Badge (e.g. BILL/Invoice or BILL/Quotation): Visible in BOTH normal and pad mode */}
-            <div className={`w-full bg-[#18181B] text-white py-1.5 rounded-lg text-xs sm:text-[13px] font-black tracking-wider shadow-2xs text-center flex items-center justify-center select-none ${!isPadMode ? 'mt-2' : 'mt-0'}`}>
+            <div className={`w-full bg-[#18181B] text-white py-1.5 rounded-lg text-xs sm:text-[13px] font-black tracking-wider shadow-2xs text-center flex items-center justify-center select-none ${!isPadMode ? 'mt-2.5' : 'mt-0'}`}>
               {documentTitle}
             </div>
           </div>
