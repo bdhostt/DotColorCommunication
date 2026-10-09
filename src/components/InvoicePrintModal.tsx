@@ -1153,7 +1153,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                 : 'BILL/Invoice'} documentNo={invoice.invoiceNo} documentDate={invoice.date} referenceNo={invoice.referenceNo} invoiceId={invoice.id} isPadMode={isPadMode} padTopMarginMm={padTopMarginMm}/>
 
                 {/* Bill To & Invoice Meta Box: 2 Columns Side-by-Side (Image 2 format) */}
-                <div className="bg-white p-4 rounded-xl border-2 border-black shadow-2xs grid grid-cols-2 gap-4 text-xs !mt-1">
+                <div style={{ marginTop: "3px" }} className="bg-white p-4 rounded-xl border-2 border-black shadow-2xs grid grid-cols-2 gap-4 text-xs">
                   {/* Left Column: BILL TO */}
                   <div className="space-y-1.5">
                     <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
