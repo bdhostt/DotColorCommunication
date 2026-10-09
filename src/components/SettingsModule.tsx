@@ -2,651 +2,515 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { StaffMember, UserRole, StaffRole, PaymentMethodConfig, PaymentMethodType } from '../types';
 import { ALL_SYSTEM_PERMISSIONS, ALL_SYSTEM_PERMISSIONS as SYSTEM_PERMISSIONS } from '../data/accountingAndConfigData';
-import {
-  Users,
-  Shield,
-  KeyRound,
-  Trash2,
-  Plus,
-  Edit2,
-  CheckCircle2,
-  AlertTriangle,
-  RotateCcw,
-  Building2,
-  Factory,
-  Mail,
-  Phone,
-  Search,
-  Lock,
-  Eye,
-  EyeOff,
-  SlidersHorizontal,
-  FolderSync,
-  FileSpreadsheet,
-  AlertOctagon,
-  CheckSquare,
-  Square,
-  Sparkles,
-  Server,
-  Globe,
-  ExternalLink,
-  Cpu,
-  HardDrive,
-  ShieldCheck,
-  Zap,
-  CreditCard,
-  Landmark,
-  Smartphone,
-  Save,
-  Copy,
-  Check,
-  Star,
-  Banknote,
-  X,
-  Wallet,
-} from 'lucide-react';
-
+import { Users, Shield, KeyRound, Trash2, Plus, Edit2, CheckCircle2, AlertTriangle, RotateCcw, Building2, Factory, Mail, Phone, Search, Lock, Eye, EyeOff, SlidersHorizontal, FolderSync, FileSpreadsheet, AlertOctagon, CheckSquare, Square, Sparkles, Server, Globe, ExternalLink, Cpu, HardDrive, ShieldCheck, Zap, CreditCard, Landmark, Smartphone, Save, Copy, Check, Star, Banknote, X, Wallet, } from 'lucide-react';
 export const SettingsModule: React.FC = () => {
-  const {
-    staffMembers = [],
-    userRoles = [],
-    activeStaff,
-    setActiveStaff,
-    language,
-    profile,
-    updateProfile,
-    paymentMethods = [],
-    accountBalances,
-    addPaymentMethod,
-    updatePaymentMethod,
-    deletePaymentMethod,
-    togglePaymentMethod,
-    setDefaultPaymentMethod,
-    addAuditLog,
-    addStaffMember,
-    updateStaffMember,
-    deleteStaffMember,
-    addUserRole,
-    updateUserRole,
-    deleteUserRole,
-    cleanModuleData,
-    resetToDefaultData,
-    checkPermission,
-  } = useApp();
-
-  const [activeTab, setActiveTab] = useState<'users' | 'roles' | 'payment-gateways' | 'data-clean' | 'system'>('users');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // User modal states
-  const [showUserModal, setShowUserModal] = useState(false);
-  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
-  const [showUserPassword, setShowUserPassword] = useState(false);
-  const [userSaveSuccess, setUserSaveSuccess] = useState<string | null>(null);
-  const [userFormData, setUserFormData] = useState({
-    name: '',
-    nameBn: '',
-    role: 'Sales Executive' as StaffRole,
-    roleBn: 'বিক্রয় প্রতিনিধি',
-    location: 'Office' as 'Office' | 'Factory' | 'Both',
-    phone: '',
-    email: '',
-    password: '',
-    customRoleId: '',
-    isActive: true,
-  });
-
-  // Role modal states
-  const [showRoleModal, setShowRoleModal] = useState(false);
-  const [editingRole, setEditingRole] = useState<UserRole | null>(null);
-  const [roleFormData, setRoleFormData] = useState({
-    name: '',
-    nameBn: '',
-    description: '',
-    permissions: [] as string[],
-  });
-
-  // Data cleanup modal state
-  const [cleanConfirmModule, setCleanConfirmModule] = useState<string | null>(null);
-  const [cleanFeedback, setCleanFeedback] = useState<string | null>(null);
-
-  const isSuperUser =
-    (activeStaff?.role || '').toLowerCase().includes('admin') ||
-    (activeStaff?.role || '').toLowerCase().includes('director') ||
-    (activeStaff?.name || '').toLowerCase().includes('super admin');
-
-  const canManageUsers =
-    checkPermission('settings.manage_users') ||
-    checkPermission('SETTINGS_MANAGE_USERS') ||
-    isSuperUser;
-
-  const canManageRoles =
-    checkPermission('settings.manage_roles') ||
-    checkPermission('SETTINGS_MANAGE_ROLES') ||
-    isSuperUser;
-
-  const canCleanData =
-    checkPermission('settings.clean_data') ||
-    checkPermission('SETTINGS_CLEAN_DATA') ||
-    isSuperUser;
-
-  const canManagePayments =
-    checkPermission('settings.manage_payments') ||
-    checkPermission('settings.view') ||
-    isSuperUser;
-
-  const [paymentFormData, setPaymentFormData] = useState({
-    bankName: profile.bankName || '',
-    bankAccount: profile.bankAccount || '',
-    bankAccountTitle: profile.bankAccountTitle || profile.name || '',
-    bankBranch: profile.bankBranch || '',
-    routingNumber: profile.routingNumber || '',
-    bkashNagadNumber: profile.bkashNagadNumber || '',
-    nagadNumber: profile.nagadNumber || '',
-    rocketNumber: profile.rocketNumber || '',
-    bankingNotes: profile.bankingNotes || '',
-    paymentGatewayProvider: profile.paymentGatewayProvider || 'none',
-    paymentGatewayMode: profile.paymentGatewayMode || 'sandbox',
-    paymentGatewayStoreId: profile.paymentGatewayStoreId || '',
-    paymentGatewayApiKey: profile.paymentGatewayApiKey || '',
-    paymentGatewaySecret: profile.paymentGatewaySecret || '',
-    paymentGatewayIsEnabled: profile.paymentGatewayIsEnabled || false,
-  });
-  const [showSecretKey, setShowSecretKey] = useState(false);
-  const [paymentSaveSuccess, setPaymentSaveSuccess] = useState(false);
-  const [copiedCallback, setCopiedCallback] = useState(false);
-
-  useEffect(() => {
-    setPaymentFormData({
-      bankName: profile.bankName || '',
-      bankAccount: profile.bankAccount || '',
-      bankAccountTitle: profile.bankAccountTitle || profile.name || '',
-      bankBranch: profile.bankBranch || '',
-      routingNumber: profile.routingNumber || '',
-      bkashNagadNumber: profile.bkashNagadNumber || '',
-      nagadNumber: profile.nagadNumber || '',
-      rocketNumber: profile.rocketNumber || '',
-      bankingNotes: profile.bankingNotes || '',
-      paymentGatewayProvider: profile.paymentGatewayProvider || 'none',
-      paymentGatewayMode: profile.paymentGatewayMode || 'sandbox',
-      paymentGatewayStoreId: profile.paymentGatewayStoreId || '',
-      paymentGatewayApiKey: profile.paymentGatewayApiKey || '',
-      paymentGatewaySecret: profile.paymentGatewaySecret || '',
-      paymentGatewayIsEnabled: profile.paymentGatewayIsEnabled || false,
+    const { staffMembers = [], userRoles = [], activeStaff, setActiveStaff, language, profile, updateProfile, paymentMethods = [], accountBalances, addPaymentMethod, updatePaymentMethod, deletePaymentMethod, togglePaymentMethod, setDefaultPaymentMethod, addAuditLog, addStaffMember, updateStaffMember, deleteStaffMember, addUserRole, updateUserRole, deleteUserRole, cleanModuleData, resetToDefaultData, checkPermission, } = useApp();
+    const [activeTab, setActiveTab] = useState<'users' | 'roles' | 'payment-gateways' | 'data-clean' | 'system'>('users');
+    const [searchQuery, setSearchQuery] = useState('');
+    // User modal states
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
+    const [showUserPassword, setShowUserPassword] = useState(false);
+    const [userSaveSuccess, setUserSaveSuccess] = useState<string | null>(null);
+    const [userFormData, setUserFormData] = useState({
+        name: '',
+        nameBn: '',
+        role: 'Sales Executive' as StaffRole,
+        roleBn: "",
+        location: 'Office' as 'Office' | 'Factory' | 'Both',
+        phone: '',
+        email: '',
+        password: '',
+        customRoleId: '',
+        isActive: true,
     });
-  }, [profile]);
-
-  useEffect(() => {
-    const handleOpenPayment = () => setActiveTab('payment-gateways');
-    window.addEventListener('open-payment-settings', handleOpenPayment);
-    return () => window.removeEventListener('open-payment-settings', handleOpenPayment);
-  }, []);
-
-  // Dynamic Payment Method State & Handlers
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [editingPaymentMethod, setEditingPaymentMethod] = useState<PaymentMethodConfig | null>(null);
-  const [paymentFilterType, setPaymentFilterType] = useState<string>('ALL');
-  const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
-  const [paymentViewMode, setPaymentViewMode] = useState<'table' | 'cards'>('table');
-  const [deleteConfirmPaymentId, setDeleteConfirmPaymentId] = useState<string | null>(null);
-
-  const filteredPaymentMethods = useMemo(() => {
-    return paymentMethods
-      .filter((pm) => {
-        if (paymentFilterType === 'ALL') return true;
-        if (paymentFilterType === 'cash') return pm.type === 'cash';
-        if (paymentFilterType === 'mfs') return pm.type === 'mfs';
-        if (paymentFilterType === 'bank') return pm.type === 'bank';
-        if (paymentFilterType === 'credit') return pm.name.toLowerCase().includes('due') || pm.name.toLowerCase().includes('credit') || pm.type === 'cheque';
-        if (paymentFilterType === 'gateway') return pm.type === 'gateway' || pm.name.toLowerCase().includes('qr') || pm.name.toLowerCase().includes('ssl');
-        return true;
-      })
-      .filter((pm) => {
-        if (!paymentSearchQuery.trim()) return true;
-        const q = paymentSearchQuery.toLowerCase().trim();
-        return (
-          pm.name.toLowerCase().includes(q) ||
-          (pm.nameBn && pm.nameBn.toLowerCase().includes(q)) ||
-          (pm.accountNumber && pm.accountNumber.toLowerCase().includes(q)) ||
-          (pm.bankName && pm.bankName.toLowerCase().includes(q)) ||
-          (pm.provider && pm.provider.toLowerCase().includes(q))
-        );
-      });
-  }, [paymentMethods, paymentFilterType, paymentSearchQuery]);
-  const [paymentMethodFormData, setPaymentMethodFormData] = useState<Partial<PaymentMethodConfig>>({
-    name: '',
-    nameBn: '',
-    type: 'bank',
-    bankName: '',
-    accountNumber: '',
-    accountTitle: '',
-    branchName: '',
-    routingNumber: '',
-    provider: 'sslcommerz',
-    gatewayMode: 'sandbox',
-    storeId: '',
-    secretKey: '',
-    chargePercent: 0,
-    notes: '',
-    isEnabled: true,
-    isDefault: false,
-  });
-
-  const handleOpenAddPaymentMethod = (presetType: PaymentMethodType = 'bank') => {
-    setEditingPaymentMethod(null);
-    setPaymentMethodFormData({
-      name:
-        presetType === 'bank'
-          ? 'Corporate Bank'
-          : presetType === 'mfs'
-          ? 'bKash Merchant'
-          : presetType === 'gateway'
-          ? 'SSLCommerz Gateway'
-          : presetType === 'cash'
-          ? 'Cash Counter'
-          : presetType === 'cheque'
-          ? 'Bank Cheque'
-          : 'New Payment Method',
-      nameBn:
-        presetType === 'bank'
-          ? 'কর্পোরেট ব্যাংক হিসাব'
-          : presetType === 'mfs'
-          ? 'বিকাশ মার্চেন্ট'
-          : presetType === 'gateway'
-          ? 'অনলাইন পেমেন্ট গেটওয়ে'
-          : presetType === 'cash'
-          ? 'ক্যাশ কাউন্টার'
-          : presetType === 'cheque'
-          ? 'ব্যাংক চেক'
-          : 'পেমেন্ট মেথড',
-      type: presetType,
-      bankName: presetType === 'bank' ? 'City Bank PLC' : '',
-      accountNumber: '',
-      accountTitle: profile.name || 'Dot Color Communication',
-      branchName: '',
-      routingNumber: '',
-      provider: presetType === 'gateway' ? 'sslcommerz' : presetType === 'mfs' ? 'bKash' : '',
-      gatewayMode: 'sandbox',
-      storeId: '',
-      secretKey: '',
-      chargePercent: 0,
-      notes: '',
-      isEnabled: true,
-      isDefault: (paymentMethods || []).length === 0,
+    // Role modal states
+    const [showRoleModal, setShowRoleModal] = useState(false);
+    const [editingRole, setEditingRole] = useState<UserRole | null>(null);
+    const [roleFormData, setRoleFormData] = useState({
+        name: '',
+        nameBn: '',
+        description: '',
+        permissions: [] as string[],
     });
-    setShowPaymentModal(true);
-  };
-
-  const handleOpenEditPaymentMethod = (pm: PaymentMethodConfig) => {
-    setEditingPaymentMethod(pm);
-    setPaymentMethodFormData({
-      name: pm.name,
-      nameBn: pm.nameBn || '',
-      type: pm.type,
-      bankName: pm.bankName || '',
-      accountNumber: pm.accountNumber || '',
-      accountTitle: pm.accountTitle || '',
-      branchName: pm.branchName || '',
-      routingNumber: pm.routingNumber || '',
-      provider: pm.provider || '',
-      gatewayMode: pm.gatewayMode || 'sandbox',
-      storeId: pm.storeId || '',
-      secretKey: pm.secretKey || '',
-      chargePercent: pm.chargePercent || 0,
-      notes: pm.notes || '',
-      isEnabled: pm.isEnabled !== false,
-      isDefault: pm.isDefault || false,
+    // Data cleanup modal state
+    const [cleanConfirmModule, setCleanConfirmModule] = useState<string | null>(null);
+    const [cleanFeedback, setCleanFeedback] = useState<string | null>(null);
+    const isSuperUser = (activeStaff?.role || '').toLowerCase().includes('admin') ||
+        (activeStaff?.role || '').toLowerCase().includes('director') ||
+        (activeStaff?.name || '').toLowerCase().includes('super admin');
+    const canManageUsers = checkPermission('settings.manage_users') ||
+        checkPermission('SETTINGS_MANAGE_USERS') ||
+        isSuperUser;
+    const canManageRoles = checkPermission('settings.manage_roles') ||
+        checkPermission('SETTINGS_MANAGE_ROLES') ||
+        isSuperUser;
+    const canCleanData = checkPermission('settings.clean_data') ||
+        checkPermission('SETTINGS_CLEAN_DATA') ||
+        isSuperUser;
+    const canManagePayments = checkPermission('settings.manage_payments') ||
+        checkPermission('settings.view') ||
+        isSuperUser;
+    const [paymentFormData, setPaymentFormData] = useState({
+        bankName: profile.bankName || '',
+        bankAccount: profile.bankAccount || '',
+        bankAccountTitle: profile.bankAccountTitle || profile.name || '',
+        bankBranch: profile.bankBranch || '',
+        routingNumber: profile.routingNumber || '',
+        bkashNagadNumber: profile.bkashNagadNumber || '',
+        nagadNumber: profile.nagadNumber || '',
+        rocketNumber: profile.rocketNumber || '',
+        bankingNotes: profile.bankingNotes || '',
+        paymentGatewayProvider: profile.paymentGatewayProvider || 'none',
+        paymentGatewayMode: profile.paymentGatewayMode || 'sandbox',
+        paymentGatewayStoreId: profile.paymentGatewayStoreId || '',
+        paymentGatewayApiKey: profile.paymentGatewayApiKey || '',
+        paymentGatewaySecret: profile.paymentGatewaySecret || '',
+        paymentGatewayIsEnabled: profile.paymentGatewayIsEnabled || false,
     });
-    setShowPaymentModal(true);
-  };
-
-  const handleSavePaymentMethod = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!paymentMethodFormData.name?.trim()) return;
-
-    if (editingPaymentMethod) {
-      updatePaymentMethod(editingPaymentMethod.id, paymentMethodFormData);
-    } else {
-      addPaymentMethod({
-        name: paymentMethodFormData.name.trim(),
-        nameBn: paymentMethodFormData.nameBn?.trim(),
-        type: paymentMethodFormData.type || 'bank',
-        bankName: paymentMethodFormData.bankName?.trim(),
-        accountNumber: paymentMethodFormData.accountNumber?.trim(),
-        accountTitle: paymentMethodFormData.accountTitle?.trim(),
-        branchName: paymentMethodFormData.branchName?.trim(),
-        routingNumber: paymentMethodFormData.routingNumber?.trim(),
-        provider: paymentMethodFormData.provider?.trim(),
-        gatewayMode: paymentMethodFormData.gatewayMode || 'sandbox',
-        storeId: paymentMethodFormData.storeId?.trim(),
-        secretKey: paymentMethodFormData.secretKey?.trim(),
-        chargePercent: Number(paymentMethodFormData.chargePercent) || 0,
-        notes: paymentMethodFormData.notes?.trim(),
-        isEnabled: paymentMethodFormData.isEnabled !== false,
-        isDefault: Boolean(paymentMethodFormData.isDefault),
-      });
-    }
-
-    setShowPaymentModal(false);
-    setPaymentSaveSuccess(true);
-    setTimeout(() => setPaymentSaveSuccess(false), 3000);
-  };
-
-  const handleDeletePaymentMethod = (id: string) => {
-    const res = deletePaymentMethod(id);
-    if (!res.success && res.message) {
-      alert(res.message);
-    }
-    setDeleteConfirmPaymentId(null);
-  };
-
-  const handleSavePaymentSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateProfile(paymentFormData);
-    addAuditLog({
-      staffId: activeStaff.id,
-      staffName: activeStaff.name,
-      staffRole: activeStaff.role,
-      location: 'All',
-      actionType: 'PROFILE_UPDATED',
-      entityType: 'Configuration',
-      details: `Updated payment gateway settings and banking credentials (${paymentFormData.paymentGatewayProvider})`,
-      detailsBn: `পেমেন্ট গেটওয়ে ও ব্যাংকিং তথ্য পরিবর্তন করা হয়েছে (${paymentFormData.paymentGatewayProvider})`,
-      severity: 'info',
+    const [showSecretKey, setShowSecretKey] = useState(false);
+    const [paymentSaveSuccess, setPaymentSaveSuccess] = useState(false);
+    const [copiedCallback, setCopiedCallback] = useState(false);
+    useEffect(() => {
+        setPaymentFormData({
+            bankName: profile.bankName || '',
+            bankAccount: profile.bankAccount || '',
+            bankAccountTitle: profile.bankAccountTitle || profile.name || '',
+            bankBranch: profile.bankBranch || '',
+            routingNumber: profile.routingNumber || '',
+            bkashNagadNumber: profile.bkashNagadNumber || '',
+            nagadNumber: profile.nagadNumber || '',
+            rocketNumber: profile.rocketNumber || '',
+            bankingNotes: profile.bankingNotes || '',
+            paymentGatewayProvider: profile.paymentGatewayProvider || 'none',
+            paymentGatewayMode: profile.paymentGatewayMode || 'sandbox',
+            paymentGatewayStoreId: profile.paymentGatewayStoreId || '',
+            paymentGatewayApiKey: profile.paymentGatewayApiKey || '',
+            paymentGatewaySecret: profile.paymentGatewaySecret || '',
+            paymentGatewayIsEnabled: profile.paymentGatewayIsEnabled || false,
+        });
+    }, [profile]);
+    useEffect(() => {
+        const handleOpenPayment = () => setActiveTab('payment-gateways');
+        window.addEventListener('open-payment-settings', handleOpenPayment);
+        return () => window.removeEventListener('open-payment-settings', handleOpenPayment);
+    }, []);
+    // Dynamic Payment Method State & Handlers
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [editingPaymentMethod, setEditingPaymentMethod] = useState<PaymentMethodConfig | null>(null);
+    const [paymentFilterType, setPaymentFilterType] = useState<string>('ALL');
+    const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
+    const [paymentViewMode, setPaymentViewMode] = useState<'table' | 'cards'>('table');
+    const [deleteConfirmPaymentId, setDeleteConfirmPaymentId] = useState<string | null>(null);
+    const filteredPaymentMethods = useMemo(() => {
+        return paymentMethods
+            .filter((pm) => {
+            if (paymentFilterType === 'ALL')
+                return true;
+            if (paymentFilterType === 'cash')
+                return pm.type === 'cash';
+            if (paymentFilterType === 'mfs')
+                return pm.type === 'mfs';
+            if (paymentFilterType === 'bank')
+                return pm.type === 'bank';
+            if (paymentFilterType === 'credit')
+                return pm.name.toLowerCase().includes('due') || pm.name.toLowerCase().includes('credit') || pm.type === 'cheque';
+            if (paymentFilterType === 'gateway')
+                return pm.type === 'gateway' || pm.name.toLowerCase().includes('qr') || pm.name.toLowerCase().includes('ssl');
+            return true;
+        })
+            .filter((pm) => {
+            if (!paymentSearchQuery.trim())
+                return true;
+            const q = paymentSearchQuery.toLowerCase().trim();
+            return (pm.name.toLowerCase().includes(q) ||
+                (pm.nameBn && pm.nameBn.toLowerCase().includes(q)) ||
+                (pm.accountNumber && pm.accountNumber.toLowerCase().includes(q)) ||
+                (pm.bankName && pm.bankName.toLowerCase().includes(q)) ||
+                (pm.provider && pm.provider.toLowerCase().includes(q)));
+        });
+    }, [paymentMethods, paymentFilterType, paymentSearchQuery]);
+    const [paymentMethodFormData, setPaymentMethodFormData] = useState<Partial<PaymentMethodConfig>>({
+        name: '',
+        nameBn: '',
+        type: 'bank',
+        bankName: '',
+        accountNumber: '',
+        accountTitle: '',
+        branchName: '',
+        routingNumber: '',
+        provider: 'sslcommerz',
+        gatewayMode: 'sandbox',
+        storeId: '',
+        secretKey: '',
+        chargePercent: 0,
+        notes: '',
+        isEnabled: true,
+        isDefault: false,
     });
-    setPaymentSaveSuccess(true);
-    setTimeout(() => setPaymentSaveSuccess(false), 3000);
-  };
-
-  // Filtered staff members
-  const filteredStaff = staffMembers.filter((staff) => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      staff.name.toLowerCase().includes(q) ||
-      (staff.nameBn && staff.nameBn.includes(q)) ||
-      staff.role.toLowerCase().includes(q) ||
-      (staff.phone && staff.phone.includes(q))
-    );
-  });
-
-  const isSuperAdminStaff = (staff?: StaffMember | null): boolean => {
-    if (!staff) return false;
-    return (
-      staff.role === 'Super Admin' ||
-      (staff.name || '').toLowerCase() === 'super admin' ||
-      staff.id === 'staff-superadmin'
-    );
-  };
-
-  // User Handlers
-  const handleOpenAddUser = () => {
-    const regularRoles = userRoles.filter(
-      (r) => r.name !== 'Super Admin' && r.name.toLowerCase() !== 'superadmin'
-    );
-    const defaultRole =
-      regularRoles.find((r) => r.name === 'Sales Executive') || regularRoles[0] || userRoles[0];
-    setUserFormData({
-      name: '',
-      nameBn: '',
-      role: (defaultRole?.name || 'Sales Executive') as StaffRole,
-      roleBn: defaultRole?.nameBn || 'বিক্রয় প্রতিনিধি',
-      location: 'Both',
-      phone: '',
-      email: '',
-      password: '1234',
-      customRoleId: defaultRole?.id || '',
-      isActive: true,
+    const handleOpenAddPaymentMethod = (presetType: PaymentMethodType = 'bank') => {
+        setEditingPaymentMethod(null);
+        setPaymentMethodFormData({
+            name: presetType === 'bank'
+                ? 'Corporate Bank'
+                : presetType === 'mfs'
+                    ? 'bKash Merchant'
+                    : presetType === 'gateway'
+                        ? 'SSLCommerz Gateway'
+                        : presetType === 'cash'
+                            ? 'Cash Counter'
+                            : presetType === 'cheque'
+                                ? 'Bank Cheque'
+                                : 'New Payment Method',
+            nameBn: presetType === 'bank'
+                ? "Bank" : presetType === 'mfs'
+                ? "bKash" : presetType === 'gateway'
+                ? "Online Payment" : presetType === 'cash'
+                ? "Cash" : presetType === 'cheque'
+                ? "Bank Cheque" : "Payment",
+            type: presetType,
+            bankName: presetType === 'bank' ? 'City Bank PLC' : '',
+            accountNumber: '',
+            accountTitle: profile.name || 'Dot Color Communication',
+            branchName: '',
+            routingNumber: '',
+            provider: presetType === 'gateway' ? 'sslcommerz' : presetType === 'mfs' ? 'bKash' : '',
+            gatewayMode: 'sandbox',
+            storeId: '',
+            secretKey: '',
+            chargePercent: 0,
+            notes: '',
+            isEnabled: true,
+            isDefault: (paymentMethods || []).length === 0,
+        });
+        setShowPaymentModal(true);
+    };
+    const handleOpenEditPaymentMethod = (pm: PaymentMethodConfig) => {
+        setEditingPaymentMethod(pm);
+        setPaymentMethodFormData({
+            name: pm.name,
+            nameBn: pm.nameBn || '',
+            type: pm.type,
+            bankName: pm.bankName || '',
+            accountNumber: pm.accountNumber || '',
+            accountTitle: pm.accountTitle || '',
+            branchName: pm.branchName || '',
+            routingNumber: pm.routingNumber || '',
+            provider: pm.provider || '',
+            gatewayMode: pm.gatewayMode || 'sandbox',
+            storeId: pm.storeId || '',
+            secretKey: pm.secretKey || '',
+            chargePercent: pm.chargePercent || 0,
+            notes: pm.notes || '',
+            isEnabled: pm.isEnabled !== false,
+            isDefault: pm.isDefault || false,
+        });
+        setShowPaymentModal(true);
+    };
+    const handleSavePaymentMethod = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!paymentMethodFormData.name?.trim())
+            return;
+        if (editingPaymentMethod) {
+            updatePaymentMethod(editingPaymentMethod.id, paymentMethodFormData);
+        }
+        else {
+            addPaymentMethod({
+                name: paymentMethodFormData.name.trim(),
+                nameBn: paymentMethodFormData.nameBn?.trim(),
+                type: paymentMethodFormData.type || 'bank',
+                bankName: paymentMethodFormData.bankName?.trim(),
+                accountNumber: paymentMethodFormData.accountNumber?.trim(),
+                accountTitle: paymentMethodFormData.accountTitle?.trim(),
+                branchName: paymentMethodFormData.branchName?.trim(),
+                routingNumber: paymentMethodFormData.routingNumber?.trim(),
+                provider: paymentMethodFormData.provider?.trim(),
+                gatewayMode: paymentMethodFormData.gatewayMode || 'sandbox',
+                storeId: paymentMethodFormData.storeId?.trim(),
+                secretKey: paymentMethodFormData.secretKey?.trim(),
+                chargePercent: Number(paymentMethodFormData.chargePercent) || 0,
+                notes: paymentMethodFormData.notes?.trim(),
+                isEnabled: paymentMethodFormData.isEnabled !== false,
+                isDefault: Boolean(paymentMethodFormData.isDefault),
+            });
+        }
+        setShowPaymentModal(false);
+        setPaymentSaveSuccess(true);
+        setTimeout(() => setPaymentSaveSuccess(false), 3000);
+    };
+    const handleDeletePaymentMethod = (id: string) => {
+        const res = deletePaymentMethod(id);
+        if (!res.success && res.message) {
+            alert(res.message);
+        }
+        setDeleteConfirmPaymentId(null);
+    };
+    const handleSavePaymentSettings = (e: React.FormEvent) => {
+        e.preventDefault();
+        updateProfile(paymentFormData);
+        addAuditLog({
+            staffId: activeStaff.id,
+            staffName: activeStaff.name,
+            staffRole: activeStaff.role,
+            location: 'All',
+            actionType: 'PROFILE_UPDATED',
+            entityType: 'Configuration',
+            details: `Updated payment gateway settings and banking credentials (${paymentFormData.paymentGatewayProvider})`,
+            detailsBn: `Payment gateway & banking settings updated (${paymentFormData.paymentGatewayProvider})`,
+            severity: 'info',
+        });
+        setPaymentSaveSuccess(true);
+        setTimeout(() => setPaymentSaveSuccess(false), 3000);
+    };
+    // Filtered staff members
+    const filteredStaff = staffMembers.filter((staff) => {
+        const q = searchQuery.toLowerCase().trim();
+        if (!q)
+            return true;
+        return (staff.name.toLowerCase().includes(q) ||
+            (staff.nameBn && staff.nameBn.includes(q)) ||
+            staff.role.toLowerCase().includes(q) ||
+            (staff.phone && staff.phone.includes(q)));
     });
-    setShowUserPassword(false);
-    setEditingStaff(null);
-    setShowUserModal(true);
-  };
-
-  const handleOpenEditUser = (staff: StaffMember) => {
-    const matchedRole = userRoles.find((r) => r.id === staff.customRoleId || r.name === staff.role);
-    setUserFormData({
-      name: staff.name,
-      nameBn: staff.nameBn || '',
-      role: staff.role,
-      roleBn: staff.roleBn || '',
-      location: staff.location || 'Both',
-      phone: staff.phone || '',
-      email: staff.email || '',
-      password: staff.password || '1234',
-      customRoleId: matchedRole?.id || staff.customRoleId || userRoles[0]?.id || '',
-      isActive: staff.isActive !== false,
-    });
-    setShowUserPassword(false);
-    setEditingStaff(staff);
-    setShowUserModal(true);
-  };
-
-  const handleUserFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userFormData.name.trim()) return;
-
-    const colors = ['bg-blue-600', 'bg-emerald-600', 'bg-amber-600', 'bg-purple-600', 'bg-rose-600', 'bg-indigo-600'];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-
-    const selectedRole = userRoles.find((r) => r.id === userFormData.customRoleId);
-    const finalRoleName = (selectedRole ? selectedRole.name : userFormData.role) as StaffRole;
-    const finalRoleBn = selectedRole?.nameBn || userFormData.roleBn;
-
-    if (editingStaff) {
-      updateStaffMember(editingStaff.id, {
-        name: userFormData.name.trim(),
-        role: isSuperAdminStaff(editingStaff) ? 'Super Admin' : finalRoleName,
-        roleBn: isSuperAdminStaff(editingStaff) ? 'সুপার অ্যাডমিন' : finalRoleBn,
-        location: 'Both',
-        phone: userFormData.phone.trim(),
-        email: userFormData.email.trim(),
-        password: userFormData.password.trim() || '1234',
-        customRoleId: userFormData.customRoleId || undefined,
-        isActive: userFormData.isActive,
-      });
-    } else {
-      addStaffMember({
-        name: userFormData.name.trim(),
-        role: finalRoleName,
-        roleBn: finalRoleBn,
-        location: 'Both',
-        phone: userFormData.phone.trim(),
-        email: userFormData.email.trim(),
-        password: userFormData.password.trim() || '1234',
-        avatarColor: randomColor,
-        customRoleId: userFormData.customRoleId || undefined,
-        isActive: userFormData.isActive,
-      });
-    }
-
-    setUserSaveSuccess(
-      language === 'bn'
-        ? `ইউজার "${userFormData.name.trim()}" সফলভাবে সংরক্ষিত হয়েছে এবং ক্লাউড ডাটাবেজে সিঙ্ক করা হয়েছে!`
-        : `User "${userFormData.name.trim()}" saved and synced to cloud database successfully!`
-    );
-    setTimeout(() => setUserSaveSuccess(null), 4000);
-
-    setShowUserModal(false);
-  };
-
-  const handleDeleteUser = (id: string) => {
-    const target = staffMembers.find((s) => s.id === id);
-    if (!target) return;
-    if (isSuperAdminStaff(target)) {
-      alert(
-        language === 'bn'
-          ? 'সুপার অ্যাডমিন একটি স্থায়ী সিস্টেম রুট অ্যাকাউন্ট, এটি ডিলিট করা যাবে না।'
-          : 'Super Admin is a permanent system root account and cannot be deleted.'
-      );
-      return;
-    }
-    if (staffMembers.length <= 1) {
-      alert('Cannot delete the last remaining staff member.');
-      return;
-    }
-    if (activeStaff.id === id) {
-      alert('You cannot delete the currently active logged-in staff member.');
-      return;
-    }
-    if (
-      confirm(
-        language === 'bn'
-          ? `আপনি কি নিশ্চিতভাবে "${target.name}" ইউজার মুছে ফেলতে চান?`
-          : `Are you sure you want to remove staff user "${target.name}"?`
-      )
-    ) {
-      deleteStaffMember(id);
-    }
-  };
-
-  // Role Handlers
-  const handleOpenAddRole = () => {
-    setRoleFormData({
-      name: '',
-      nameBn: '',
-      description: '',
-      permissions: ['POS_CREATE_INVOICE', 'SALES_VIEW_LIST', 'INVENTORY_VIEW_LIST'],
-    });
-    setEditingRole(null);
-    setShowRoleModal(true);
-  };
-
-  const isSuperAdminRole = (role?: UserRole | null): boolean => {
-    if (!role) return false;
-    return (
-      role.name === 'Super Admin' ||
-      role.name.toLowerCase() === 'superadmin' ||
-      role.id === 'role-superadmin'
-    );
-  };
-
-  const handleOpenEditRole = (role: UserRole) => {
-    if (isSuperAdminRole(role)) {
-      alert(
-        language === 'bn'
-          ? 'সুপার অ্যাডমিনের সকল পারমিশন স্থায়ী ও শতভাগ সক্রিয়। এটি পরিবর্তন করার সুযোগ নেই।'
-          : 'Super Admin automatically has full unrestricted access and cannot be modified.'
-      );
-      return;
-    }
-    setRoleFormData({
-      name: role.name,
-      nameBn: role.nameBn || '',
-      description: role.description || '',
-      permissions: [...role.permissions],
-    });
-    setEditingRole(role);
-    setShowRoleModal(true);
-  };
-
-  const handleTogglePermission = (permCode: string) => {
-    setRoleFormData((prev) => {
-      const exists = prev.permissions.includes(permCode);
-      const newPerms = exists
-        ? prev.permissions.filter((p) => p !== permCode)
-        : [...prev.permissions, permCode];
-      return { ...prev, permissions: newPerms };
-    });
-  };
-
-  const handleSelectAllCategory = (cat: string) => {
-    const categoryPerms = SYSTEM_PERMISSIONS.filter((p) => p.category === cat).map((p) => p.code);
-    setRoleFormData((prev) => {
-      const allSelected = categoryPerms.every((code) => prev.permissions.includes(code));
-      if (allSelected) {
-        return {
-          ...prev,
-          permissions: prev.permissions.filter((code) => !categoryPerms.includes(code)),
-        };
-      } else {
-        const union = Array.from(new Set([...prev.permissions, ...categoryPerms]));
-        return { ...prev, permissions: union };
-      }
-    });
-  };
-
-  const handleRoleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!roleFormData.name.trim()) return;
-
-    if (editingRole) {
-      updateUserRole(editingRole.id, {
-        name: roleFormData.name.trim(),
-        nameBn: roleFormData.nameBn.trim(),
-        description: roleFormData.description.trim(),
-        permissions: roleFormData.permissions,
-      });
-    } else {
-      addUserRole({
-        name: roleFormData.name.trim(),
-        nameBn: roleFormData.nameBn.trim(),
-        description: roleFormData.description.trim(),
-        permissions: roleFormData.permissions,
-      });
-    }
-
-    setShowRoleModal(false);
-  };
-
-  // Module Cleanup
-  const handleExecuteClean = (moduleKey: any) => {
-    let mappedKey = moduleKey;
-    if (moduleKey === 'invoices') {
-      mappedKey = 'SALES';
-      // Clear quotations too for a complete sales wipe
-      cleanModuleData('QUOTATIONS');
-    } else if (moduleKey === 'stockMovements') {
-      mappedKey = 'INVENTORY_STOCK';
-    } else if (moduleKey === 'purchaseOrders') {
-      mappedKey = 'PURCHASES';
-    } else if (moduleKey === 'transactions') {
-      mappedKey = 'TRANSACTIONS';
-      // Clear journals too for a complete accounting ledger wipe
-      cleanModuleData('JOURNALS');
-    } else if (moduleKey === 'projects') {
-      mappedKey = 'PROJECTS';
-    } else if (moduleKey === 'WIPE_ALL_EXCEPT_PRODUCTS') {
-      mappedKey = 'WIPE_ALL_EXCEPT_PRODUCTS';
-    }
-
-    cleanModuleData(mappedKey);
-    setCleanConfirmModule(null);
-    if (moduleKey === 'WIPE_ALL_EXCEPT_PRODUCTS') {
-      setCleanFeedback(language === 'bn' ? 'প্রোডাক্ট তালিকা ছাড়া অন্য সকল ট্রানজেকশন সফলভাবে ক্লিন করা হয়েছে।' : 'All transactions wiped successfully except product catalog.');
-    } else {
-      setCleanFeedback(`Module '${moduleKey}' data purged successfully.`);
-    }
-    setTimeout(() => setCleanFeedback(null), 4000);
-  };
-
-  const handleFactoryReset = () => {
-    if (
-      confirm(
-        'CRITICAL WARNING: This will reset the entire ERP database to default demo records and clear cached changes. Are you sure?'
-      )
-    ) {
-      resetToDefaultData();
-      setCleanFeedback('System successfully restored to default baseline.');
-      setTimeout(() => setCleanFeedback(null), 4000);
-    }
-  };
-
-  return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5">
+    const isSuperAdminStaff = (staff?: StaffMember | null): boolean => {
+        if (!staff)
+            return false;
+        return (staff.role === 'Super Admin' ||
+            (staff.name || '').toLowerCase() === 'super admin' ||
+            staff.id === 'staff-superadmin');
+    };
+    // User Handlers
+    const handleOpenAddUser = () => {
+        const regularRoles = userRoles.filter((r) => r.name !== 'Super Admin' && r.name.toLowerCase() !== 'superadmin');
+        const defaultRole = regularRoles.find((r) => r.name === 'Sales Executive') || regularRoles[0] || userRoles[0];
+        setUserFormData({
+            name: '',
+            nameBn: '',
+            role: (defaultRole?.name || 'Sales Executive') as StaffRole,
+            roleBn: defaultRole?.nameBn || "",
+            location: 'Both',
+            phone: '',
+            email: '',
+            password: '1234',
+            customRoleId: defaultRole?.id || '',
+            isActive: true,
+        });
+        setShowUserPassword(false);
+        setEditingStaff(null);
+        setShowUserModal(true);
+    };
+    const handleOpenEditUser = (staff: StaffMember) => {
+        const matchedRole = userRoles.find((r) => r.id === staff.customRoleId || r.name === staff.role);
+        setUserFormData({
+            name: staff.name,
+            nameBn: staff.nameBn || '',
+            role: staff.role,
+            roleBn: staff.roleBn || '',
+            location: staff.location || 'Both',
+            phone: staff.phone || '',
+            email: staff.email || '',
+            password: staff.password || '1234',
+            customRoleId: matchedRole?.id || staff.customRoleId || userRoles[0]?.id || '',
+            isActive: staff.isActive !== false,
+        });
+        setShowUserPassword(false);
+        setEditingStaff(staff);
+        setShowUserModal(true);
+    };
+    const handleUserFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!userFormData.name.trim())
+            return;
+        const colors = ['bg-blue-600', 'bg-emerald-600', 'bg-amber-600', 'bg-purple-600', 'bg-rose-600', 'bg-indigo-600'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        const selectedRole = userRoles.find((r) => r.id === userFormData.customRoleId);
+        const finalRoleName = (selectedRole ? selectedRole.name : userFormData.role) as StaffRole;
+        const finalRoleBn = selectedRole?.nameBn || userFormData.roleBn;
+        if (editingStaff) {
+            updateStaffMember(editingStaff.id, {
+                name: userFormData.name.trim(),
+                role: isSuperAdminStaff(editingStaff) ? 'Super Admin' : finalRoleName,
+                roleBn: isSuperAdminStaff(editingStaff) ? "" : finalRoleBn,
+                location: 'Both',
+                phone: userFormData.phone.trim(),
+                email: userFormData.email.trim(),
+                password: userFormData.password.trim() || '1234',
+                customRoleId: userFormData.customRoleId || undefined,
+                isActive: userFormData.isActive,
+            });
+        }
+        else {
+            addStaffMember({
+                name: userFormData.name.trim(),
+                role: finalRoleName,
+                roleBn: finalRoleBn,
+                location: 'Both',
+                phone: userFormData.phone.trim(),
+                email: userFormData.email.trim(),
+                password: userFormData.password.trim() || '1234',
+                avatarColor: randomColor,
+                customRoleId: userFormData.customRoleId || undefined,
+                isActive: userFormData.isActive,
+            });
+        }
+        setUserSaveSuccess(`User "${userFormData.name.trim()}" saved and synced to cloud database successfully!`);
+        setTimeout(() => setUserSaveSuccess(null), 4000);
+        setShowUserModal(false);
+    };
+    const handleDeleteUser = (id: string) => {
+        const target = staffMembers.find((s) => s.id === id);
+        if (!target)
+            return;
+        if (isSuperAdminStaff(target)) {
+            alert('Super Admin is a permanent system root account and cannot be deleted.');
+            return;
+        }
+        if (staffMembers.length <= 1) {
+            alert('Cannot delete the last remaining staff member.');
+            return;
+        }
+        if (activeStaff.id === id) {
+            alert('You cannot delete the currently active logged-in staff member.');
+            return;
+        }
+        if (confirm(`Are you sure you want to remove staff user "${target.name}"?`)) {
+            deleteStaffMember(id);
+        }
+    };
+    // Role Handlers
+    const handleOpenAddRole = () => {
+        setRoleFormData({
+            name: '',
+            nameBn: '',
+            description: '',
+            permissions: ['POS_CREATE_INVOICE', 'SALES_VIEW_LIST', 'INVENTORY_VIEW_LIST'],
+        });
+        setEditingRole(null);
+        setShowRoleModal(true);
+    };
+    const isSuperAdminRole = (role?: UserRole | null): boolean => {
+        if (!role)
+            return false;
+        return (role.name === 'Super Admin' ||
+            role.name.toLowerCase() === 'superadmin' ||
+            role.id === 'role-superadmin');
+    };
+    const handleOpenEditRole = (role: UserRole) => {
+        if (isSuperAdminRole(role)) {
+            alert('Super Admin automatically has full unrestricted access and cannot be modified.');
+            return;
+        }
+        setRoleFormData({
+            name: role.name,
+            nameBn: role.nameBn || '',
+            description: role.description || '',
+            permissions: [...role.permissions],
+        });
+        setEditingRole(role);
+        setShowRoleModal(true);
+    };
+    const handleTogglePermission = (permCode: string) => {
+        setRoleFormData((prev) => {
+            const exists = prev.permissions.includes(permCode);
+            const newPerms = exists
+                ? prev.permissions.filter((p) => p !== permCode)
+                : [...prev.permissions, permCode];
+            return { ...prev, permissions: newPerms };
+        });
+    };
+    const handleSelectAllCategory = (cat: string) => {
+        const categoryPerms = SYSTEM_PERMISSIONS.filter((p) => p.category === cat).map((p) => p.code);
+        setRoleFormData((prev) => {
+            const allSelected = categoryPerms.every((code) => prev.permissions.includes(code));
+            if (allSelected) {
+                return {
+                    ...prev,
+                    permissions: prev.permissions.filter((code) => !categoryPerms.includes(code)),
+                };
+            }
+            else {
+                const union = Array.from(new Set([...prev.permissions, ...categoryPerms]));
+                return { ...prev, permissions: union };
+            }
+        });
+    };
+    const handleRoleFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!roleFormData.name.trim())
+            return;
+        if (editingRole) {
+            updateUserRole(editingRole.id, {
+                name: roleFormData.name.trim(),
+                nameBn: roleFormData.nameBn.trim(),
+                description: roleFormData.description.trim(),
+                permissions: roleFormData.permissions,
+            });
+        }
+        else {
+            addUserRole({
+                name: roleFormData.name.trim(),
+                nameBn: roleFormData.nameBn.trim(),
+                description: roleFormData.description.trim(),
+                permissions: roleFormData.permissions,
+            });
+        }
+        setShowRoleModal(false);
+    };
+    // Module Cleanup
+    const handleExecuteClean = (moduleKey: any) => {
+        let mappedKey = moduleKey;
+        if (moduleKey === 'invoices') {
+            mappedKey = 'SALES';
+            // Clear quotations too for a complete sales wipe
+            cleanModuleData('QUOTATIONS');
+        }
+        else if (moduleKey === 'stockMovements') {
+            mappedKey = 'INVENTORY_STOCK';
+        }
+        else if (moduleKey === 'purchaseOrders') {
+            mappedKey = 'PURCHASES';
+        }
+        else if (moduleKey === 'transactions') {
+            mappedKey = 'TRANSACTIONS';
+            // Clear journals too for a complete accounting ledger wipe
+            cleanModuleData('JOURNALS');
+        }
+        else if (moduleKey === 'projects') {
+            mappedKey = 'PROJECTS';
+        }
+        else if (moduleKey === 'WIPE_ALL_EXCEPT_PRODUCTS') {
+            mappedKey = 'WIPE_ALL_EXCEPT_PRODUCTS';
+        }
+        cleanModuleData(mappedKey);
+        setCleanConfirmModule(null);
+        if (moduleKey === 'WIPE_ALL_EXCEPT_PRODUCTS') {
+            setCleanFeedback('All transactions wiped successfully except product catalog.');
+        }
+        else {
+            setCleanFeedback(`Module '${moduleKey}' data purged successfully.`);
+        }
+        setTimeout(() => setCleanFeedback(null), 4000);
+    };
+    const handleFactoryReset = () => {
+        if (confirm('CRITICAL WARNING: This will reset the entire ERP database to default demo records and clear cached changes. Are you sure?')) {
+            resetToDefaultData();
+            setCleanFeedback('System successfully restored to default baseline.');
+            setTimeout(() => setCleanFeedback(null), 4000);
+        }
+    };
+    return (<div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5">
       {/* Top Banner */}
       <div className="bg-slate-900 text-white p-5 rounded-3xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
-            <Shield className="w-4 h-4" />
-            <span>{language === 'bn' ? 'ইয়ারপি সিস্টেম কন্ট্রোল অ্যান্ড রোল পারমিশন' : 'ERP System Configuration & RBAC'}</span>
+            <Shield className="w-4 h-4"/>
+            <span>{'ERP System Configuration & RBAC'}</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black mt-1">
-            {language === 'bn' ? 'সিস্টেম কনফিগারেশন ও অ্যাডমিন মডিউল' : 'Enterprise Control & Settings'}
+            {'Enterprise Control & Settings'}
           </h2>
           <p className="text-xs text-slate-300 mt-1 max-w-2xl">
-            {language === 'bn'
-              ? 'ইউজার তৈরি, দায়িত্বভিত্তিক পারমিশন রোল নির্ধারণ, মডিউলার ডাটা ক্লিন ও নিরাপত্তা নিয়ন্ত্রণ করুন।'
-              : 'Configure system users, assign role-based access control (RBAC), manage module data, and set security policies.'}
+            {'Configure system users, assign role-based access control (RBAC), manage module data, and set security policies.'}
           </p>
         </div>
 
@@ -656,7 +520,7 @@ export const SettingsModule: React.FC = () => {
           </div>
           <div>
             <span className="text-slate-400 text-[10px] block">
-              {language === 'bn' ? 'সক্রিয় অ্যাকাউন্ট (Current Session):' : 'Current Session Account:'}
+              {'Current Session Account:'}
             </span>
             <span className="font-bold text-white">{activeStaff.name}</span>
             <span className="text-[11px] text-amber-400 font-semibold block">({activeStaff.role})</span>
@@ -664,94 +528,55 @@ export const SettingsModule: React.FC = () => {
         </div>
       </div>
 
-      {cleanFeedback && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+      {cleanFeedback && (<div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0"/>
           <span>{cleanFeedback}</span>
-        </div>
-      )}
+        </div>)}
 
       {/* Navigation Tabs */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
-        <button
-          type="button"
-          id="tab-settings-users"
-          onClick={() => setActiveTab('users')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
-            activeTab === 'users'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>{language === 'bn' ? 'ইউজার ও স্টাফ তালিকা' : 'Users & Staff'}</span>
+        <button type="button" id="tab-settings-users" onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${activeTab === 'users'
+            ? 'bg-slate-900 text-white shadow-xs'
+            : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'}`}>
+          <Users className="w-4 h-4"/>
+          <span>{'Users & Staff'}</span>
           <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-800 text-amber-300">
             {staffMembers.length}
           </span>
         </button>
 
-        <button
-          type="button"
-          id="tab-settings-roles"
-          onClick={() => setActiveTab('roles')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
-            activeTab === 'roles'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
-          }`}
-        >
-          <KeyRound className="w-4 h-4" />
-          <span>{language === 'bn' ? 'রোলস ও পারমিশন (RBAC)' : 'Roles & Permissions'}</span>
+        <button type="button" id="tab-settings-roles" onClick={() => setActiveTab('roles')} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${activeTab === 'roles'
+            ? 'bg-slate-900 text-white shadow-xs'
+            : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'}`}>
+          <KeyRound className="w-4 h-4"/>
+          <span>{'Roles & Permissions'}</span>
           <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-700">
             {userRoles.length}
           </span>
         </button>
 
-        {canManagePayments && (
-          <button
-            type="button"
-            id="tab-settings-payments"
-            onClick={() => setActiveTab('payment-gateways')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
-              activeTab === 'payment-gateways'
+        {canManagePayments && (<button type="button" id="tab-settings-payments" onClick={() => setActiveTab('payment-gateways')} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === 'payment-gateways'
                 ? 'bg-emerald-700 text-white shadow-xs'
-                : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-emerald-700 border border-slate-200'
-            }`}
-          >
-            <CreditCard className="w-4 h-4 text-emerald-500" />
-            <span>{language === 'bn' ? 'পেমেন্ট গেটওয়ে ও মেথড' : 'Payment Gateways & Methods'}</span>
+                : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-emerald-700 border border-slate-200'}`}>
+            <CreditCard className="w-4 h-4 text-emerald-500"/>
+            <span>{'Payment Gateways & Methods'}</span>
             <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800">
               {paymentMethods.filter((p) => p.isEnabled).length} Active
             </span>
-          </button>
-        )}
+          </button>)}
 
-        <button
-          type="button"
-          id="tab-settings-dataclean"
-          onClick={() => setActiveTab('data-clean')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
-            activeTab === 'data-clean'
-              ? 'bg-rose-700 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-rose-700 border border-slate-200'
-          }`}
-        >
-          <Trash2 className="w-4 h-4" />
-          <span>{language === 'bn' ? 'মডিউলার ডাটা ক্লিন / ডিলিট' : 'Module Data Clean'}</span>
+        <button type="button" id="tab-settings-dataclean" onClick={() => setActiveTab('data-clean')} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${activeTab === 'data-clean'
+            ? 'bg-rose-700 text-white shadow-xs'
+            : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-rose-700 border border-slate-200'}`}>
+          <Trash2 className="w-4 h-4"/>
+          <span>{'Module Data Clean'}</span>
         </button>
 
-        <button
-          type="button"
-          id="tab-settings-system"
-          onClick={() => setActiveTab('system')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
-            activeTab === 'system'
-              ? 'bg-gradient-to-r from-blue-700 to-indigo-700 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-blue-700 border border-slate-200'
-          }`}
-        >
-          <Server className="w-4 h-4 text-blue-500" />
-          <span>{language === 'bn' ? 'সিস্টেম ও আইটি পার্টনার' : 'System & IT Partner'}</span>
+        <button type="button" id="tab-settings-system" onClick={() => setActiveTab('system')} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${activeTab === 'system'
+            ? 'bg-gradient-to-r from-blue-700 to-indigo-700 text-white shadow-xs'
+            : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-blue-700 border border-slate-200'}`}>
+          <Server className="w-4 h-4 text-blue-500"/>
+          <span>{'System & IT Partner'}</span>
           <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800">
             BD HOSTT
           </span>
@@ -759,39 +584,23 @@ export const SettingsModule: React.FC = () => {
       </div>
 
       {/* TAB 1: USERS & STAFF */}
-      {activeTab === 'users' && (
-        <div className="space-y-4">
+      {activeTab === 'users' && (<div className="space-y-4">
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="relative flex-1 sm:w-80">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={language === 'bn' ? 'নাম বা পদবি দিয়ে খুঁজুন...' : 'Search staff by name or role...'}
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden"
-              />
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400"/>
+              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={'Search staff by name or role...'} className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden"/>
             </div>
 
-            {canManageUsers && (
-              <button
-                type="button"
-                id="btn-add-staff-member"
-                onClick={handleOpenAddUser}
-                className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-2xs transition-all w-full sm:w-auto justify-center"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{language === 'bn' ? 'নতুন ইউজার / স্টাফ যুক্ত করুন' : 'Add New User / Staff'}</span>
-              </button>
-            )}
+            {canManageUsers && (<button type="button" id="btn-add-staff-member" onClick={handleOpenAddUser} className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-2xs transition-all w-full sm:w-auto justify-center">
+                <Plus className="w-4 h-4"/>
+                <span>{'Add New User / Staff'}</span>
+              </button>)}
           </div>
 
-          {userSaveSuccess && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-semibold text-emerald-800 shadow-2xs">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          {userSaveSuccess && (<div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-semibold text-emerald-800 shadow-2xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0"/>
               <span>{userSaveSuccess}</span>
-            </div>
-          )}
+            </div>)}
 
           {/* Users & Staff Table List */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
@@ -800,80 +609,62 @@ export const SettingsModule: React.FC = () => {
                 <thead>
                   <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase border-b border-slate-200">
                     <th className="py-3 px-4">
-                      {language === 'bn' ? 'স্টাফ / ইউজার' : 'Staff / User'}
+                      {'Staff / User'}
                     </th>
                     <th className="py-3 px-4">
-                      {language === 'bn' ? 'পদবি ও দায়িত্ব' : 'Designation & Role'}
+                      {'Designation & Role'}
                     </th>
                     <th className="py-3 px-4">
-                      {language === 'bn' ? 'কর্মস্থল' : 'Work Location'}
+                      {'Work Location'}
                     </th>
                     <th className="py-3 px-4">
-                      {language === 'bn' ? 'যোগাযোগের তথ্য' : 'Contact'}
+                      {'Contact'}
                     </th>
                     <th className="py-3 px-4">
-                      {language === 'bn' ? 'RBAC পারমিশন রোল' : 'RBAC Access Role'}
+                      {'RBAC Access Role'}
                     </th>
                     <th className="py-3 px-4 text-center">
-                      {language === 'bn' ? 'বর্তমান সেশন' : 'Current Session'}
+                      {'Current Session'}
                     </th>
                     <th className="py-3 px-4 text-right">
-                      {language === 'bn' ? 'অ্যাকশন' : 'Action'}
+                      {'Action'}
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredStaff.length === 0 ? (
-                    <tr>
+                  {filteredStaff.length === 0 ? (<tr>
                       <td colSpan={7} className="py-12 text-center text-slate-500">
                         <div className="max-w-md mx-auto space-y-2">
                           <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
-                            <Users className="w-5 h-5" />
+                            <Users className="w-5 h-5"/>
                           </div>
                           <h4 className="font-bold text-slate-800 text-sm">
-                            {language === 'bn' ? 'কোনো ইউজার বা স্টাফ পাওয়া যায়নি' : 'No staff members found'}
+                            {'No staff members found'}
                           </h4>
                           <p className="text-xs text-slate-400">
-                            {language === 'bn'
-                              ? 'নাম অথবা পদবি দিয়ে আবার সার্চ করুন অথবা নতুন ইউজার যুক্ত করুন।'
-                              : 'Try searching with another name/role or add a new user.'}
+                            {'Try searching with another name/role or add a new user.'}
                           </p>
                         </div>
                       </td>
-                    </tr>
-                  ) : (
-                    filteredStaff.map((staff) => {
-                      const assignedRole = (userRoles || []).find((r) => r.id === staff.customRoleId);
-                      const isCurrent = activeStaff.id === staff.id;
-
-                      return (
-                        <tr
-                          key={staff.id}
-                          className={`transition-colors ${
-                            isCurrent
-                              ? 'bg-amber-50/50 hover:bg-amber-50/80'
-                              : 'hover:bg-slate-50/80'
-                          }`}
-                        >
+                    </tr>) : (filteredStaff.map((staff) => {
+                const assignedRole = (userRoles || []).find((r) => r.id === staff.customRoleId);
+                const isCurrent = activeStaff.id === staff.id;
+                return (<tr key={staff.id} className={`transition-colors ${isCurrent
+                        ? 'bg-amber-50/50 hover:bg-amber-50/80'
+                        : 'hover:bg-slate-50/80'}`}>
                           <td className="py-3.5 px-4 align-middle">
                             <div className="flex items-center gap-3">
-                              <div
-                                className={`w-9 h-9 rounded-xl ${staff.avatarColor || 'bg-slate-700'} text-white flex items-center justify-center font-black text-xs shadow-2xs shrink-0`}
-                              >
+                              <div className={`w-9 h-9 rounded-xl ${staff.avatarColor || 'bg-slate-700'} text-white flex items-center justify-center font-black text-xs shadow-2xs shrink-0`}>
                                 {staff.name.slice(0, 2).toUpperCase()}
                               </div>
                               <div>
                                 <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
                                   <span>{staff.name}</span>
-                                  {isCurrent && (
-                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded border border-amber-300">
+                                  {isCurrent && (<span className="text-[10px] font-bold text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded border border-amber-300">
                                       You
-                                    </span>
-                                  )}
+                                    </span>)}
                                 </div>
-                                {staff.nameBn && (
-                                  <div className="text-xs text-slate-500 font-medium">{staff.nameBn}</div>
-                                )}
+                                {staff.nameBn && (<div className="text-xs text-slate-500 font-medium">{staff.nameBn}</div>)}
                               </div>
                             </div>
                           </td>
@@ -882,281 +673,176 @@ export const SettingsModule: React.FC = () => {
                             <span className="font-semibold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md text-xs inline-block">
                               {staff.role}
                             </span>
-                            {staff.roleBn && (
-                              <div className="text-[11px] text-slate-500 font-medium mt-0.5">
+                            {staff.roleBn && (<div className="text-[11px] text-slate-500 font-medium mt-0.5">
                                 {staff.roleBn}
-                              </div>
-                            )}
+                              </div>)}
                           </td>
 
                           <td className="py-3.5 px-4 align-middle">
                             <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-                              {staff.location === 'Factory' ? (
-                                <Factory className="w-3.5 h-3.5 text-slate-500" />
-                              ) : (
-                                <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                              )}
+                              {staff.location === 'Factory' ? (<Factory className="w-3.5 h-3.5 text-slate-500"/>) : (<Building2 className="w-3.5 h-3.5 text-slate-500"/>)}
                               <span>{staff.location}</span>
                             </span>
                           </td>
 
                           <td className="py-3.5 px-4 align-middle">
                             <div className="space-y-0.5 text-xs text-slate-600">
-                              {staff.phone ? (
-                                <div className="flex items-center gap-1 font-mono text-[11px] text-slate-700">
-                                  <Phone className="w-3 h-3 text-slate-400" />
+                              {staff.phone ? (<div className="flex items-center gap-1 font-mono text-[11px] text-slate-700">
+                                  <Phone className="w-3 h-3 text-slate-400"/>
                                   <span>{staff.phone}</span>
-                                </div>
-                              ) : (
-                                <span className="text-[11px] text-slate-400">—</span>
-                              )}
-                              {staff.email && (
-                                <div className="flex items-center gap-1 text-[11px] text-slate-500">
-                                  <Mail className="w-3 h-3 text-slate-400" />
+                                </div>) : (<span className="text-[11px] text-slate-400">—</span>)}
+                              {staff.email && (<div className="flex items-center gap-1 text-[11px] text-slate-500">
+                                  <Mail className="w-3 h-3 text-slate-400"/>
                                   <span className="truncate max-w-[150px]">{staff.email}</span>
-                                </div>
-                              )}
+                                </div>)}
                               <div className="flex items-center gap-1 font-mono text-[10px] text-amber-800">
-                                <Lock className="w-3 h-3 text-amber-500" />
+                                <Lock className="w-3 h-3 text-amber-500"/>
                                 <span>PIN: {staff.password || '1234'}</span>
                               </div>
                             </div>
                           </td>
 
                           <td className="py-3.5 px-4 align-middle">
-                            {assignedRole ? (
-                              <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                            {assignedRole ? (<span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
                                 {assignedRole.name}
-                              </span>
-                            ) : (
-                              <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-500">
-                                {language === 'bn' ? 'ডিফল্ট অ্যাক্সেস' : 'Default Access'}
-                              </span>
-                            )}
+                              </span>) : (<span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-500">
+                                {'Default Access'}
+                              </span>)}
                           </td>
 
                           <td className="py-3.5 px-4 text-center align-middle">
-                            {isCurrent ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            {isCurrent ? (<span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600"/>
                                 <span>Active Now</span>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setActiveStaff(staff)}
-                                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 transition-colors cursor-pointer"
-                              >
-                                {language === 'bn' ? 'লগইন স্যুইচ' : 'Switch To'}
-                              </button>
-                            )}
+                              </span>) : (<button type="button" onClick={() => setActiveStaff(staff)} className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 transition-colors cursor-pointer">
+                                {'Switch To'}
+                              </button>)}
                           </td>
 
                           <td className="py-3.5 px-4 text-right align-middle">
                             <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditUser(staff)}
-                                className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
-                                title={language === 'bn' ? 'সম্পাদনা' : 'Edit'}
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
+                              <button type="button" onClick={() => handleOpenEditUser(staff)} className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors" title={'Edit'}>
+                                <Edit2 className="w-3.5 h-3.5"/>
                               </button>
-                              {!isCurrent && !isSuperAdminStaff(staff) && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteUser(staff.id)}
-                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
-                                  title={language === 'bn' ? 'মুছুন' : 'Delete'}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                              {isSuperAdminStaff(staff) && (
-                                <span
-                                  className="text-[9.5px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-200 select-none"
-                                  title={language === 'bn' ? 'স্থায়ী সিস্টেম রুট অ্যাকাউন্ট (মুছে ফেলা যাবে না)' : 'Permanent System Root Account (Cannot be deleted)'}
-                                >
+                              {!isCurrent && !isSuperAdminStaff(staff) && (<button type="button" onClick={() => handleDeleteUser(staff.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors cursor-pointer" title={'Delete'}>
+                                  <Trash2 className="w-3.5 h-3.5"/>
+                                </button>)}
+                              {isSuperAdminStaff(staff) && (<span className="text-[9.5px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-200 select-none" title={'Permanent System Root Account (Cannot be deleted)'}>
                                   Fixed
-                                </span>
-                              )}
+                                </span>)}
                             </div>
                           </td>
-                        </tr>
-                      );
-                    })
-                  )}
+                        </tr>);
+            }))}
                 </tbody>
               </table>
             </div>
           </div>
-        </div>
-      )}
+        </div>)}
 
       {/* TAB 2: ROLES & RBAC PERMISSIONS */}
-      {activeTab === 'roles' && (
-        <div className="space-y-4">
+      {activeTab === 'roles' && (<div className="space-y-4">
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
             <div>
               <h3 className="font-bold text-slate-900 text-sm">
-                {language === 'bn' ? 'সিস্টেম অ্যাক্সেস রোল ও পারমিশন কন্ট্রোল' : 'Role-Based Access Control (RBAC)'}
+                {'Role-Based Access Control (RBAC)'}
               </h3>
               <p className="text-xs text-slate-500">
-                {language === 'bn'
-                  ? 'প্রতিটি রোলের জন্য আলাদা পারমিশন চেক অন/অফ করতে পারবেন।'
-                  : 'Define custom access roles and toggle granular module permissions.'}
+                {'Define custom access roles and toggle granular module permissions.'}
               </p>
             </div>
 
-            {canManageRoles && (
-              <button
-                type="button"
-                id="btn-add-custom-role"
-                onClick={handleOpenAddRole}
-                className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-2xs transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{language === 'bn' ? 'নতুন রোল তৈরি করুন' : 'Create Custom Role'}</span>
-              </button>
-            )}
+            {canManageRoles && (<button type="button" id="btn-add-custom-role" onClick={handleOpenAddRole} className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-2xs transition-all">
+                <Plus className="w-4 h-4"/>
+                <span>{'Create Custom Role'}</span>
+              </button>)}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {userRoles.map((role) => {
-              const isSuper = isSuperAdminRole(role);
-              return (
-                <div
-                  key={role.id}
-                  className={`bg-white rounded-2xl border p-5 shadow-2xs flex flex-col justify-between ${
-                    isSuper
-                      ? 'border-indigo-200 bg-gradient-to-b from-indigo-50/20 to-white'
-                      : 'border-slate-200'
-                  }`}
-                >
+                const isSuper = isSuperAdminRole(role);
+                return (<div key={role.id} className={`bg-white rounded-2xl border p-5 shadow-2xs flex flex-col justify-between ${isSuper
+                        ? 'border-indigo-200 bg-gradient-to-b from-indigo-50/20 to-white'
+                        : 'border-slate-200'}`}>
                   <div>
                     <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-100">
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="font-bold text-slate-900 text-base">{role.name}</h4>
-                          {isSuper ? (
-                            <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                              {language === 'bn' ? 'Permanent Root Role (স্থায়ী রুট)' : 'Permanent Root Role'}
-                            </span>
-                          ) : role.isSystem ? (
-                            <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                          {isSuper ? (<span className="text-[10px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                              {'Permanent Root Role'}
+                            </span>) : role.isSystem ? (<span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                               System Role
-                            </span>
-                          ) : null}
+                            </span>) : null}
                         </div>
                         {role.nameBn && <p className="text-xs text-slate-500">{role.nameBn}</p>}
                         <p className="text-xs text-slate-600 mt-1">{role.description}</p>
                       </div>
 
                       <div className="flex items-center gap-1">
-                        {isSuper ? (
-                          <span
-                            className="text-[9.5px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-200 select-none"
-                            title={language === 'bn' ? 'সুপার অ্যাডমিনের পারমিশন স্থায়ী ও অপরিবর্তনীয়' : 'Super Admin permissions are permanent and cannot be modified'}
-                          >
+                        {isSuper ? (<span className="text-[9.5px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-200 select-none" title={'Super Admin permissions are permanent and cannot be modified'}>
                             Fixed / Locked
-                          </span>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditRole(role)}
-                              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer"
-                              title={language === 'bn' ? 'পারমিশন সম্পাদনা' : 'Edit Permissions'}
-                            >
-                              <Edit2 className="w-4 h-4" />
+                          </span>) : (<>
+                            <button type="button" onClick={() => handleOpenEditRole(role)} className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer" title={'Edit Permissions'}>
+                              <Edit2 className="w-4 h-4"/>
                             </button>
-                            {!role.isSystem && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (confirm(`Delete role '${role.name}'?`)) {
+                            {!role.isSystem && (<button type="button" onClick={() => {
+                                if (confirm(`Delete role '${role.name}'?`)) {
                                     deleteUserRole(role.id);
-                                  }
-                                }}
-                                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer"
-                                title={language === 'bn' ? 'রোল মুছুন' : 'Delete Role'}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </>
-                        )}
+                                }
+                            }} className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer" title={'Delete Role'}>
+                                <Trash2 className="w-4 h-4"/>
+                              </button>)}
+                          </>)}
                       </div>
                     </div>
 
                     <div className="mt-3">
                       <span className="text-xs font-bold text-slate-700 block mb-2">
                         {isSuper
-                          ? (language === 'bn'
-                              ? 'অনুমোদিত পারমিশন: সম্পূর্ণ সিস্টেম অ্যাক্সেস (All Permissions Active - 100%):'
-                              : 'Authorized Permissions: Full System Access (100% Active):')
-                          : (language === 'bn'
-                              ? `অনুমোদিত পারমিশন (${role.permissions.length} টি সক্রিয়):`
-                              : `Authorized Permissions (${role.permissions.length} Active):`)}
+                        ? ('Authorized Permissions: Full System Access (100% Active):')
+                        : (`Authorized Permissions (${role.permissions.length} Active):`)}
                       </span>
                       <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
                         {(isSuper ? ALL_SYSTEM_PERMISSIONS.map((p) => p.code) : role.permissions).map((permCode) => {
-                          const permObj = SYSTEM_PERMISSIONS.find((p) => p.code === permCode);
-                          return (
-                            <span
-                              key={permCode}
-                              className={`inline-block text-[10px] font-bold px-2 py-1 rounded-md border ${
-                                isSuper
-                                  ? 'bg-indigo-50/70 text-indigo-800 border-indigo-200'
-                                  : 'bg-slate-100 text-slate-700 border-slate-200'
-                              }`}
-                            >
-                              {permObj ? (language === 'bn' ? permObj.nameBn : permObj.name) : permCode}
-                            </span>
-                          );
-                        })}
+                        const permObj = SYSTEM_PERMISSIONS.find((p) => p.code === permCode);
+                        return (<span key={permCode} className={`inline-block text-[10px] font-bold px-2 py-1 rounded-md border ${isSuper
+                                ? 'bg-indigo-50/70 text-indigo-800 border-indigo-200'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                              {permObj ? (permObj.name) : permCode}
+                            </span>);
+                    })}
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                     <span>
-                      {language === 'bn' ? 'নিযুক্ত ব্যবহারকারী: ' : 'Assigned Users: '}
+                      {'Assigned Users: '}
                       <strong className="text-slate-900">
                         {staffMembers.filter((s) => s.customRoleId === role.id || s.role === role.name).length}
                       </strong>{' '}
-                      {language === 'bn' ? 'জন' : 'users'}
+                      {'users'}
                     </span>
-                    {isSuper ? (
-                      <span className="text-indigo-600 font-bold text-[11px] flex items-center gap-1">
-                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>{language === 'bn' ? 'সকল রাইটস স্থায়ীভাবে সক্রিয়' : 'All Privileges Permanently Active'}</span>
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditRole(role)}
-                        className="text-blue-600 font-bold hover:underline cursor-pointer"
-                      >
-                        {language === 'bn' ? 'পারমিশন পরিবর্তন করুন ➔' : 'Modify Permissions ➔'}
-                      </button>
-                    )}
+                    {isSuper ? (<span className="text-indigo-600 font-bold text-[11px] flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-600"/>
+                        <span>{'All Privileges Permanently Active'}</span>
+                      </span>) : (<button type="button" onClick={() => handleOpenEditRole(role)} className="text-blue-600 font-bold hover:underline cursor-pointer">
+                        {'Modify Permissions ➔'}
+                      </button>)}
                   </div>
-                </div>
-              );
+                </div>);
             })}
           </div>
-        </div>
-      )}
+        </div>)}
 
       {/* TAB: PAYMENT GATEWAYS & METHODS */}
-      {activeTab === 'payment-gateways' && canManagePayments && (
-        <div className="space-y-6">
+      {activeTab === 'payment-gateways' && canManagePayments && (<div className="space-y-6">
           {/* Header Banner - Exactly matching Image 1 */}
           <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
             <div className="flex items-center gap-3.5">
               <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/70 flex items-center justify-center shrink-0 shadow-2xs">
-                <CreditCard className="w-5 h-5 text-amber-600" />
+                <CreditCard className="w-5 h-5 text-amber-600"/>
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -1164,7 +850,7 @@ export const SettingsModule: React.FC = () => {
                     Payment Methods & Digital Channels
                   </h3>
                   <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold border border-emerald-200">
-                    {paymentMethods.filter((p) => p.isEnabled).length} {language === 'bn' ? 'সক্রিয়' : 'Active'}
+                    {paymentMethods.filter((p) => p.isEnabled).length} {'Active'}
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -1174,27 +860,19 @@ export const SettingsModule: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => handleOpenAddPaymentMethod('bank')}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#0b1e36] hover:bg-[#133054] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-all cursor-pointer whitespace-nowrap"
-              >
-                <Plus className="w-4 h-4 text-emerald-400" />
+              <button type="button" onClick={() => handleOpenAddPaymentMethod('bank')} className="flex items-center gap-2 px-5 py-2.5 bg-[#0b1e36] hover:bg-[#133054] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-all cursor-pointer whitespace-nowrap">
+                <Plus className="w-4 h-4 text-emerald-400"/>
                 <span>+ Add Payment Method</span>
               </button>
             </div>
           </div>
 
-          {paymentSaveSuccess && (
-            <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-2xl text-xs font-bold text-emerald-900 flex items-center gap-2 shadow-2xs animate-in fade-in">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          {paymentSaveSuccess && (<div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-2xl text-xs font-bold text-emerald-900 flex items-center gap-2 shadow-2xs animate-in fade-in">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0"/>
               <span>
-                {language === 'bn'
-                  ? 'পেমেন্ট গেটওয়ে ও মেথড তথ্য সফলভাবে সংরক্ষিত ও আপডেট হয়েছে! সমগ্র সিস্টেমে এটি তাৎক্ষণিক কার্যকর।'
-                  : 'Payment methods & gateway configuration successfully saved! Updated across the entire system.'}
+                {'Payment methods & gateway configuration successfully saved! Updated across the entire system.'}
               </span>
-            </div>
-          )}
+            </div>)}
 
           {/* Quick Stats Overview - Exactly matching Image 1 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1217,7 +895,7 @@ export const SettingsModule: React.FC = () => {
                 CASH DRAWER (LIVE)
               </span>
               <div className="text-2xl font-black text-emerald-800 mt-1">
-                {profile.currencySymbol || '৳'}{((accountBalances?.cash || 0) + (accountBalances?.factoryCash || 0)).toLocaleString()}
+                {profile.currencySymbol || "Tk"}{((accountBalances?.cash || 0) + (accountBalances?.factoryCash || 0)).toLocaleString()}
               </div>
               <span className="text-[11px] text-emerald-600 font-medium mt-0.5 block">
                 Available in register cash drawer
@@ -1230,10 +908,10 @@ export const SettingsModule: React.FC = () => {
                 MFS INFLOW (BKASH/NAGAD)
               </span>
               <div className="text-2xl font-black text-pink-800 mt-1">
-                {profile.currencySymbol || '৳'}{(accountBalances?.mobile || 0).toLocaleString()}
+                {profile.currencySymbol || "Tk"}{(accountBalances?.mobile || 0).toLocaleString()}
               </div>
               <span className="text-[11px] text-pink-600 font-medium mt-0.5 block">
-                bKash: {profile.currencySymbol || '৳'}{(accountBalances?.mobile || 0).toLocaleString()} | Nagad: {profile.currencySymbol || '৳'}0
+                bKash: {profile.currencySymbol || "Tk"}{(accountBalances?.mobile || 0).toLocaleString()} | Nagad: {profile.currencySymbol || "Tk"}0
               </span>
             </div>
 
@@ -1243,7 +921,7 @@ export const SettingsModule: React.FC = () => {
                 BANK & POS CARD SALES
               </span>
               <div className="text-2xl font-black text-blue-800 mt-1">
-                {profile.currencySymbol || '৳'}{(accountBalances?.bank || 0).toLocaleString()}
+                {profile.currencySymbol || "Tk"}{(accountBalances?.bank || 0).toLocaleString()}
               </div>
               <span className="text-[11px] text-blue-600 font-medium mt-0.5 block">
                 Corporate Banks & Card Swipe
@@ -1262,69 +940,36 @@ export const SettingsModule: React.FC = () => {
                 { id: 'bank', label: 'Bank Wire Transfer', count: paymentMethods.filter((p) => p.type === 'bank').length },
                 { id: 'credit', label: 'Customer Due / Credit', count: paymentMethods.filter((p) => p.name.toLowerCase().includes('due') || p.name.toLowerCase().includes('credit') || p.type === 'cheque').length || 1 },
                 { id: 'gateway', label: 'Bangla QR (Universal QR)', count: paymentMethods.filter((p) => p.type === 'gateway' || p.name.toLowerCase().includes('qr') || p.name.toLowerCase().includes('ssl')).length },
-              ].map((tab) => {
+            ].map((tab) => {
                 const isActive = paymentFilterType === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setPaymentFilterType(tab.id)}
-                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                      isActive
+                return (<button key={tab.id} type="button" onClick={() => setPaymentFilterType(tab.id)} className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${isActive
                         ? 'bg-[#0b1e36] text-white shadow-xs'
-                        : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
-                    }`}
-                  >
+                        : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200 hover:text-slate-900'}`}>
                     <span>{tab.label}</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${
-                        isActive ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-600'
-                      }`}
-                    >
+                    <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${isActive ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-600'}`}>
                       {tab.count}
                     </span>
-                  </button>
-                );
-              })}
+                  </button>);
+            })}
             </div>
 
             {/* Search and View Mode Switcher */}
             <div className="flex items-center gap-2">
               <div className="relative flex-1 md:w-64">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={paymentSearchQuery}
-                  onChange={(e) => setPaymentSearchQuery(e.target.value)}
-                  placeholder="Search method or account..."
-                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"/>
+                <input type="text" value={paymentSearchQuery} onChange={(e) => setPaymentSearchQuery(e.target.value)} placeholder="Search method or account..." className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"/>
               </div>
 
               {/* View Switcher: Table vs Cards */}
               <div className="flex items-center p-0.5 bg-slate-100 rounded-xl border border-slate-200 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setPaymentViewMode('table')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    paymentViewMode === 'table'
-                      ? 'bg-white text-slate-900 shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                  title="Table View"
-                >
+                <button type="button" onClick={() => setPaymentViewMode('table')} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${paymentViewMode === 'table'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-900'}`} title="Table View">
                   📋 Table
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentViewMode('cards')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    paymentViewMode === 'cards'
-                      ? 'bg-white text-slate-900 shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                  title="Cards View"
-                >
+                <button type="button" onClick={() => setPaymentViewMode('cards')} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${paymentViewMode === 'cards'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-900'}`} title="Cards View">
                   🎴 Cards
                 </button>
               </div>
@@ -1332,8 +977,7 @@ export const SettingsModule: React.FC = () => {
           </div>
 
           {/* TABLE VIEW (Default matching Picture 1) */}
-          {paymentViewMode === 'table' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+          {paymentViewMode === 'table' && (<div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -1343,7 +987,7 @@ export const SettingsModule: React.FC = () => {
                       <th className="py-3 px-3">Provider / Terminal</th>
                       <th className="py-3 px-3">Account / Mobile No.</th>
                       <th className="py-3 px-3">Ledger Link</th>
-                      <th className="py-3 px-3 text-right">Live Balance / Collected (৳)</th>
+                      <th className="py-3 px-3 text-right">Live BalanceCollectedTk</th>
                       <th className="py-3 px-3 text-center">Service Fee</th>
                       <th className="py-3 px-3 text-center">Status</th>
                       <th className="py-3 px-3 text-center">Default</th>
@@ -1351,77 +995,66 @@ export const SettingsModule: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                    {filteredPaymentMethods.length === 0 ? (
-                      <tr>
+                    {filteredPaymentMethods.length === 0 ? (<tr>
                         <td colSpan={10} className="py-12 text-center text-slate-400 font-medium">
-                          {language === 'bn' ? 'কোনো পেমেন্ট মেথড পাওয়া যায়নি' : 'No payment methods found'}
+                          {'No payment methods found'}
                         </td>
-                      </tr>
-                    ) : (
-                      filteredPaymentMethods.map((pm) => {
-                        const isBank = pm.type === 'bank';
-                        const isMfs = pm.type === 'mfs';
-                        const isGateway = pm.type === 'gateway';
-                        const isCash = pm.type === 'cash';
-                        const isCheque = pm.type === 'cheque';
-                        const isDue = pm.name.toLowerCase().includes('due') || pm.name.toLowerCase().includes('credit');
-                        const isQr = pm.name.toLowerCase().includes('qr');
-
-                        const methodIcon = isCash ? '💵' : isBank ? '🏦' : isMfs ? '📱' : isGateway ? '🌐' : isCheque ? '📜' : isQr ? '📲' : isDue ? '👤' : '💳';
-
-                        const typeBadgeClass = isQr
-                          ? 'bg-purple-50 text-purple-700 border-purple-200'
-                          : isDue
-                          ? 'bg-amber-50 text-amber-800 border-amber-200'
-                          : isCash
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : isBank
-                          ? 'bg-blue-50 text-blue-700 border-blue-200'
-                          : isMfs
-                          ? 'bg-pink-50 text-pink-700 border-pink-200'
-                          : isGateway
-                          ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                          : 'bg-slate-50 text-slate-700 border-slate-200';
-
-                        const typeDisplayName = isQr
-                          ? 'Bangla QR'
-                          : isDue
-                          ? 'Credit / Due'
-                          : isCash
-                          ? 'Cash'
-                          : isBank
-                          ? 'Bank Transfer'
-                          : isMfs
-                          ? 'MFS / Mobile'
-                          : isGateway
-                          ? 'Online Gateway'
-                          : isCheque
-                          ? 'Bank Cheque'
-                          : 'Custom';
-
-                        const providerName = pm.provider || pm.bankName || (isCash ? 'Cash' : isCheque ? 'Cheque' : isDue ? 'Credit' : 'Direct');
-                        const accountNo = pm.accountNumber || (isCash ? '1010' : isDue ? '1030' : '—');
-                        const ledgerLink = pm.linkedAccountId || (isCash ? '1010 - Cash' : isBank ? '1030 - Bank' : isMfs ? '1040 - Mobile MFS' : isDue ? '1050 - Accounts' : '1030 - Bank');
-                        const liveBal = isCash
-                          ? (accountBalances?.cash || 0) + (accountBalances?.factoryCash || 0)
-                          : isBank
-                          ? (accountBalances?.bank || 0)
-                          : isMfs
-                          ? (accountBalances?.mobile || 0)
-                          : 0;
-
-                        return (
-                          <tr key={pm.id} className="hover:bg-slate-50/80 transition-colors">
+                      </tr>) : (filteredPaymentMethods.map((pm) => {
+                    const isBank = pm.type === 'bank';
+                    const isMfs = pm.type === 'mfs';
+                    const isGateway = pm.type === 'gateway';
+                    const isCash = pm.type === 'cash';
+                    const isCheque = pm.type === 'cheque';
+                    const isDue = pm.name.toLowerCase().includes('due') || pm.name.toLowerCase().includes('credit');
+                    const isQr = pm.name.toLowerCase().includes('qr');
+                    const methodIcon = isCash ? '💵' : isBank ? '🏦' : isMfs ? '📱' : isGateway ? '🌐' : isCheque ? '📜' : isQr ? '📲' : isDue ? '👤' : '💳';
+                    const typeBadgeClass = isQr
+                        ? 'bg-purple-50 text-purple-700 border-purple-200'
+                        : isDue
+                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                            : isCash
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : isBank
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                    : isMfs
+                                        ? 'bg-pink-50 text-pink-700 border-pink-200'
+                                        : isGateway
+                                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                            : 'bg-slate-50 text-slate-700 border-slate-200';
+                    const typeDisplayName = isQr
+                        ? 'Bangla QR'
+                        : isDue
+                            ? 'Credit / Due'
+                            : isCash
+                                ? 'Cash'
+                                : isBank
+                                    ? 'Bank Transfer'
+                                    : isMfs
+                                        ? 'MFS / Mobile'
+                                        : isGateway
+                                            ? 'Online Gateway'
+                                            : isCheque
+                                                ? 'Bank Cheque'
+                                                : 'Custom';
+                    const providerName = pm.provider || pm.bankName || (isCash ? 'Cash' : isCheque ? 'Cheque' : isDue ? 'Credit' : 'Direct');
+                    const accountNo = pm.accountNumber || (isCash ? '1010' : isDue ? '1030' : '—');
+                    const ledgerLink = pm.linkedAccountId || (isCash ? '1010 - Cash' : isBank ? '1030 - Bank' : isMfs ? '1040 - Mobile MFS' : isDue ? '1050 - Accounts' : '1030 - Bank');
+                    const liveBal = isCash
+                        ? (accountBalances?.cash || 0) + (accountBalances?.factoryCash || 0)
+                        : isBank
+                            ? (accountBalances?.bank || 0)
+                            : isMfs
+                                ? (accountBalances?.mobile || 0)
+                                : 0;
+                    return (<tr key={pm.id} className="hover:bg-slate-50/80 transition-colors">
                             {/* Payment Method */}
                             <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">
                               <div className="flex items-center gap-2">
                                 <span className="text-base">{methodIcon}</span>
                                 <span>{pm.name}</span>
-                                {pm.isDefault && (
-                                  <span className="px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-800 font-extrabold text-[9px] border border-amber-300">
+                                {pm.isDefault && (<span className="px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-800 font-extrabold text-[9px] border border-amber-300">
                                     Primary
-                                  </span>
-                                )}
+                                  </span>)}
                               </div>
                             </td>
 
@@ -1449,7 +1082,7 @@ export const SettingsModule: React.FC = () => {
 
                             {/* Live Balance / Collected */}
                             <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
-                              {profile.currencySymbol || '৳'} {liveBal.toLocaleString()}
+                              {profile.currencySymbol || "Tk"} {liveBal.toLocaleString()}
                             </td>
 
                             {/* Service Fee */}
@@ -1459,136 +1092,80 @@ export const SettingsModule: React.FC = () => {
 
                             {/* Status */}
                             <td className="py-3 px-3 text-center whitespace-nowrap">
-                              {pm.isEnabled ? (
-                                <button
-                                  type="button"
-                                  onClick={() => togglePaymentMethod(pm.id)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all cursor-pointer"
-                                  title="Click to Disable"
-                                >
+                              {pm.isEnabled ? (<button type="button" onClick={() => togglePaymentMethod(pm.id)} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all cursor-pointer" title="Click to Disable">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                   <span>Active</span>
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => togglePaymentMethod(pm.id)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer"
-                                  title="Click to Activate"
-                                >
+                                </button>) : (<button type="button" onClick={() => togglePaymentMethod(pm.id)} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer" title="Click to Activate">
                                   <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                                   <span>Inactive</span>
-                                </button>
-                              )}
+                                </button>)}
                             </td>
 
                             {/* Default */}
                             <td className="py-3 px-3 text-center whitespace-nowrap">
-                              {pm.isDefault ? (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
-                                  <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                              {pm.isDefault ? (<span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                                  <Star className="w-3 h-3 fill-amber-500 text-amber-500"/>
                                   <span>Default</span>
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setDefaultPaymentMethod(pm.id)}
-                                  className="text-[11px] text-slate-400 hover:text-amber-700 font-semibold cursor-pointer hover:underline transition-colors"
-                                >
+                                </span>) : (<button type="button" onClick={() => setDefaultPaymentMethod(pm.id)} className="text-[11px] text-slate-400 hover:text-amber-700 font-semibold cursor-pointer hover:underline transition-colors">
                                   Set Default
-                                </button>
-                              )}
+                                </button>)}
                             </td>
 
                             {/* Action */}
                             <td className="py-3 px-4 text-center whitespace-nowrap">
                               <div className="flex items-center justify-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditPaymentMethod(pm)}
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                                  title="Edit Payment Method"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
+                                <button type="button" onClick={() => handleOpenEditPaymentMethod(pm)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer" title="Edit Payment Method">
+                                  <Edit2 className="w-3.5 h-3.5"/>
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setDeleteConfirmPaymentId(pm.id)}
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                  title="Delete Payment Method"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                <button type="button" onClick={() => setDeleteConfirmPaymentId(pm.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer" title="Delete Payment Method">
+                                  <Trash2 className="w-3.5 h-3.5"/>
                                 </button>
                               </div>
                             </td>
-                          </tr>
-                        );
-                      })
-                    )}
+                          </tr>);
+                }))}
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
+            </div>)}
 
           {/* Cards Grid: Dynamic Payment Methods */}
-          {paymentViewMode === 'cards' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {paymentViewMode === 'cards' && (<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {paymentMethods
-              .filter((pm) => {
-                if (paymentFilterType === 'ALL') return true;
-                if (paymentFilterType === 'cash') return pm.type === 'cash' || pm.type === 'cheque';
-                return pm.type === paymentFilterType;
-              })
-              .filter((pm) => {
-                if (!paymentSearchQuery.trim()) return true;
-                const q = paymentSearchQuery.toLowerCase().trim();
-                return (
-                  pm.name.toLowerCase().includes(q) ||
-                  (pm.nameBn && pm.nameBn.toLowerCase().includes(q)) ||
-                  (pm.accountNumber && pm.accountNumber.toLowerCase().includes(q)) ||
-                  (pm.bankName && pm.bankName.toLowerCase().includes(q)) ||
-                  (pm.provider && pm.provider.toLowerCase().includes(q))
-                );
-              })
-              .map((pm) => {
-                const isBank = pm.type === 'bank';
-                const isMfs = pm.type === 'mfs';
-                const isGateway = pm.type === 'gateway';
-                const isCash = pm.type === 'cash';
-                const isCheque = pm.type === 'cheque';
-
-                const badgeBg = isBank
-                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                  : isMfs
-                  ? 'bg-pink-50 text-pink-700 border-pink-200'
-                  : isGateway
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : isCash
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                  : 'bg-amber-50 text-amber-700 border-amber-200';
-
-                const icon = isBank ? (
-                  <Landmark className="w-5 h-5 text-blue-600" />
-                ) : isMfs ? (
-                  <Smartphone className="w-5 h-5 text-pink-600" />
-                ) : isGateway ? (
-                  <Zap className="w-5 h-5 text-emerald-600" />
-                ) : isCash ? (
-                  <Banknote className="w-5 h-5 text-emerald-600" />
-                ) : isCheque ? (
-                  <FileSpreadsheet className="w-5 h-5 text-amber-600" />
-                ) : (
-                  <CreditCard className="w-5 h-5 text-indigo-600" />
-                );
-
-                return (
-                  <div
-                    key={pm.id}
-                    className={`bg-white rounded-2xl border transition-all shadow-2xs hover:shadow-md flex flex-col justify-between p-5 relative ${
-                      pm.isEnabled ? 'border-slate-200' : 'border-slate-200 bg-slate-50/60 opacity-75'
-                    }`}
-                  >
+                    .filter((pm) => {
+                    if (paymentFilterType === 'ALL')
+                        return true;
+                    if (paymentFilterType === 'cash')
+                        return pm.type === 'cash' || pm.type === 'cheque';
+                    return pm.type === paymentFilterType;
+                })
+                    .filter((pm) => {
+                    if (!paymentSearchQuery.trim())
+                        return true;
+                    const q = paymentSearchQuery.toLowerCase().trim();
+                    return (pm.name.toLowerCase().includes(q) ||
+                        (pm.nameBn && pm.nameBn.toLowerCase().includes(q)) ||
+                        (pm.accountNumber && pm.accountNumber.toLowerCase().includes(q)) ||
+                        (pm.bankName && pm.bankName.toLowerCase().includes(q)) ||
+                        (pm.provider && pm.provider.toLowerCase().includes(q)));
+                })
+                    .map((pm) => {
+                    const isBank = pm.type === 'bank';
+                    const isMfs = pm.type === 'mfs';
+                    const isGateway = pm.type === 'gateway';
+                    const isCash = pm.type === 'cash';
+                    const isCheque = pm.type === 'cheque';
+                    const badgeBg = isBank
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : isMfs
+                            ? 'bg-pink-50 text-pink-700 border-pink-200'
+                            : isGateway
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : isCash
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200';
+                    const icon = isBank ? (<Landmark className="w-5 h-5 text-blue-600"/>) : isMfs ? (<Smartphone className="w-5 h-5 text-pink-600"/>) : isGateway ? (<Zap className="w-5 h-5 text-emerald-600"/>) : isCash ? (<Banknote className="w-5 h-5 text-emerald-600"/>) : isCheque ? (<FileSpreadsheet className="w-5 h-5 text-amber-600"/>) : (<CreditCard className="w-5 h-5 text-indigo-600"/>);
+                    return (<div key={pm.id} className={`bg-white rounded-2xl border transition-all shadow-2xs hover:shadow-md flex flex-col justify-between p-5 relative ${pm.isEnabled ? 'border-slate-200' : 'border-slate-200 bg-slate-50/60 opacity-75'}`}>
                     <div>
                       {/* Top Bar inside card */}
                       <div className="flex items-start justify-between gap-2 pb-3 border-b border-slate-100">
@@ -1599,12 +1176,10 @@ export const SettingsModule: React.FC = () => {
                           <div>
                             <div className="flex items-center gap-1.5">
                               <h4 className="font-extrabold text-slate-900 text-sm leading-tight">{pm.name}</h4>
-                              {pm.isDefault && (
-                                <span className="flex items-center gap-0.5 text-[9px] font-black bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-md">
-                                  <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                              {pm.isDefault && (<span className="flex items-center gap-0.5 text-[9px] font-black bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-md">
+                                  <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500"/>
                                   Default
-                                </span>
-                              )}
+                                </span>)}
                             </div>
                             {pm.nameBn && <p className="text-[11px] text-slate-500">{pm.nameBn}</p>}
                           </div>
@@ -1613,12 +1188,7 @@ export const SettingsModule: React.FC = () => {
                         {/* Enable/Disable Toggle */}
                         <div className="flex items-center gap-1.5">
                           <label className="relative inline-flex items-center cursor-pointer select-none" title={pm.isEnabled ? 'Method is Active' : 'Method is Disabled'}>
-                            <input
-                              type="checkbox"
-                              checked={pm.isEnabled}
-                              onChange={() => togglePaymentMethod(pm.id)}
-                              className="sr-only peer"
-                            />
+                            <input type="checkbox" checked={pm.isEnabled} onChange={() => togglePaymentMethod(pm.id)} className="sr-only peer"/>
                             <div className="w-8 h-4 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-600"></div>
                           </label>
                         </div>
@@ -1627,95 +1197,72 @@ export const SettingsModule: React.FC = () => {
                       {/* Card Details Body */}
                       <div className="py-3 space-y-2 text-xs">
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-slate-400 font-medium">{language === 'bn' ? 'ধরন' : 'Method Type'}:</span>
+                          <span className="text-slate-400 font-medium">{'Method Type'}:</span>
                           <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] border ${badgeBg}`}>
                             {isBank
-                              ? 'Corporate Bank'
-                              : isMfs
-                              ? 'Mobile Wallet (MFS)'
-                              : isGateway
-                              ? 'Online API Gateway'
-                              : isCash
-                              ? 'Cash Counter'
-                              : isCheque
-                              ? 'Bank Cheque'
-                              : 'Custom'}
+                            ? 'Corporate Bank'
+                            : isMfs
+                                ? 'Mobile Wallet (MFS)'
+                                : isGateway
+                                    ? 'Online API Gateway'
+                                    : isCash
+                                        ? 'Cash Counter'
+                                        : isCheque
+                                            ? 'Bank Cheque'
+                                            : 'Custom'}
                           </span>
                         </div>
 
                         {/* Bank specific info */}
-                        {isBank && (
-                          <>
-                            {pm.bankName && (
-                              <div className="flex justify-between items-baseline text-slate-700">
+                        {isBank && (<>
+                            {pm.bankName && (<div className="flex justify-between items-baseline text-slate-700">
                                 <span className="text-slate-400 font-medium text-[11px]">Bank:</span>
                                 <span className="font-bold text-right">{pm.bankName}</span>
-                              </div>
-                            )}
-                            {pm.accountNumber && (
-                              <div className="flex justify-between items-baseline text-slate-700">
+                              </div>)}
+                            {pm.accountNumber && (<div className="flex justify-between items-baseline text-slate-700">
                                 <span className="text-slate-400 font-medium text-[11px]">A/C No:</span>
                                 <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">
                                   {pm.accountNumber}
                                 </span>
-                              </div>
-                            )}
-                            {pm.accountTitle && (
-                              <div className="flex justify-between items-baseline text-slate-700">
+                              </div>)}
+                            {pm.accountTitle && (<div className="flex justify-between items-baseline text-slate-700">
                                 <span className="text-slate-400 font-medium text-[11px]">Title:</span>
                                 <span className="text-[11px] font-semibold text-slate-600 text-right truncate max-w-[160px]">{pm.accountTitle}</span>
-                              </div>
-                            )}
-                            {pm.branchName && (
-                              <div className="flex justify-between items-baseline text-slate-700 text-[11px]">
+                              </div>)}
+                            {pm.branchName && (<div className="flex justify-between items-baseline text-slate-700 text-[11px]">
                                 <span className="text-slate-400 font-medium">Branch:</span>
                                 <span className="text-slate-600">{pm.branchName}</span>
-                              </div>
-                            )}
-                            {pm.routingNumber && (
-                              <div className="flex justify-between items-baseline text-slate-700 text-[11px]">
+                              </div>)}
+                            {pm.routingNumber && (<div className="flex justify-between items-baseline text-slate-700 text-[11px]">
                                 <span className="text-slate-400 font-medium">Routing:</span>
                                 <span className="font-mono text-slate-600">{pm.routingNumber}</span>
-                              </div>
-                            )}
-                          </>
-                        )}
+                              </div>)}
+                          </>)}
 
                         {/* MFS specific info */}
-                        {isMfs && (
-                          <>
-                            {pm.provider && (
-                              <div className="flex justify-between items-baseline text-slate-700">
+                        {isMfs && (<>
+                            {pm.provider && (<div className="flex justify-between items-baseline text-slate-700">
                                 <span className="text-slate-400 font-medium text-[11px]">Wallet:</span>
                                 <span className="font-bold text-pink-700">{pm.provider}</span>
-                              </div>
-                            )}
-                            {pm.accountNumber && (
-                              <div className="flex justify-between items-baseline text-slate-700">
+                              </div>)}
+                            {pm.accountNumber && (<div className="flex justify-between items-baseline text-slate-700">
                                 <span className="text-slate-400 font-medium text-[11px]">Number:</span>
                                 <span className="font-mono font-black text-pink-800 bg-pink-50 border border-pink-200 px-2 py-0.5 rounded text-xs">
                                   {pm.accountNumber}
                                 </span>
-                              </div>
-                            )}
-                            {pm.accountTitle && (
-                              <div className="flex justify-between items-baseline text-slate-700 text-[11px]">
+                              </div>)}
+                            {pm.accountTitle && (<div className="flex justify-between items-baseline text-slate-700 text-[11px]">
                                 <span className="text-slate-400 font-medium">Title:</span>
                                 <span className="text-slate-600 truncate max-w-[160px]">{pm.accountTitle}</span>
-                              </div>
-                            )}
-                            {Boolean(pm.chargePercent) && (
-                              <div className="flex justify-between items-baseline text-slate-700 text-[11px]">
+                              </div>)}
+                            {Boolean(pm.chargePercent) && (<div className="flex justify-between items-baseline text-slate-700 text-[11px]">
                                 <span className="text-slate-400 font-medium">Surcharge:</span>
                                 <span className="font-bold text-amber-700">{pm.chargePercent}%</span>
-                              </div>
-                            )}
-                          </>
-                        )}
+                              </div>)}
+                          </>)}
 
                         {/* Gateway API specific info */}
-                        {isGateway && (
-                          <>
+                        {isGateway && (<>
                             <div className="flex justify-between items-baseline text-slate-700">
                               <span className="text-slate-400 font-medium text-[11px]">Provider:</span>
                               <span className="font-bold text-emerald-800 uppercase">{pm.provider || 'SSLCommerz'}</span>
@@ -1726,210 +1273,150 @@ export const SettingsModule: React.FC = () => {
                                 {pm.gatewayMode === 'live' ? 'Live / Production' : 'Sandbox / Test'}
                               </span>
                             </div>
-                            {pm.storeId && (
-                              <div className="flex justify-between items-baseline text-slate-700 text-[11px]">
+                            {pm.storeId && (<div className="flex justify-between items-baseline text-slate-700 text-[11px]">
                                 <span className="text-slate-400 font-medium">Store ID:</span>
                                 <span className="font-mono font-bold text-slate-700">{pm.storeId}</span>
-                              </div>
-                            )}
-                          </>
-                        )}
+                              </div>)}
+                          </>)}
 
                         {/* Cash & Cheque info */}
-                        {(isCash || isCheque) && (
-                          <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        {(isCash || isCheque) && (<div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
                             {pm.notes || (isCash ? 'Physical cash drawer at counter' : 'Customer bank cheque clearing')}
-                          </div>
-                        )}
+                          </div>)}
 
-                        {pm.notes && !isCash && !isCheque && (
-                          <p className="text-[10.5px] text-slate-500 italic truncate pt-1 border-t border-slate-100">
+                        {pm.notes && !isCash && !isCheque && (<p className="text-[10.5px] text-slate-500 italic truncate pt-1 border-t border-slate-100">
                             {pm.notes}
-                          </p>
-                        )}
+                          </p>)}
                       </div>
                     </div>
 
                     {/* Card Footer Actions */}
                     <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 mt-2">
                       <div>
-                        {!pm.isDefault ? (
-                          <button
-                            type="button"
-                            onClick={() => setDefaultPaymentMethod(pm.id)}
-                            className="text-[10px] font-bold text-slate-500 hover:text-amber-700 flex items-center gap-1 cursor-pointer transition-colors"
-                            title="Set as Default Payment Method"
-                          >
-                            <Star className="w-3 h-3 text-slate-400" />
-                            <span>{language === 'bn' ? 'ডিফল্ট করুন' : 'Make Default'}</span>
-                          </button>
-                        ) : (
-                          <span className="text-[10px] font-extrabold text-amber-700 flex items-center gap-1">
-                            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                            <span>{language === 'bn' ? 'প্রাথমিক ডিফল্ট' : 'Primary Default'}</span>
-                          </span>
-                        )}
+                        {!pm.isDefault ? (<button type="button" onClick={() => setDefaultPaymentMethod(pm.id)} className="text-[10px] font-bold text-slate-500 hover:text-amber-700 flex items-center gap-1 cursor-pointer transition-colors" title="Set as Default Payment Method">
+                            <Star className="w-3 h-3 text-slate-400"/>
+                            <span>{'Make Default'}</span>
+                          </button>) : (<span className="text-[10px] font-extrabold text-amber-700 flex items-center gap-1">
+                            <Star className="w-3 h-3 fill-amber-500 text-amber-500"/>
+                            <span>{'Primary Default'}</span>
+                          </span>)}
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditPaymentMethod(pm)}
-                          className="p-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer"
-                          title="Edit Payment Method"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
+                        <button type="button" onClick={() => handleOpenEditPaymentMethod(pm)} className="p-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer" title="Edit Payment Method">
+                          <Edit2 className="w-3.5 h-3.5"/>
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => setDeleteConfirmPaymentId(pm.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="Delete Payment Method"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
+                        <button type="button" onClick={() => setDeleteConfirmPaymentId(pm.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer" title="Delete Payment Method">
+                          <Trash2 className="w-3.5 h-3.5"/>
                         </button>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-          </div>
-          )}
+                  </div>);
+                })}
+          </div>)}
 
           {/* Delete Confirmation Popup */}
-          {deleteConfirmPaymentId && (
-            <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          {deleteConfirmPaymentId && (<div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
               <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold shrink-0">
-                    <AlertTriangle className="w-5 h-5" />
+                    <AlertTriangle className="w-5 h-5"/>
                   </div>
                   <div>
                     <h4 className="font-extrabold text-slate-900 text-sm">
-                      {language === 'bn' ? 'পেমেন্ট মেথড মুছে ফেলতে চান?' : 'Delete Payment Method?'}
+                      {'Delete Payment Method?'}
                     </h4>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      {language === 'bn'
-                        ? 'এটি মুছে ফেললে পিওএস ও ইনভয়েস থেকে এটি বাদ যাবে। পূর্ববর্তী ট্রানজেকশনের রেকর্ড অক্ষত থাকবে।'
-                        : 'This will remove the method from POS checkout and sales forms.'}
+                      {'This will remove the method from POS checkout and sales forms.'}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirmPaymentId(null)}
-                    className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
-                  >
-                    {language === 'bn' ? 'বাতিল' : 'Cancel'}
+                  <button type="button" onClick={() => setDeleteConfirmPaymentId(null)} className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer">
+                    {'Cancel'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeletePaymentMethod(deleteConfirmPaymentId)}
-                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    {language === 'bn' ? 'হ্যাঁ, মুছুন' : 'Delete'}
+                  <button type="button" onClick={() => handleDeletePaymentMethod(deleteConfirmPaymentId)} className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer">
+                    {'Delete'}
                   </button>
                 </div>
               </div>
-            </div>
-          )}
+            </div>)}
 
           {/* Section: Client Invoicing Instructions & Banking Notes */}
           <form onSubmit={handleSavePaymentSettings} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                  <SlidersHorizontal className="w-5 h-5" />
+                  <SlidersHorizontal className="w-5 h-5"/>
                 </div>
                 <div>
                   <h4 className="font-bold text-slate-900 text-sm">
-                    {language === 'bn' ? 'ইনভয়েস ও বিলের পেমেন্ট নির্দেশিকা' : 'Client Invoicing & Payment Instructions'}
+                    {'Client Invoicing & Payment Instructions'}
                   </h4>
                   <p className="text-[11px] text-slate-500">
-                    {language === 'bn' ? 'প্রিন্ট ও ডিজিটাল বিলে ক্লায়েন্টকে পেমেন্ট করার সাধারণ নির্দেশিকা ও ফুটনোট' : 'Global banking notice printed on customer invoices and slips'}
+                    {'Global banking notice printed on customer invoices and slips'}
                   </p>
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs shadow-xs transition-all cursor-pointer"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>{language === 'bn' ? 'নির্দেশিকা সংরক্ষণ' : 'Save Notice'}</span>
+              <button type="submit" className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs shadow-xs transition-all cursor-pointer">
+                <Save className="w-3.5 h-3.5"/>
+                <span>{'Save Notice'}</span>
               </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'পেমেন্ট নির্দেশিকা টেক্সট (Banking Notes on Invoices)' : 'Payment Notes & Notice on Invoices'}
+                  {'Payment Notes & Notice on Invoices'}
                 </label>
-                <textarea
-                  rows={4}
-                  value={paymentFormData.bankingNotes}
-                  onChange={(e) => setPaymentFormData({ ...paymentFormData, bankingNotes: e.target.value })}
-                  placeholder="Clients can transfer invoices via Bank Transfer, bKash Merchant (01841581887), or Cash counters."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none leading-relaxed"
-                />
+                <textarea rows={4} value={paymentFormData.bankingNotes} onChange={(e) => setPaymentFormData({ ...paymentFormData, bankingNotes: e.target.value })} placeholder="Clients can transfer invoices via Bank Transfer, bKash Merchant (01841581887), or Cash counters." className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none leading-relaxed"/>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  {language === 'bn'
-                    ? 'এই লেখাটি কাস্টমারের প্রিন্ট ইনভয়েস, চালান এবং হিসাব মেমোতে ব্যাংক ও পেমেন্ট বিবরণী হিসেবে স্বয়ংক্রিয়ভাবে দেখাবে।'
-                    : 'This note is automatically printed at the bottom of customer invoices, challans, and payment receipts.'}
+                  {'This note is automatically printed at the bottom of customer invoices, challans, and payment receipts.'}
                 </p>
               </div>
 
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                 <span className="font-bold text-slate-700 text-xs block">
-                  {language === 'bn' ? 'লাইভ প্রিভিউ (ইনভয়েসের নিচে যেমন দেখাবে):' : 'Live Preview (As printed on invoices):'}
+                  {'Live Preview (As printed on invoices):'}
                 </span>
                 <div className="bg-white p-3 rounded-lg border border-slate-200 text-slate-700 text-xs font-mono leading-relaxed space-y-1">
-                  {paymentMethods.filter((p) => p.isEnabled).map((pm) => (
-                    <div key={pm.id} className="text-[11px]">
+                  {paymentMethods.filter((p) => p.isEnabled).map((pm) => (<div key={pm.id} className="text-[11px]">
                       • <strong>{pm.name}:</strong> {pm.accountNumber ? `${pm.accountNumber}` : ''} {pm.bankName ? `(${pm.bankName})` : ''} {pm.accountTitle ? `- ${pm.accountTitle}` : ''}
-                    </div>
-                  ))}
-                  {paymentFormData.bankingNotes && (
-                    <div className="text-[11px] text-slate-500 mt-2 pt-1 border-t border-slate-100">
+                    </div>))}
+                  {paymentFormData.bankingNotes && (<div className="text-[11px] text-slate-500 mt-2 pt-1 border-t border-slate-100">
                       💬 {paymentFormData.bankingNotes}
-                    </div>
-                  )}
+                    </div>)}
                 </div>
               </div>
             </div>
           </form>
 
           {/* MODAL: CREATE / EDIT PAYMENT METHOD */}
-          {showPaymentModal && (
-            <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          {showPaymentModal && (<div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
               <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 my-8">
                 {/* Modal Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div className="flex items-center gap-2.5">
                     <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                      <CreditCard className="w-5 h-5" />
+                      <CreditCard className="w-5 h-5"/>
                     </div>
                     <div>
                       <h3 className="font-black text-slate-900 text-base sm:text-lg">
                         {editingPaymentMethod
-                          ? language === 'bn' ? 'পেমেন্ট মেথড এডিট করুন' : 'Edit Payment Method'
-                          : language === 'bn' ? 'নতুন পেমেন্ট মেথড বা গেটওয়ে তৈরি করুন' : 'Create New Payment Method / Gateway'}
+                    ? 'Edit Payment Method'
+                    : 'Create New Payment Method / Gateway'}
                       </h3>
                       <p className="text-xs text-slate-500">
-                        {language === 'bn' ? 'সমগ্র সিস্টেমের জন্য পেমেন্ট মাধ্যম কনফিগার করুন' : 'Configure dynamic payment channels for the entire system'}
+                        {'Configure dynamic payment channels for the entire system'}
                       </p>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowPaymentModal(false)}
-                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
+                  <button type="button" onClick={() => setShowPaymentModal(false)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer">
+                    <X className="w-4 h-4"/>
                   </button>
                 </div>
 
@@ -1937,51 +1424,41 @@ export const SettingsModule: React.FC = () => {
                   {/* Step 1: Select Type */}
                   <div>
                     <label className="font-bold text-slate-700 text-xs block mb-1.5">
-                      {language === 'bn' ? '১. মেথডের ধরন নির্বাচন করুন *' : '1. Select Payment Method Type *'}
+                      {'1. Select Payment Method Type *'}
                     </label>
                     <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                       {[
-                        { type: 'bank' as PaymentMethodType, label: 'Bank', icon: Landmark, color: 'text-blue-600' },
-                        { type: 'mfs' as PaymentMethodType, label: 'MFS / Wallet', icon: Smartphone, color: 'text-pink-600' },
-                        { type: 'gateway' as PaymentMethodType, label: 'Online API', icon: Zap, color: 'text-emerald-600' },
-                        { type: 'cash' as PaymentMethodType, label: 'Cash', icon: Banknote, color: 'text-emerald-700' },
-                        { type: 'cheque' as PaymentMethodType, label: 'Cheque', icon: FileSpreadsheet, color: 'text-amber-600' },
-                      ].map((item) => {
-                        const IconComponent = item.icon;
-                        const isSelected = paymentMethodFormData.type === item.type;
-                        return (
-                          <button
-                            key={item.type}
-                            type="button"
-                            onClick={() => {
-                              setPaymentMethodFormData({
+                    { type: 'bank' as PaymentMethodType, label: 'Bank', icon: Landmark, color: 'text-blue-600' },
+                    { type: 'mfs' as PaymentMethodType, label: 'MFS / Wallet', icon: Smartphone, color: 'text-pink-600' },
+                    { type: 'gateway' as PaymentMethodType, label: 'Online API', icon: Zap, color: 'text-emerald-600' },
+                    { type: 'cash' as PaymentMethodType, label: 'Cash', icon: Banknote, color: 'text-emerald-700' },
+                    { type: 'cheque' as PaymentMethodType, label: 'Cheque', icon: FileSpreadsheet, color: 'text-amber-600' },
+                ].map((item) => {
+                    const IconComponent = item.icon;
+                    const isSelected = paymentMethodFormData.type === item.type;
+                    return (<button key={item.type} type="button" onClick={() => {
+                            setPaymentMethodFormData({
                                 ...paymentMethodFormData,
                                 type: item.type,
-                                name:
-                                  paymentMethodFormData.name && paymentMethodFormData.name !== 'Corporate Bank' && paymentMethodFormData.name !== 'bKash Merchant' && paymentMethodFormData.name !== 'SSLCommerz Gateway' && paymentMethodFormData.name !== 'Cash Counter' && paymentMethodFormData.name !== 'Bank Cheque'
+                                name: paymentMethodFormData.name && paymentMethodFormData.name !== 'Corporate Bank' && paymentMethodFormData.name !== 'bKash Merchant' && paymentMethodFormData.name !== 'SSLCommerz Gateway' && paymentMethodFormData.name !== 'Cash Counter' && paymentMethodFormData.name !== 'Bank Cheque'
                                     ? paymentMethodFormData.name
                                     : item.type === 'bank'
-                                    ? 'Corporate Bank'
-                                    : item.type === 'mfs'
-                                    ? 'bKash Merchant'
-                                    : item.type === 'gateway'
-                                    ? 'SSLCommerz Gateway'
-                                    : item.type === 'cash'
-                                    ? 'Cash Counter'
-                                    : 'Bank Cheque',
-                              });
-                            }}
-                            className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer text-center ${
-                              isSelected
-                                ? 'bg-slate-900 border-slate-900 text-white shadow-xs'
-                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                            }`}
-                          >
-                            <IconComponent className={`w-4 h-4 ${isSelected ? 'text-amber-400' : item.color}`} />
+                                        ? 'Corporate Bank'
+                                        : item.type === 'mfs'
+                                            ? 'bKash Merchant'
+                                            : item.type === 'gateway'
+                                                ? 'SSLCommerz Gateway'
+                                                : item.type === 'cash'
+                                                    ? 'Cash Counter'
+                                                    : 'Bank Cheque',
+                            });
+                        }} className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer text-center ${isSelected
+                            ? 'bg-slate-900 border-slate-900 text-white shadow-xs'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'}`}>
+                            <IconComponent className={`w-4 h-4 ${isSelected ? 'text-amber-400' : item.color}`}/>
                             <span className="text-[10px] font-bold leading-tight">{item.label}</span>
-                          </button>
-                        );
-                      })}
+                          </button>);
+                })}
                     </div>
                   </div>
 
@@ -1989,177 +1466,100 @@ export const SettingsModule: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div>
                       <label className="font-bold text-slate-700 block mb-1">
-                        {language === 'bn' ? 'পেমেন্ট মেথডের নাম (English Name) *' : 'Display Name (English) *'}
+                        {'Display Name (English) *'}
                       </label>
-                      <input
-                        type="text"
-                        required
-                        value={paymentMethodFormData.name || ''}
-                        onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, name: e.target.value })}
-                        placeholder="e.g. City Bank PLC / bKash Merchant"
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      />
+                      <input type="text" required value={paymentMethodFormData.name || ''} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, name: e.target.value })} placeholder="e.g. City Bank PLC / bKash Merchant" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"/>
                     </div>
 
                     <div>
                       <label className="font-bold text-slate-700 block mb-1">
-                        {language === 'bn' ? 'বাংলা নাম (Bangla Name)' : 'Display Name (Bangla)'}
+                        {'Display Name (Bangla)'}
                       </label>
-                      <input
-                        type="text"
-                        value={paymentMethodFormData.nameBn || ''}
-                        onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, nameBn: e.target.value })}
-                        placeholder="e.g. সিটি ব্যাংক / বিকাশ মার্চেন্ট"
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      />
+                      <input type="text" value={paymentMethodFormData.nameBn || ''} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, nameBn: e.target.value })} placeholder="e.g.  Bank" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"/>
                     </div>
                   </div>
 
                   {/* Contextual Fields by Type */}
-                  {paymentMethodFormData.type === 'bank' && (
-                    <div className="p-3.5 bg-blue-50/40 border border-blue-200 rounded-2xl space-y-3 text-xs">
+                  {paymentMethodFormData.type === 'bank' && (<div className="p-3.5 bg-blue-50/40 border border-blue-200 rounded-2xl space-y-3 text-xs">
                       <div className="flex items-center gap-1.5 font-bold text-blue-900 text-xs">
-                        <Landmark className="w-4 h-4 text-blue-600" />
-                        <span>{language === 'bn' ? 'ব্যাংক অ্যাকাউন্টের বিবরণ' : 'Bank Account Credentials'}</span>
+                        <Landmark className="w-4 h-4 text-blue-600"/>
+                        <span>{'Bank Account Credentials'}</span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'ব্যাংকের নাম' : 'Bank Name'}</label>
-                          <input
-                            type="text"
-                            value={paymentMethodFormData.bankName || ''}
-                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, bankName: e.target.value })}
-                            placeholder="e.g. BRAC Bank PLC / City Bank"
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          />
+                          <label className="font-bold text-slate-700 block mb-1">{'Bank Name'}</label>
+                          <input type="text" value={paymentMethodFormData.bankName || ''} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, bankName: e.target.value })} placeholder="e.g. BRAC Bank PLC / City Bank" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
                         </div>
 
                         <div>
-                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'হিসাব নম্বর' : 'Account Number'}</label>
-                          <input
-                            type="text"
-                            value={paymentMethodFormData.accountNumber || ''}
-                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, accountNumber: e.target.value })}
-                            placeholder="e.g. 1504058517001"
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          />
+                          <label className="font-bold text-slate-700 block mb-1">{'Account Number'}</label>
+                          <input type="text" value={paymentMethodFormData.accountNumber || ''} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, accountNumber: e.target.value })} placeholder="e.g. 1504058517001" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'হিসাবের শিরোনাম (Title)' : 'Account Title'}</label>
-                          <input
-                            type="text"
-                            value={paymentMethodFormData.accountTitle || ''}
-                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, accountTitle: e.target.value })}
-                            placeholder="e.g. Dot Color Communication"
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          />
+                          <label className="font-bold text-slate-700 block mb-1">{'Account Title'}</label>
+                          <input type="text" value={paymentMethodFormData.accountTitle || ''} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, accountTitle: e.target.value })} placeholder="e.g. Dot Color Communication" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
                         </div>
                         <div>
-                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'শাখা' : 'Branch'}</label>
-                          <input
-                            type="text"
-                            value={paymentMethodFormData.branchName || ''}
-                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, branchName: e.target.value })}
-                            placeholder="e.g. Agrabad / Pabartek"
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          />
+                          <label className="font-bold text-slate-700 block mb-1">{'Branch'}</label>
+                          <input type="text" value={paymentMethodFormData.branchName || ''} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, branchName: e.target.value })} placeholder="e.g. Agrabad / Pabartek" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
                         </div>
                         <div>
-                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'রাউটিং কোড' : 'Routing Code'}</label>
-                          <input
-                            type="text"
-                            value={paymentMethodFormData.routingNumber || ''}
-                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, routingNumber: e.target.value })}
-                            placeholder="e.g. 060150341"
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          />
+                          <label className="font-bold text-slate-700 block mb-1">{'Routing Code'}</label>
+                          <input type="text" value={paymentMethodFormData.routingNumber || ''} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, routingNumber: e.target.value })} placeholder="e.g. 060150341" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    </div>)}
 
-                  {paymentMethodFormData.type === 'mfs' && (
-                    <div className="p-3.5 bg-pink-50/40 border border-pink-200 rounded-2xl space-y-3 text-xs">
+                  {paymentMethodFormData.type === 'mfs' && (<div className="p-3.5 bg-pink-50/40 border border-pink-200 rounded-2xl space-y-3 text-xs">
                       <div className="flex items-center gap-1.5 font-bold text-pink-900 text-xs">
-                        <Smartphone className="w-4 h-4 text-pink-600" />
-                        <span>{language === 'bn' ? 'মোবাইল ওয়ালেট বিবরণ (bKash/Nagad/Rocket)' : 'Mobile Financial Wallet Details'}</span>
+                        <Smartphone className="w-4 h-4 text-pink-600"/>
+                        <span>{'Mobile Financial Wallet Details'}</span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'ওয়ালেট প্রোভাইডার' : 'Wallet Provider'}</label>
-                          <select
-                            value={paymentMethodFormData.provider || 'bKash'}
-                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, provider: e.target.value })}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-pink-700 focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                          >
-                            <option value="bKash">bKash (বিকাশ)</option>
-                            <option value="Nagad">Nagad (নগদ)</option>
-                            <option value="Rocket">Rocket (রকেট)</option>
-                            <option value="Upay">Upay (উপায়)</option>
-                            <option value="Cellfin">Cellfin (সেলফিন)</option>
+                          <label className="font-bold text-slate-700 block mb-1">{'Wallet Provider'}</label>
+                          <select value={paymentMethodFormData.provider || 'bKash'} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, provider: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-pink-700 focus:ring-2 focus:ring-pink-500 focus:outline-none">
+                            <option value="bKash">bKashbKash</option>
+                            <option value="Nagad">NagadNagad</option>
+                            <option value="Rocket">Rocket</option>
+                            <option value="Upay">Upay</option>
+                            <option value="Cellfin">Cellfin</option>
                             <option value="Other">Other Wallet</option>
                           </select>
                         </div>
 
                         <div>
-                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'মোবাইল / অ্যাকাউন্ট নম্বর *' : 'Account / Mobile No *'}</label>
-                          <input
-                            type="text"
-                            required
-                            value={paymentMethodFormData.accountNumber || ''}
-                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, accountNumber: e.target.value })}
-                            placeholder="e.g. 01841581887"
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono font-black text-pink-700 focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                          />
+                          <label className="font-bold text-slate-700 block mb-1">{'Account / Mobile No *'}</label>
+                          <input type="text" required value={paymentMethodFormData.accountNumber || ''} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, accountNumber: e.target.value })} placeholder="e.g. 01841581887" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono font-black text-pink-700 focus:ring-2 focus:ring-pink-500 focus:outline-none"/>
                         </div>
 
                         <div>
-                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'সারচার্জ ফি (%)' : 'Surcharge / Fee (%)'}</label>
-                          <input
-                            type="number"
-                            step="any"
-                            min="0"
-                            value={paymentMethodFormData.chargePercent || ''}
-                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, chargePercent: Number(e.target.value) || 0 })}
-                            placeholder="0 (Free)"
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                          />
+                          <label className="font-bold text-slate-700 block mb-1">{'Surcharge / Fee (%)'}</label>
+                          <input type="number" step="any" min="0" value={paymentMethodFormData.chargePercent || ''} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, chargePercent: Number(e.target.value) || 0 })} placeholder="0 (Free)" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-pink-500 focus:outline-none"/>
                         </div>
                       </div>
 
                       <div>
-                        <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'মার্চেন্ট / অ্যাকাউন্টের নাম' : 'Merchant / Beneficiary Title'}</label>
-                        <input
-                          type="text"
-                          value={paymentMethodFormData.accountTitle || ''}
-                          onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, accountTitle: e.target.value })}
-                          placeholder="e.g. Dot Color Communication (Merchant)"
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                        />
+                        <label className="font-bold text-slate-700 block mb-1">{'Merchant / Beneficiary Title'}</label>
+                        <input type="text" value={paymentMethodFormData.accountTitle || ''} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, accountTitle: e.target.value })} placeholder="e.g. Dot Color Communication (Merchant)" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:outline-none"/>
                       </div>
-                    </div>
-                  )}
+                    </div>)}
 
-                  {paymentMethodFormData.type === 'gateway' && (
-                    <div className="p-3.5 bg-emerald-50/40 border border-emerald-200 rounded-2xl space-y-3 text-xs">
+                  {paymentMethodFormData.type === 'gateway' && (<div className="p-3.5 bg-emerald-50/40 border border-emerald-200 rounded-2xl space-y-3 text-xs">
                       <div className="flex items-center gap-1.5 font-bold text-emerald-900 text-xs">
-                        <Zap className="w-4 h-4 text-emerald-600" />
-                        <span>{language === 'bn' ? 'অনলাইন পেমেন্ট গেটওয়ে API ইন্টিগ্রেশন' : 'Online Payment Gateway API Integration'}</span>
+                        <Zap className="w-4 h-4 text-emerald-600"/>
+                        <span>{'Online Payment Gateway API Integration'}</span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'গেটওয়ে ইঞ্জিন' : 'Gateway Engine'}</label>
-                          <select
-                            value={paymentMethodFormData.provider || 'sslcommerz'}
-                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, provider: e.target.value })}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-emerald-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                          >
+                          <label className="font-bold text-slate-700 block mb-1">{'Gateway Engine'}</label>
+                          <select value={paymentMethodFormData.provider || 'sslcommerz'} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, provider: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-emerald-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                             <option value="sslcommerz">SSLCommerz (Cards & Wallets)</option>
                             <option value="bkash_pgw">bKash Direct Checkout (PGW)</option>
                             <option value="shurjopay">Shurjopay Gateway</option>
@@ -2169,12 +1569,8 @@ export const SettingsModule: React.FC = () => {
                         </div>
 
                         <div>
-                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'এনভায়রনমেন্ট মোড' : 'Environment Mode'}</label>
-                          <select
-                            value={paymentMethodFormData.gatewayMode || 'sandbox'}
-                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, gatewayMode: e.target.value as any })}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                          >
+                          <label className="font-bold text-slate-700 block mb-1">{'Environment Mode'}</label>
+                          <select value={paymentMethodFormData.gatewayMode || 'sandbox'} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, gatewayMode: e.target.value as any })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                             <option value="sandbox">Sandbox / Test Mode</option>
                             <option value="live">Live / Production</option>
                           </select>
@@ -2183,112 +1579,71 @@ export const SettingsModule: React.FC = () => {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'স্টোর আইডি / মার্চেন্ট অ্যাপ কি' : 'Store ID / App Key'}</label>
-                          <input
-                            type="text"
-                            value={paymentMethodFormData.storeId || ''}
-                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, storeId: e.target.value })}
-                            placeholder="e.g. dotcolor_live_store"
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                          />
+                          <label className="font-bold text-slate-700 block mb-1">{'Store ID / App Key'}</label>
+                          <input type="text" value={paymentMethodFormData.storeId || ''} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, storeId: e.target.value })} placeholder="e.g. dotcolor_live_store" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"/>
                         </div>
                         <div>
-                          <label className="font-bold text-slate-700 block mb-1">{language === 'bn' ? 'সিক্রেট কি / পাসওয়ার্ড' : 'Secret Key / Password'}</label>
-                          <input
-                            type="password"
-                            value={paymentMethodFormData.secretKey || ''}
-                            onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, secretKey: e.target.value })}
-                            placeholder="••••••••••••••••••••••••"
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                          />
+                          <label className="font-bold text-slate-700 block mb-1">{'Secret Key / Password'}</label>
+                          <input type="password" value={paymentMethodFormData.secretKey || ''} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, secretKey: e.target.value })} placeholder="••••••••••••••••••••••••" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"/>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    </div>)}
 
                   {/* Notes / Instructions */}
                   <div className="text-xs">
                     <label className="font-bold text-slate-700 block mb-1">
-                      {language === 'bn' ? 'গ্রাহক নির্দেশিকা বা অতিরিক্ত নোট (Optional)' : 'Customer Instructions / Internal Note'}
+                      {'Customer Instructions / Internal Note'}
                     </label>
-                    <input
-                      type="text"
-                      value={paymentMethodFormData.notes || ''}
-                      onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, notes: e.target.value })}
-                      placeholder="e.g. Deposit slip must include invoice number as reference."
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                    />
+                    <input type="text" value={paymentMethodFormData.notes || ''} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, notes: e.target.value })} placeholder="e.g. Deposit slip must include invoice number as reference." className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"/>
                   </div>
 
                   {/* Switches: Is Active and Is Default */}
                   <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4 text-xs">
                     <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={paymentMethodFormData.isEnabled !== false}
-                        onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, isEnabled: e.target.checked })}
-                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
-                      />
+                      <input type="checkbox" checked={paymentMethodFormData.isEnabled !== false} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, isEnabled: e.target.checked })} className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"/>
                       <span className="font-bold text-slate-800">
-                        {language === 'bn' ? 'সিস্টেমে সক্রিয় রাখুন (Active in POS & Checkout)' : 'Active in POS & Checkout'}
+                        {'Active in POS & Checkout'}
                       </span>
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(paymentMethodFormData.isDefault)}
-                        onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, isDefault: e.target.checked })}
-                        className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
-                      />
+                      <input type="checkbox" checked={Boolean(paymentMethodFormData.isDefault)} onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, isDefault: e.target.checked })} className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"/>
                       <span className="font-bold text-amber-800 flex items-center gap-1">
-                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                        <span>{language === 'bn' ? 'ডিফল্ট পেমেন্ট মেথড হিসেবে সেট করুন' : 'Set as Default Method'}</span>
+                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500"/>
+                        <span>{'Set as Default Method'}</span>
                       </span>
                     </label>
                   </div>
 
                   {/* Modal Action Buttons */}
                   <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-                    <button
-                      type="button"
-                      onClick={() => setShowPaymentModal(false)}
-                      className="px-5 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
-                    >
-                      {language === 'bn' ? 'বাতিল' : 'Cancel'}
+                    <button type="button" onClick={() => setShowPaymentModal(false)} className="px-5 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer">
+                      {'Cancel'}
                     </button>
-                    <button
-                      type="submit"
-                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-2"
-                    >
-                      <Save className="w-4 h-4" />
+                    <button type="submit" className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-2">
+                      <Save className="w-4 h-4"/>
                       <span>
                         {editingPaymentMethod
-                          ? language === 'bn' ? 'মেথড আপডেট করুন' : 'Update Method'
-                          : language === 'bn' ? 'মেথড তৈরি করুন' : 'Create Method'}
+                    ? 'Update Method'
+                    : 'Create Method'}
                       </span>
                     </button>
                   </div>
                 </form>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            </div>)}
+        </div>)}
 
       {/* TAB 3: MODULE DATA CLEAN & PURGE */}
-      {activeTab === 'data-clean' && (
-        <div className="space-y-4">
+      {activeTab === 'data-clean' && (<div className="space-y-4">
           <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-start gap-3">
-            <AlertOctagon className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <AlertOctagon className="w-5 h-5 text-rose-600 shrink-0 mt-0.5"/>
             <div>
               <h3 className="font-bold text-rose-900 text-sm">
-                {language === 'bn' ? 'মডিউলার ডাটা ক্লিন ও রিসেট সেন্টার' : 'Modular Data Purge & Wipe Center'}
+                {'Modular Data Purge & Wipe Center'}
               </h3>
               <p className="text-xs text-rose-700 mt-1 leading-relaxed">
-                {language === 'bn'
-                  ? 'আপনার অনুরোধ অনুযায়ী প্রতিটি মডিউলের ডাটা স্বতন্ত্রভাবে পরিষ্কার (Clean) করার ব্যবস্থা রাখা হয়েছে। সতর্কতার সাথে নির্বাচন করুন; মোছা ডাটা পুনরুদ্ধার করা যাবে না।'
-                  : 'You can selectively purge data for specific modules (e.g., test sales invoices or purchase orders) or restore baseline demo data.'}
+                {'You can selectively purge data for specific modules (e.g., test sales invoices or purchase orders) or restore baseline demo data.'}
               </p>
             </div>
           </div>
@@ -2298,22 +1653,16 @@ export const SettingsModule: React.FC = () => {
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-900 text-sm">
-                  {language === 'bn' ? '১. সেলস ও ইনভয়েস ডাটা ক্লিন' : '1. Sales & POS Invoices Purge'}
+                  {'1. Sales & POS Invoices Purge'}
                 </span>
                 <span className="text-xs font-mono text-slate-500">POS & Sales</span>
               </div>
               <p className="text-xs text-slate-500">
-                {language === 'bn'
-                  ? 'সমস্ত ইনভয়েস, ওয়ার্ক অর্ডার, ও কোটেশন ডিলিট করবে। কাস্টমার ও প্রোডাক্ট তালিকা অক্ষুণ্ণ থাকবে।'
-                  : 'Deletes all sales invoices, work orders, and quotes. Product and customer catalogs remain intact.'}
+                {'Deletes all sales invoices, work orders, and quotes. Product and customer catalogs remain intact.'}
               </p>
-              <button
-                type="button"
-                onClick={() => setCleanConfirmModule('invoices')}
-                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{language === 'bn' ? 'ইনভয়েস ডাটা মুছে ফেলুন' : 'Purge Invoices Data'}</span>
+              <button type="button" onClick={() => setCleanConfirmModule('invoices')} className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                <Trash2 className="w-3.5 h-3.5"/>
+                <span>{'Purge Invoices Data'}</span>
               </button>
             </div>
 
@@ -2321,22 +1670,16 @@ export const SettingsModule: React.FC = () => {
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-900 text-sm">
-                  {language === 'bn' ? '২. স্টক মুভমেন্ট হিস্ট্রি ক্লিন' : '2. Stock Movement History Purge'}
+                  {'2. Stock Movement History Purge'}
                 </span>
                 <span className="text-xs font-mono text-slate-500">Stock Movements</span>
               </div>
               <p className="text-xs text-slate-500">
-                {language === 'bn'
-                  ? 'সমস্ত ট্রান্সফার ও স্টক এডজাস্টমেন্ট হিস্ট্রি মুছে ফেলবে। পণ্যের মূল তথ্য অপরিবর্তিত থাকবে।'
-                  : 'Deletes all stock transfers and adjustments history logs. Master inventory catalog is preserved.'}
+                {'Deletes all stock transfers and adjustments history logs. Master inventory catalog is preserved.'}
               </p>
-              <button
-                type="button"
-                onClick={() => setCleanConfirmModule('stockMovements')}
-                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{language === 'bn' ? 'মুভমেন্ট লগ মুছে ফেলুন' : 'Purge Movement Logs'}</span>
+              <button type="button" onClick={() => setCleanConfirmModule('stockMovements')} className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                <Trash2 className="w-3.5 h-3.5"/>
+                <span>{'Purge Movement Logs'}</span>
               </button>
             </div>
 
@@ -2344,22 +1687,16 @@ export const SettingsModule: React.FC = () => {
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-900 text-sm">
-                  {language === 'bn' ? '৩. পারচেস অর্ডার (PO) ক্লিন' : '3. Purchase Orders (PO) Purge'}
+                  {'3. Purchase Orders (PO) Purge'}
                 </span>
                 <span className="text-xs font-mono text-slate-500">Purchase Orders</span>
               </div>
               <p className="text-xs text-slate-500">
-                {language === 'bn'
-                  ? 'সমস্ত সাপ্লায়ার পারচেস অর্ডার রেকর্ড ডিলিট করবে। সাপ্লায়ার তালিকা অক্ষুণ্ণ থাকবে।'
-                  : 'Deletes all supplier purchase orders. Supplier directory remains intact.'}
+                {'Deletes all supplier purchase orders. Supplier directory remains intact.'}
               </p>
-              <button
-                type="button"
-                onClick={() => setCleanConfirmModule('purchaseOrders')}
-                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{language === 'bn' ? 'পারচেস অর্ডার মুছে ফেলুন' : 'Purge Purchase Orders'}</span>
+              <button type="button" onClick={() => setCleanConfirmModule('purchaseOrders')} className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                <Trash2 className="w-3.5 h-3.5"/>
+                <span>{'Purge Purchase Orders'}</span>
               </button>
             </div>
 
@@ -2367,22 +1704,16 @@ export const SettingsModule: React.FC = () => {
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-900 text-sm">
-                  {language === 'bn' ? '৪. ফিনান্সিয়াল লেনদেন ও লেজার ক্লিন' : '4. Financial Ledger & Txns Purge'}
+                  {'4. Financial Ledger & Txns Purge'}
                 </span>
                 <span className="text-xs font-mono text-slate-500">Accounting Ledger</span>
               </div>
               <p className="text-xs text-slate-500">
-                {language === 'bn'
-                  ? 'সকল দৈনিক খরচ, আয় ও জার্নাল ভাউচার ডিলিট করে ব্যালেন্স শূন্যে রিসেট করবে।'
-                  : 'Deletes all daily expenses, revenue entries, and journal vouchers, resetting account balances to zero.'}
+                {'Deletes all daily expenses, revenue entries, and journal vouchers, resetting account balances to zero.'}
               </p>
-              <button
-                type="button"
-                onClick={() => setCleanConfirmModule('transactions')}
-                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{language === 'bn' ? 'লেনদেন ডাটা মুছে ফেলুন' : 'Purge Transactions Data'}</span>
+              <button type="button" onClick={() => setCleanConfirmModule('transactions')} className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                <Trash2 className="w-3.5 h-3.5"/>
+                <span>{'Purge Transactions Data'}</span>
               </button>
             </div>
 
@@ -2390,22 +1721,16 @@ export const SettingsModule: React.FC = () => {
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-900 text-sm">
-                  {language === 'bn' ? '৫. প্রজেক্টস ডাটা পার্জ (Projects Data Purge)' : '5. Projects Data Purge'}
+                  {'5. Projects Data Purge'}
                 </span>
                 <span className="text-xs font-mono text-slate-500">Projects & Sales</span>
               </div>
               <p className="text-xs text-slate-500">
-                {language === 'bn'
-                  ? 'সমস্ত প্রজেক্ট, প্রজেক্টের আয়/বিক্রয় এবং খরচের আইটেমাইজড ব্রেকডাউন হিসাব রেকর্ড মুছে ফেলবে।'
-                  : 'Purge all project profiles, sales income records, and expense breakdown logs.'}
+                {'Purge all project profiles, sales income records, and expense breakdown logs.'}
               </p>
-              <button
-                type="button"
-                onClick={() => setCleanConfirmModule('projects')}
-                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{language === 'bn' ? 'প্রজেক্ট ডাটা মুছে ফেলুন' : 'Purge Projects Data'}</span>
+              <button type="button" onClick={() => setCleanConfirmModule('projects')} className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                <Trash2 className="w-3.5 h-3.5"/>
+                <span>{'Purge Projects Data'}</span>
               </button>
             </div>
 
@@ -2413,31 +1738,20 @@ export const SettingsModule: React.FC = () => {
             <div className="bg-rose-50/60 p-5 rounded-2xl border-2 border-dashed border-rose-200 shadow-2xs space-y-3 col-span-1 md:col-span-2">
               <div className="flex items-center justify-between">
                 <span className="font-extrabold text-rose-950 text-sm">
-                  {language === 'bn' ? '৬. সম্পূর্ণ সিস্টেম ডাটা রিসেট (প্রোডাক্ট বাদে)' : '6. Complete System Data Reset (Except Products)'}
+                  {'6. Complete System Data Reset (Except Products)'}
                 </span>
                 <span className="text-xs font-mono font-bold text-rose-600 bg-rose-100/60 px-2.5 py-0.5 rounded-full">RECOMMENDED START</span>
               </div>
               <p className="text-xs text-rose-800 leading-relaxed font-medium">
-                {language === 'bn' ? (
-                  <>
-                    এটি সমস্ত ইনভয়েস, কোটেশন, পারচেস অর্ডার, কাস্টমার/সাপ্লায়ার ডিরেক্টরি এবং হিসাবের সমস্ত ট্রানজেকশন (ক্যাশ, ব্যাংক, বিকাশ ইত্যাদি ব্যালেন্স সহ) সম্পূর্ণ মুছে শূন্য (৳০) করবে।{' '}
-                    <strong>তবে আপনার ইনভেন্টরি বা প্রোডাক্ট ক্যাটালগটি অক্ষুণ্ণ থাকবে এবং সমস্ত প্রোডাক্টের স্টক কোয়ান্টিটি ০ হয়ে যাবে।</strong>
-                  </>
-                ) : (
-                  <>
+                {(<>
                     Wipes all sales invoices, quotes, purchase orders, customer & supplier directories, and ledger transactions. Resets all account balances to zero.{' '}
                     <strong>Your inventory product catalog remains intact, and all stock quantities are reset to 0.</strong>
-                  </>
-                )}
+                  </>)}
               </p>
-              <button
-                type="button"
-                onClick={() => setCleanConfirmModule('WIPE_ALL_EXCEPT_PRODUCTS')}
-                className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <AlertOctagon className="w-4 h-4" />
+              <button type="button" onClick={() => setCleanConfirmModule('WIPE_ALL_EXCEPT_PRODUCTS')} className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                <AlertOctagon className="w-4 h-4"/>
                 <span>
-                  {language === 'bn' ? 'সব ডাটা মুছুন কিন্তু প্রোডাক্ট ক্যাটালগ রাখুন (স্টক ০)' : 'Wipe All Data but Keep Product Catalog (Stock 0)'}
+                  {'Wipe All Data but Keep Product Catalog (Stock 0)'}
                 </span>
               </button>
             </div>
@@ -2447,32 +1761,24 @@ export const SettingsModule: React.FC = () => {
           <div className="bg-slate-900 text-white p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <h4 className="font-bold text-sm text-amber-400">
-                {language === 'bn' ? 'সিস্টেম ফ্যাক্টরি রিসেট (Full Baseline Reset)' : 'System Factory Reset (Full Baseline Reset)'}
+                {'System Factory Reset (Full Baseline Reset)'}
               </h4>
               <p className="text-xs text-slate-300 mt-0.5">
-                {language === 'bn'
-                  ? 'সমস্ত টেস্ট ডাটা মুছে প্রাথমিক স্ট্যান্ডার্ড ডেমো ডাটাবেসে সিস্টেম ফিরিয়ে আনুন।'
-                  : 'Clear all test data and restore initial demo baseline database.'}
+                {'Clear all test data and restore initial demo baseline database.'}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleFactoryReset}
-              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-xs shrink-0 flex items-center gap-1.5 cursor-pointer"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span>{language === 'bn' ? 'রিসেট টু ডিফল্ট' : 'Reset to Default'}</span>
+            <button type="button" onClick={handleFactoryReset} className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-xs shrink-0 flex items-center gap-1.5 cursor-pointer">
+              <RotateCcw className="w-4 h-4"/>
+              <span>{'Reset to Default'}</span>
             </button>
           </div>
-        </div>
-      )}
+        </div>)}
 
       {/* TAB 4: SYSTEM & IT PARTNER (BD HOSTT) */}
-      {activeTab === 'system' && (
-        <div className="space-y-6">
+      {activeTab === 'system' && (<div className="space-y-6">
           {/* Hero Banner */}
           <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white p-6 sm:p-8 rounded-3xl shadow-sm border border-blue-900/40 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"/>
             <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-2.5 flex-wrap">
@@ -2480,7 +1786,7 @@ export const SettingsModule: React.FC = () => {
                     OFFICIAL TECHNOLOGY &amp; IT PARTNER
                   </span>
                   <span className="text-xs font-bold text-amber-400 flex items-center gap-1">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <ShieldCheck className="w-4 h-4 text-emerald-400"/>
                     Verified IT Infrastructure
                   </span>
                 </div>
@@ -2492,36 +1798,28 @@ export const SettingsModule: React.FC = () => {
                 </p>
                 <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-slate-300">
                   <span className="flex items-center gap-1.5">
-                    <Phone className="w-4 h-4 text-emerald-400" />
+                    <Phone className="w-4 h-4 text-emerald-400"/>
                     Hotline: <strong className="text-white">01846100900, 01756007600</strong>
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Mail className="w-4 h-4 text-blue-400" />
+                    <Mail className="w-4 h-4 text-blue-400"/>
                     <strong className="text-white">info@bdhost.com</strong>
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Globe className="w-4 h-4 text-cyan-400" />
+                    <Globe className="w-4 h-4 text-cyan-400"/>
                     <strong className="text-white">www.bdhost.com</strong>
                   </span>
                 </div>
               </div>
 
               <div className="flex flex-col sm:flex-row md:flex-col gap-3 shrink-0 w-full sm:w-auto">
-                <a
-                  href="https://www.bdhost.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-center"
-                >
-                  <Globe className="w-4 h-4" />
+                <a href="https://www.bdhost.com" target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-center">
+                  <Globe className="w-4 h-4"/>
                   <span>Visit BD HOSTT Website</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
+                  <ExternalLink className="w-3.5 h-3.5"/>
                 </a>
-                <a
-                  href="tel:01846100900"
-                  className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm rounded-xl border border-white/20 transition-all flex items-center justify-center gap-2 text-center"
-                >
-                  <Phone className="w-4 h-4 text-emerald-400" />
+                <a href="tel:01846100900" className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm rounded-xl border border-white/20 transition-all flex items-center justify-center gap-2 text-center">
+                  <Phone className="w-4 h-4 text-emerald-400"/>
                   <span>Contact IT Hotline</span>
                 </a>
               </div>
@@ -2531,13 +1829,13 @@ export const SettingsModule: React.FC = () => {
           {/* BD HOSTT Services Grid */}
           <div>
             <h4 className="font-black text-slate-900 text-base mb-3 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-500" />
-              <span>{language === 'bn' ? 'BD HOSTT এর মূল আইটি সার্ভিস ও সেবা সমূহ' : 'BD HOSTT IT Services & Capabilities'}</span>
+              <Zap className="w-4 h-4 text-amber-500"/>
+              <span>{'BD HOSTT IT Services & Capabilities'}</span>
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Server className="w-5 h-5" />
+                  <Server className="w-5 h-5"/>
                 </div>
                 <h5 className="font-bold text-sm text-slate-900">Custom POS &amp; ERP Engineering</h5>
                 <p className="text-xs text-slate-500 leading-relaxed">
@@ -2547,7 +1845,7 @@ export const SettingsModule: React.FC = () => {
 
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <HardDrive className="w-5 h-5" />
+                  <HardDrive className="w-5 h-5"/>
                 </div>
                 <h5 className="font-bold text-sm text-slate-900">High-Performance NVMe Hosting</h5>
                 <p className="text-xs text-slate-500 leading-relaxed">
@@ -2557,7 +1855,7 @@ export const SettingsModule: React.FC = () => {
 
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
                 <div className="w-10 h-10 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
-                  <Globe className="w-5 h-5" />
+                  <Globe className="w-5 h-5"/>
                 </div>
                 <h5 className="font-bold text-sm text-slate-900">Domain Registration &amp; Corporate Mail</h5>
                 <p className="text-xs text-slate-500 leading-relaxed">
@@ -2567,7 +1865,7 @@ export const SettingsModule: React.FC = () => {
 
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
                 <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                  <Cpu className="w-5 h-5" />
+                  <Cpu className="w-5 h-5"/>
                 </div>
                 <h5 className="font-bold text-sm text-slate-900">Cloud VPS &amp; Dedicated Infrastructure</h5>
                 <p className="text-xs text-slate-500 leading-relaxed">
@@ -2577,7 +1875,7 @@ export const SettingsModule: React.FC = () => {
 
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
                 <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5" />
+                  <ShieldCheck className="w-5 h-5"/>
                 </div>
                 <h5 className="font-bold text-sm text-slate-900">Cybersecurity &amp; Cloud Backup</h5>
                 <p className="text-xs text-slate-500 leading-relaxed">
@@ -2587,7 +1885,7 @@ export const SettingsModule: React.FC = () => {
 
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
                 <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-                  <Phone className="w-5 h-5" />
+                  <Phone className="w-5 h-5"/>
                 </div>
                 <h5 className="font-bold text-sm text-slate-900">24/7 Dedicated Support SLA</h5>
                 <p className="text-xs text-slate-500 leading-relaxed">
@@ -2600,8 +1898,8 @@ export const SettingsModule: React.FC = () => {
           {/* System Environment Specs */}
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs">
             <h4 className="font-black text-slate-900 text-sm mb-4 flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-blue-600" />
-              <span>{language === 'bn' ? 'বর্তমান সিস্টেম এনভায়রনমেন্ট ও স্পেসিফিকেশন' : 'System Environment & Architecture'}</span>
+              <Cpu className="w-4 h-4 text-blue-600"/>
+              <span>{'System Environment & Architecture'}</span>
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
@@ -2626,86 +1924,53 @@ export const SettingsModule: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </div>)}
 
       {/* Clean Confirmation Modal */}
-      {cleanConfirmModule && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+      {cleanConfirmModule && (<div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
-              <AlertTriangle className="w-6 h-6" />
+              <AlertTriangle className="w-6 h-6"/>
             </div>
             <div className="text-center">
               <h3 className="font-bold text-slate-900 text-base">
-                {language === 'bn' ? 'ডাটা মুছে ফেলার নিশ্চিতকরণ' : 'Confirm Data Deletion'}
+                {'Confirm Data Deletion'}
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                {cleanConfirmModule === 'WIPE_ALL_EXCEPT_PRODUCTS' ? (
-                  <span>
-                    {language === 'bn' ? (
-                      <>আপনি কি নিশ্চিত যে <strong>ইনভেন্টরি প্রোডাক্ট তালিকা বাদে</strong> অন্য সব ডাটা (ইনভয়েস, লেজার, কাস্টমার, ক্যাশ/ব্যাংক ব্যালেন্স) সম্পূর্ণ মুছে সিস্টেমের স্টক ০ করতে চান?</>
-                    ) : (
-                      <>Are you sure you want to delete all operational records (invoices, ledger, customer directory, balances) and reset stock to 0 while keeping products?</>
-                    )}
-                  </span>
-                ) : (
-                  <span>
-                    {language === 'bn' ? (
-                      <>আপনি কি নিশ্চিত যে <strong className="text-slate-900">{cleanConfirmModule}</strong> মডিউলের সমস্ত রেকর্ড মুছে ফেলতে চান?</>
-                    ) : (
-                      <>Are you sure you want to permanently delete all records from the <strong className="text-slate-900">{cleanConfirmModule}</strong> module?</>
-                    )}
-                  </span>
-                )}
+                {cleanConfirmModule === 'WIPE_ALL_EXCEPT_PRODUCTS' ? (<span>
+                    {(<>Are you sure you want to delete all operational records (invoices, ledger, customer directory, balances) and reset stock to 0 while keeping products?</>)}
+                  </span>) : (<span>
+                    {(<>Are you sure you want to permanently delete all records from the <strong className="text-slate-900">{cleanConfirmModule}</strong> module?</>)}
+                  </span>)}
               </p>
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setCleanConfirmModule(null)}
-                className="flex-1 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
-              >
-                {language === 'bn' ? 'বাতিল' : 'Cancel'}
+              <button type="button" onClick={() => setCleanConfirmModule(null)} className="flex-1 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer">
+                {'Cancel'}
               </button>
-              <button
-                type="button"
-                onClick={() => handleExecuteClean(cleanConfirmModule)}
-                className="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-2xs cursor-pointer"
-              >
-                {language === 'bn' ? 'হ্যাঁ, মুছে ফেলুন' : 'Yes, Delete'}
+              <button type="button" onClick={() => handleExecuteClean(cleanConfirmModule)} className="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-2xs cursor-pointer">
+                {'Yes, Delete'}
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>)}
 
       {/* Add / Edit User Modal */}
-      {showUserModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <form
-            onSubmit={handleUserFormSubmit}
-            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto"
-          >
+      {showUserModal && (<div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <form onSubmit={handleUserFormSubmit} className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-amber-600" />
+                <Users className="w-5 h-5 text-amber-600"/>
                 <h3 className="font-bold text-slate-900 text-base">
                   {editingStaff
-                    ? language === 'bn'
-                      ? 'ইউজার তথ্য সম্পাদনা'
-                      : 'Edit User / Staff'
-                    : language === 'bn'
-                    ? 'নতুন ইউজার নিবন্ধন'
-                    : 'Add New Staff / User'}
+                ?
+                    'Edit User / Staff'
+                :
+                    'Add New Staff / User'}
                 </h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowUserModal(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
+              <button type="button" onClick={() => setShowUserModal(false)} className="text-slate-400 hover:text-slate-600 font-bold">
                 ✕
               </button>
             </div>
@@ -2713,83 +1978,55 @@ export const SettingsModule: React.FC = () => {
             <div className="space-y-3.5 text-xs">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'স্টাফ / ইউজারের নাম (Full Name) *' : 'Full Name *'}
+                  {'Full Name *'}
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={userFormData.name}
-                  onChange={(e) => setUserFormData({ ...userFormData, name: e.target.value })}
-                  placeholder="e.g. Sajib Khan"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
-                />
+                <input type="text" required value={userFormData.name} onChange={(e) => setUserFormData({ ...userFormData, name: e.target.value })} placeholder="e.g. Sajib Khan" className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"/>
               </div>
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'পদবি ও রোল পারমিশন (Role & Permissions) *' : 'Role & Access Permissions *'}
+                  {'Role & Access Permissions *'}
                 </label>
-                {editingStaff && isSuperAdminStaff(editingStaff) ? (
-                  <div className="w-full px-3 py-2 border border-indigo-200 bg-indigo-50/70 rounded-xl font-bold text-indigo-900 flex items-center justify-between">
-                    <span>{language === 'bn' ? 'Super Admin (সুপার অ্যাডমিন — স্থায়ী রুট অ্যাকাউন্ট)' : 'Super Admin (Permanent Root Account)'}</span>
+                {editingStaff && isSuperAdminStaff(editingStaff) ? (<div className="w-full px-3 py-2 border border-indigo-200 bg-indigo-50/70 rounded-xl font-bold text-indigo-900 flex items-center justify-between">
+                    <span>{'Super Admin (Permanent Root Account)'}</span>
                     <span className="text-[10px] font-black text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-200">
                       Permanent Root
                     </span>
-                  </div>
-                ) : (
-                  <select
-                    value={userFormData.customRoleId}
-                    onChange={(e) => {
-                      const selectedId = e.target.value;
-                      const foundRole = userRoles.find((r) => r.id === selectedId);
-                      if (foundRole) {
+                  </div>) : (<select value={userFormData.customRoleId} onChange={(e) => {
+                    const selectedId = e.target.value;
+                    const foundRole = userRoles.find((r) => r.id === selectedId);
+                    if (foundRole) {
                         setUserFormData({
-                          ...userFormData,
-                          customRoleId: foundRole.id,
-                          role: foundRole.name as StaffRole,
-                          roleBn: foundRole.nameBn || '',
+                            ...userFormData,
+                            customRoleId: foundRole.id,
+                            role: foundRole.name as StaffRole,
+                            roleBn: foundRole.nameBn || '',
                         });
-                      } else {
+                    }
+                    else {
                         setUserFormData({ ...userFormData, customRoleId: selectedId });
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-800 bg-white cursor-pointer"
-                  >
+                    }
+                }} className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-800 bg-white cursor-pointer">
                     {userRoles
-                      .filter((r) => r.name !== 'Super Admin' && r.name.toLowerCase() !== 'superadmin')
-                      .map((r) => (
-                        <option key={r.id} value={r.id}>
+                    .filter((r) => r.name !== 'Super Admin' && r.name.toLowerCase() !== 'superadmin')
+                    .map((r) => (<option key={r.id} value={r.id}>
                           {r.name} {r.nameBn ? `(${r.nameBn})` : ''} — {r.permissions.length} Permissions
-                        </option>
-                      ))}
-                  </select>
-                )}
+                        </option>))}
+                  </select>)}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
-                    {language === 'bn' ? 'মোবাইল নম্বর' : 'Phone Number'}
+                    {'Phone Number'}
                   </label>
-                  <input
-                    type="text"
-                    value={userFormData.phone}
-                    onChange={(e) => setUserFormData({ ...userFormData, phone: e.target.value })}
-                    placeholder="+88018..."
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono"
-                  />
+                  <input type="text" value={userFormData.phone} onChange={(e) => setUserFormData({ ...userFormData, phone: e.target.value })} placeholder="+88018..." className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono"/>
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
-                    {language === 'bn' ? 'ইমেইল' : 'Email Address'}
+                    {'Email Address'}
                   </label>
-                  <input
-                    type="email"
-                    value={userFormData.email}
-                    onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
-                    placeholder="user@dotcolorcommunication.com"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  />
+                  <input type="email" value={userFormData.email} onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })} placeholder="user@dotcolorcommunication.com" className="w-full px-3 py-2 border border-slate-200 rounded-xl"/>
                 </div>
               </div>
 
@@ -2797,84 +2034,51 @@ export const SettingsModule: React.FC = () => {
               <div className="bg-amber-50/50 p-3 rounded-xl border border-amber-200/80 space-y-1.5">
                 <label className="font-bold text-slate-800 text-xs flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-amber-600" />
-                    <span>{language === 'bn' ? 'লগইন পাসওয়ার্ড (Login Password) *' : 'Login Password *'}</span>
+                    <Lock className="w-3.5 h-3.5 text-amber-600"/>
+                    <span>{'Login Password *'}</span>
                   </span>
                   <span className="text-[10px] text-amber-800 font-semibold bg-amber-100/70 px-1.5 py-0.5 rounded">
-                    {language === 'bn' ? 'ডিফল্ট: 1234' : 'Default: 1234'}
+                    {'Default: 1234'}
                   </span>
                 </label>
                 <div className="relative">
-                  <input
-                    type={showUserPassword ? 'text' : 'password'}
-                    required
-                    value={userFormData.password}
-                    onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
-                    placeholder={language === 'bn' ? 'পাসওয়ার্ড লিখুন (যেমন: 1234 বা গোপন পিন)' : 'Enter password (e.g. 1234 or PIN)'}
-                    className="w-full bg-white pl-3 pr-10 py-2 border border-slate-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowUserPassword(!showUserPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
-                    tabIndex={-1}
-                    title={showUserPassword ? (language === 'bn' ? 'পাসওয়ার্ড লুকান' : 'Hide password') : (language === 'bn' ? 'পাসওয়ার্ড দেখুন' : 'Show password')}
-                  >
-                    {showUserPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <input type={showUserPassword ? 'text' : 'password'} required value={userFormData.password} onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })} placeholder={'Enter password (e.g. 1234 or PIN)'} className="w-full bg-white pl-3 pr-10 py-2 border border-slate-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden"/>
+                  <button type="button" onClick={() => setShowUserPassword(!showUserPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer" tabIndex={-1} title={showUserPassword ? ('Hide password') : ('Show password')}>
+                    {showUserPassword ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-500">
-                  {language === 'bn'
-                    ? 'ব্যবহারকারী এই পাসওয়ার্ড দিয়ে সফটওয়্যার লগইন স্ক্রিনে তার অ্যাকাউন্টে প্রবেশ করবেন।'
-                    : 'This password is used by the staff member to log in to their account.'}
+                  {'This password is used by the staff member to log in to their account.'}
                 </p>
               </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setShowUserModal(false)}
-                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
-              >
-                {language === 'bn' ? 'বাতিল' : 'Cancel'}
+              <button type="button" onClick={() => setShowUserModal(false)} className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                {'Cancel'}
               </button>
-              <button
-                type="submit"
-                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-2xs"
-              >
-                {language === 'bn' ? 'ইউজার সংরক্ষণ' : 'Save User'}
+              <button type="submit" className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-2xs">
+                {'Save User'}
               </button>
             </div>
           </form>
-        </div>
-      )}
+        </div>)}
 
       {/* Add / Edit Role & Granular Permissions Modal */}
-      {showRoleModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <form
-            onSubmit={handleRoleFormSubmit}
-            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto"
-          >
+      {showRoleModal && (<div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <form onSubmit={handleRoleFormSubmit} className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <KeyRound className="w-5 h-5 text-amber-600" />
+                <KeyRound className="w-5 h-5 text-amber-600"/>
                 <h3 className="font-bold text-slate-900 text-base">
                   {editingRole
-                    ? language === 'bn'
-                      ? 'রোল পারমিশন কনফিগারেশন'
-                      : 'Edit Role Permissions'
-                    : language === 'bn'
-                    ? 'নতুন রোল তৈরি করুন'
-                    : 'Create New Access Role'}
+                ?
+                    'Edit Role Permissions'
+                :
+                    'Create New Access Role'}
                 </h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowRoleModal(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
+              <button type="button" onClick={() => setShowRoleModal(false)} className="text-slate-400 hover:text-slate-600 font-bold">
                 ✕
               </button>
             </div>
@@ -2883,49 +2087,30 @@ export const SettingsModule: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
-                    {language === 'bn' ? 'রোলের নাম (English) *' : 'Role Name (EN) *'}
+                    {'Role Name (EN) *'}
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={roleFormData.name}
-                    onChange={(e) => setRoleFormData({ ...roleFormData, name: e.target.value })}
-                    placeholder="e.g. Inventory Controller"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold"
-                  />
+                  <input type="text" required value={roleFormData.name} onChange={(e) => setRoleFormData({ ...roleFormData, name: e.target.value })} placeholder="e.g. Inventory Controller" className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold"/>
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
-                    {language === 'bn' ? 'বাংলা নাম' : 'Role Name (BN)'}
+                    {'Role Name (BN)'}
                   </label>
-                  <input
-                    type="text"
-                    value={roleFormData.nameBn}
-                    onChange={(e) => setRoleFormData({ ...roleFormData, nameBn: e.target.value })}
-                    placeholder={language === 'bn' ? 'যেমন: ইনভেন্টরি নিয়ন্ত্রক' : 'e.g. Inventory Controller'}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  />
+                  <input type="text" value={roleFormData.nameBn} onChange={(e) => setRoleFormData({ ...roleFormData, nameBn: e.target.value })} placeholder={'e.g. Inventory Controller'} className="w-full px-3 py-2 border border-slate-200 rounded-xl"/>
                 </div>
               </div>
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
-                  {language === 'bn' ? 'বিবরণ ও দায়িত্ব' : 'Description'}
+                  {'Description'}
                 </label>
-                <input
-                  type="text"
-                  value={roleFormData.description}
-                  onChange={(e) => setRoleFormData({ ...roleFormData, description: e.target.value })}
-                  placeholder="Primary duties and access scope..."
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                />
+                <input type="text" value={roleFormData.description} onChange={(e) => setRoleFormData({ ...roleFormData, description: e.target.value })} placeholder="Primary duties and access scope..." className="w-full px-3 py-2 border border-slate-200 rounded-xl"/>
               </div>
 
               {/* Module-wise Granular Permissions Matrix */}
               <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="font-black text-slate-900 text-sm">
-                    {language === 'bn' ? 'মডিউলভিত্তিক পারমিশন নির্বাচন' : 'Granular Permissions Matrix'}
+                    {'Granular Permissions Matrix'}
                   </span>
                   <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
                     {roleFormData.permissions.length} permissions active
@@ -2933,74 +2118,46 @@ export const SettingsModule: React.FC = () => {
                 </div>
 
                 {['POS', 'Sales', 'Inventory', 'Supply Chain', 'Accounting', 'Settings'].map((cat) => {
-                  const perms = SYSTEM_PERMISSIONS.filter((p) => p.category === cat);
-                  const allCatSelected = perms.every((p) => roleFormData.permissions.includes(p.code));
-
-                  return (
-                    <div key={cat} className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
+                const perms = SYSTEM_PERMISSIONS.filter((p) => p.category === cat);
+                const allCatSelected = perms.every((p) => roleFormData.permissions.includes(p.code));
+                return (<div key={cat} className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
                       <div className="flex items-center justify-between pb-1 border-b border-slate-100">
                         <span className="font-bold text-slate-800 text-xs">{cat} Module</span>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectAllCategory(cat)}
-                          className="text-[10px] font-bold text-blue-600 hover:underline"
-                        >
+                        <button type="button" onClick={() => handleSelectAllCategory(cat)} className="text-[10px] font-bold text-blue-600 hover:underline">
                           {allCatSelected ? 'Deselect All' : 'Select All'}
                         </button>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                         {perms.map((p) => {
-                          const checked = roleFormData.permissions.includes(p.code);
-                          return (
-                            <label
-                              key={p.code}
-                              className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition-all ${
-                                checked
-                                  ? 'bg-amber-50/60 border-amber-300 text-slate-900 font-semibold'
-                                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => handleTogglePermission(p.code)}
-                                className="mt-0.5 rounded text-slate-900 focus:ring-slate-900"
-                              />
+                        const checked = roleFormData.permissions.includes(p.code);
+                        return (<label key={p.code} className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition-all ${checked
+                                ? 'bg-amber-50/60 border-amber-300 text-slate-900 font-semibold'
+                                : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                              <input type="checkbox" checked={checked} onChange={() => handleTogglePermission(p.code)} className="mt-0.5 rounded text-slate-900 focus:ring-slate-900"/>
                               <div>
                                 <span className="block text-xs leading-tight">
-                                  {language === 'bn' ? p.nameBn : p.name}
+                                  {p.name}
                                 </span>
                                 <span className="font-mono text-[9px] text-slate-400 block mt-0.5">{p.code}</span>
                               </div>
-                            </label>
-                          );
-                        })}
+                            </label>);
+                    })}
                       </div>
-                    </div>
-                  );
-                })}
+                    </div>);
+            })}
               </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setShowRoleModal(false)}
-                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
-              >
-                {language === 'bn' ? 'বাতিল' : 'Cancel'}
+              <button type="button" onClick={() => setShowRoleModal(false)} className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                {'Cancel'}
               </button>
-              <button
-                type="submit"
-                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-2xs"
-              >
-                {language === 'bn' ? 'রোল সংরক্ষণ করুন' : 'Save Role & Permissions'}
+              <button type="submit" className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-2xs">
+                {'Save Role & Permissions'}
               </button>
             </div>
           </form>
-        </div>
-      )}
-    </div>
-  );
+        </div>)}
+    </div>);
 };

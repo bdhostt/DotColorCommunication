@@ -14,33 +14,29 @@ import { InvoicePrintModal } from './components/InvoicePrintModal';
 import { Login } from './components/Login';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SlidersHorizontal } from 'lucide-react';
-
 const VALID_TABS = ['pos', 'sales', 'inventory', 'supply', 'projects', 'accounting', 'reports', 'settings', 'profile'];
 const TAB_STORAGE_KEY = 'DOT_COLOR_ERP_ACTIVE_TAB';
-
 const getInitialTab = (): string => {
-  try {
-    // 1. Check URL query param: ?tab=supply
-    const searchTab = new URLSearchParams(window.location.search).get('tab');
-    if (searchTab && VALID_TABS.includes(searchTab)) {
-      return searchTab;
+    try {
+        // 1. Check URL query param: ?tab=supply
+        const searchTab = new URLSearchParams(window.location.search).get('tab');
+        if (searchTab && VALID_TABS.includes(searchTab)) {
+            return searchTab;
+        }
+        // 2. Check URL hash: #supply
+        const hashTab = window.location.hash.replace(/^#\/?/, '').trim();
+        if (hashTab && VALID_TABS.includes(hashTab)) {
+            return hashTab;
+        }
+        // 3. Check LocalStorage
+        const storedTab = localStorage.getItem(TAB_STORAGE_KEY);
+        if (storedTab && VALID_TABS.includes(storedTab)) {
+            return storedTab;
+        }
     }
-
-    // 2. Check URL hash: #supply
-    const hashTab = window.location.hash.replace(/^#\/?/, '').trim();
-    if (hashTab && VALID_TABS.includes(hashTab)) {
-      return hashTab;
-    }
-
-    // 3. Check LocalStorage
-    const storedTab = localStorage.getItem(TAB_STORAGE_KEY);
-    if (storedTab && VALID_TABS.includes(storedTab)) {
-      return storedTab;
-    }
-  } catch {}
-  return 'pos';
+    catch { }
+    return 'pos';
 };
-
 /**
  * Extracts any invoice query parameter from the URL (?invoiceId=..., ?invoiceNo=..., ?inv=...)
  * and immediately cleans it from the address bar via window.history.replaceState.
@@ -48,147 +44,129 @@ const getInitialTab = (): string => {
  * autocomplete will NOT continuously re-trigger the modal.
  */
 const extractAndCleanInvoiceUrlParam = (): string | null => {
-  try {
-    if (typeof window === 'undefined') return null;
-    const url = new URL(window.location.href);
-    const id = url.searchParams.get('invoiceId') || url.searchParams.get('invoiceNo') || url.searchParams.get('inv');
-    if (id) {
-      url.searchParams.delete('invoiceId');
-      url.searchParams.delete('invoiceNo');
-      url.searchParams.delete('inv');
-      const cleanUrl = url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : '') + url.hash;
-      window.history.replaceState(window.history.state || {}, '', cleanUrl);
-      return id.trim();
-    }
-  } catch {}
-  return null;
-};
-
-const MainLayout: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>(getInitialTab);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(extractAndCleanInvoiceUrlParam);
-  const [modalMode, setModalMode] = useState<'invoice' | 'challan' | 'pos'>('invoice');
-  const [directPrintOptions, setDirectPrintOptions] = useState<{ autoPrint: boolean; isPadMode: boolean }>({
-    autoPrint: false,
-    isPadMode: false,
-  });
-
-  const { profile, activeStaff, language, checkPermission } = useApp();
-
-  const canAccessSettings =
-    (activeStaff?.role || '').toLowerCase().includes('admin') ||
-    (activeStaff?.role || '').toLowerCase().includes('director') ||
-    Boolean(
-      checkPermission &&
-        (checkPermission('settings.view') ||
-          checkPermission('settings.manage_users') ||
-          checkPermission('SETTINGS_MANAGE_USERS') ||
-          checkPermission('settings.manage_payments') ||
-          checkPermission('settings.manage_roles'))
-    );
-
-  // Guard: If non-admin user lands on 'settings', redirect them to 'pos'
-  useEffect(() => {
-    if (activeTab === 'settings' && !canAccessSettings) {
-      setActiveTab('pos');
-    }
-  }, [activeTab, canAccessSettings]);
-
-  // Sync document title with company profile name
-  useEffect(() => {
-    if (profile?.name) {
-      document.title = profile.name;
-    }
-  }, [profile?.name]);
-
-  // Auto-clean any lingering invoiceId / QR scan query params from the browser address bar
-  useEffect(() => {
-    extractAndCleanInvoiceUrlParam();
-  }, []);
-
-  // Sync activeTab with URL & localStorage whenever it changes
-  useEffect(() => {
     try {
-      localStorage.setItem(TAB_STORAGE_KEY, activeTab);
-      const url = new URL(window.location.href);
-      // Strip any lingering invoice query params during tab transitions
-      url.searchParams.delete('invoiceId');
-      url.searchParams.delete('invoiceNo');
-      url.searchParams.delete('inv');
-      if (url.searchParams.get('tab') !== activeTab) {
-        url.searchParams.set('tab', activeTab);
-      }
-      window.history.replaceState({ tab: activeTab }, '', url.toString());
-    } catch {}
-  }, [activeTab]);
-
-  // Handle browser Back / Forward navigation
-  useEffect(() => {
-    const handlePopState = () => {
-      try {
-        const searchTab = new URLSearchParams(window.location.search).get('tab');
-        if (searchTab && VALID_TABS.includes(searchTab)) {
-          setActiveTab(searchTab);
-          return;
+        if (typeof window === 'undefined')
+            return null;
+        const url = new URL(window.location.href);
+        const id = url.searchParams.get('invoiceId') || url.searchParams.get('invoiceNo') || url.searchParams.get('inv');
+        if (id) {
+            url.searchParams.delete('invoiceId');
+            url.searchParams.delete('invoiceNo');
+            url.searchParams.delete('inv');
+            const cleanUrl = url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : '') + url.hash;
+            window.history.replaceState(window.history.state || {}, '', cleanUrl);
+            return id.trim();
         }
-        const hashTab = window.location.hash.replace(/^#\/?/, '').trim();
-        if (hashTab && VALID_TABS.includes(hashTab)) {
-          setActiveTab(hashTab);
-        }
-      } catch {}
-    };
-
-    const handleSwitchTab = (e: any) => {
-      if (e.detail && VALID_TABS.includes(e.detail)) {
-        setActiveTab(e.detail);
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    window.addEventListener('hashchange', handlePopState);
-    window.addEventListener('switch-tab', handleSwitchTab);
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('hashchange', handlePopState);
-      window.removeEventListener('switch-tab', handleSwitchTab);
-    };
-  }, []);
-
-  const handleOpenInvoice = (
-    id: string,
-    mode: 'invoice' | 'challan' | 'pos' = 'invoice',
-    options?: { autoPrint?: boolean; isPadMode?: boolean }
-  ) => {
-    setSelectedInvoiceId(id);
-    setModalMode(mode);
-    setDirectPrintOptions({
-      autoPrint: Boolean(options?.autoPrint),
-      isPadMode: Boolean(options?.isPadMode),
+    }
+    catch { }
+    return null;
+};
+const MainLayout: React.FC = () => {
+    const [activeTab, setActiveTab] = useState<string>(getInitialTab);
+    const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(extractAndCleanInvoiceUrlParam);
+    const [modalMode, setModalMode] = useState<'invoice' | 'challan' | 'pos'>('invoice');
+    const [directPrintOptions, setDirectPrintOptions] = useState<{
+        autoPrint: boolean;
+        isPadMode: boolean;
+    }>({
+        autoPrint: false,
+        isPadMode: false,
     });
-  };
-
-  const handleOpenChallan = (id: string) => {
-    setSelectedInvoiceId(id);
-    setModalMode('challan');
-    setDirectPrintOptions({ autoPrint: false, isPadMode: false });
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans antialiased selection:bg-amber-100 selection:text-amber-900">
+    const { profile, activeStaff, language, checkPermission } = useApp();
+    const canAccessSettings = (activeStaff?.role || '').toLowerCase().includes('admin') ||
+        (activeStaff?.role || '').toLowerCase().includes('director') ||
+        Boolean(checkPermission &&
+            (checkPermission('settings.view') ||
+                checkPermission('settings.manage_users') ||
+                checkPermission('SETTINGS_MANAGE_USERS') ||
+                checkPermission('settings.manage_payments') ||
+                checkPermission('settings.manage_roles')));
+    // Guard: If non-admin user lands on 'settings', redirect them to 'pos'
+    useEffect(() => {
+        if (activeTab === 'settings' && !canAccessSettings) {
+            setActiveTab('pos');
+        }
+    }, [activeTab, canAccessSettings]);
+    // Sync document title with company profile name
+    useEffect(() => {
+        if (profile?.name) {
+            document.title = profile.name;
+        }
+    }, [profile?.name]);
+    // Auto-clean any lingering invoiceId / QR scan query params from the browser address bar
+    useEffect(() => {
+        extractAndCleanInvoiceUrlParam();
+    }, []);
+    // Sync activeTab with URL & localStorage whenever it changes
+    useEffect(() => {
+        try {
+            localStorage.setItem(TAB_STORAGE_KEY, activeTab);
+            const url = new URL(window.location.href);
+            // Strip any lingering invoice query params during tab transitions
+            url.searchParams.delete('invoiceId');
+            url.searchParams.delete('invoiceNo');
+            url.searchParams.delete('inv');
+            if (url.searchParams.get('tab') !== activeTab) {
+                url.searchParams.set('tab', activeTab);
+            }
+            window.history.replaceState({ tab: activeTab }, '', url.toString());
+        }
+        catch { }
+    }, [activeTab]);
+    // Handle browser Back / Forward navigation
+    useEffect(() => {
+        const handlePopState = () => {
+            try {
+                const searchTab = new URLSearchParams(window.location.search).get('tab');
+                if (searchTab && VALID_TABS.includes(searchTab)) {
+                    setActiveTab(searchTab);
+                    return;
+                }
+                const hashTab = window.location.hash.replace(/^#\/?/, '').trim();
+                if (hashTab && VALID_TABS.includes(hashTab)) {
+                    setActiveTab(hashTab);
+                }
+            }
+            catch { }
+        };
+        const handleSwitchTab = (e: any) => {
+            if (e.detail && VALID_TABS.includes(e.detail)) {
+                setActiveTab(e.detail);
+            }
+        };
+        window.addEventListener('popstate', handlePopState);
+        window.addEventListener('hashchange', handlePopState);
+        window.addEventListener('switch-tab', handleSwitchTab);
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+            window.removeEventListener('hashchange', handlePopState);
+            window.removeEventListener('switch-tab', handleSwitchTab);
+        };
+    }, []);
+    const handleOpenInvoice = (id: string, mode: 'invoice' | 'challan' | 'pos' = 'invoice', options?: {
+        autoPrint?: boolean;
+        isPadMode?: boolean;
+    }) => {
+        setSelectedInvoiceId(id);
+        setModalMode(mode);
+        setDirectPrintOptions({
+            autoPrint: Boolean(options?.autoPrint),
+            isPadMode: Boolean(options?.isPadMode),
+        });
+    };
+    const handleOpenChallan = (id: string) => {
+        setSelectedInvoiceId(id);
+        setModalMode('challan');
+        setDirectPrintOptions({ autoPrint: false, isPadMode: false });
+    };
+    return (<div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans antialiased selection:bg-amber-100 selection:text-amber-900">
       {/* Top Header & Navigation */}
-      <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Header activeTab={activeTab} setActiveTab={setActiveTab}/>
 
       {/* Main View Area */}
       <main className="flex-1 pb-12">
-        {activeTab === 'pos' && (
-          <POSModule onOpenInvoiceModal={handleOpenInvoice} />
-        )}
-        {activeTab === 'sales' && (
-          <SalesModule
-            onOpenInvoiceModal={handleOpenInvoice}
-            onOpenChallanModal={handleOpenChallan}
-          />
-        )}
+        {activeTab === 'pos' && (<POSModule onOpenInvoiceModal={handleOpenInvoice}/>)}
+        {activeTab === 'sales' && (<SalesModule onOpenInvoiceModal={handleOpenInvoice} onOpenChallanModal={handleOpenChallan}/>)}
         {activeTab === 'inventory' && <InventoryModule />}
         {activeTab === 'supply' && <SupplyChainModule />}
         {activeTab === 'projects' && <ProjectManagementModule />}
@@ -199,26 +177,18 @@ const MainLayout: React.FC = () => {
       </main>
 
       {/* Invoice & Challan Modal */}
-      {selectedInvoiceId && (
-        <InvoicePrintModal
-          key={`${selectedInvoiceId}-${directPrintOptions.autoPrint ? 'auto' : 'view'}-${directPrintOptions.isPadMode ? 'pad' : 'normal'}`}
-          invoiceId={selectedInvoiceId}
-          mode={modalMode}
-          autoPrint={directPrintOptions.autoPrint}
-          initialPadMode={directPrintOptions.isPadMode}
-          onClose={() => {
-            try {
-              const url = new URL(window.location.href);
-              url.searchParams.delete('invoiceId');
-              url.searchParams.delete('invoiceNo');
-              url.searchParams.delete('inv');
-              window.history.replaceState({}, '', url.toString());
-            } catch {}
-            setSelectedInvoiceId(null);
-            setDirectPrintOptions({ autoPrint: false, isPadMode: false });
-          }}
-        />
-      )}
+      {selectedInvoiceId && (<InvoicePrintModal key={`${selectedInvoiceId}-${directPrintOptions.autoPrint ? 'auto' : 'view'}-${directPrintOptions.isPadMode ? 'pad' : 'normal'}`} invoiceId={selectedInvoiceId} mode={modalMode} autoPrint={directPrintOptions.autoPrint} initialPadMode={directPrintOptions.isPadMode} onClose={() => {
+                try {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('invoiceId');
+                    url.searchParams.delete('invoiceNo');
+                    url.searchParams.delete('inv');
+                    window.history.replaceState({}, '', url.toString());
+                }
+                catch { }
+                setSelectedInvoiceId(null);
+                setDirectPrintOptions({ autoPrint: false, isPadMode: false });
+            }}/>)}
 
       {/* Professional 1-Line Footer */}
       <footer className="bg-white border-t border-slate-200 mt-auto print:hidden py-3 text-xs text-slate-500">
@@ -226,111 +196,72 @@ const MainLayout: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="font-bold text-slate-800">
               {profile.footerBrandText && profile.footerBrandText !== 'DotColorCommunication Sales, POS & ERP'
-                ? profile.footerBrandText
-                : profile.name || 'Dot Color'}
+            ? profile.footerBrandText
+            : profile.name || 'Dot Color'}
             </span>
             <span className="text-slate-400">•</span>
             <span>{profile.footerCopyrightText || `© ${new Date().getFullYear()}`}</span>
 
             {/* Admin-only discreet footer edit button */}
-            {activeStaff?.role === 'admin' && (
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('profile');
-                  setTimeout(() => {
+            {activeStaff?.role === 'admin' && (<button type="button" onClick={() => {
+                setActiveTab('profile');
+                setTimeout(() => {
                     window.dispatchEvent(new CustomEvent('open-footer-settings'));
-                  }, 60);
-                }}
-                className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-blue-700 hover:bg-blue-50 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-transparent hover:border-blue-200"
-                title={language === 'bn' ? 'ফুটার ও সফটওয়্যার ক্রেডিট এডিট করুন (অ্যাডমিন)' : 'Edit Footer & Credits (Admin)'}
-              >
-                <SlidersHorizontal className="w-3 h-3 text-blue-600" />
-                <span className="font-semibold text-[10px]">{language === 'bn' ? 'ফুটার এডিট' : 'Edit Footer'}</span>
-              </button>
-            )}
+                }, 60);
+            }} className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-blue-700 hover:bg-blue-50 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-transparent hover:border-blue-200" title={'Edit Footer & Credits (Admin)'}>
+                <SlidersHorizontal className="w-3 h-3 text-blue-600"/>
+                <span className="font-semibold text-[10px]">{'Edit Footer'}</span>
+              </button>)}
           </div>
 
-          {(profile.footerShowPoweredBy ?? true) && (
-            <div className="flex items-center gap-2 text-xs">
+          {(profile.footerShowPoweredBy ?? true) && (<div className="flex items-center gap-2 text-xs">
               <span>
                 Powered by{' '}
-                <a
-                  href={profile.footerPoweredByUrl || 'https://www.bdhost.com'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold text-blue-600 hover:text-blue-700 hover:underline"
-                >
+                <a href={profile.footerPoweredByUrl || 'https://www.bdhost.com'} target="_blank" rel="noopener noreferrer" className="font-bold text-blue-600 hover:text-blue-700 hover:underline">
                   {profile.footerPoweredByText || 'BD HOSTT'}
                 </a>
               </span>
-              {profile.footerHotline && (
-                <>
+              {profile.footerHotline && (<>
                   <span className="text-slate-300">•</span>
                   <a href={`tel:${profile.footerHotline.replace(/\s+/g, '')}`} className="text-slate-500 hover:text-slate-700">
                     Hotline: {profile.footerHotline}
                   </a>
-                </>
-              )}
-              {profile.footerPoweredByUrl && (
-                <>
+                </>)}
+              {profile.footerPoweredByUrl && (<>
                   <span className="text-slate-300">•</span>
-                  <a
-                    href={profile.footerPoweredByUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
-                  >
+                  <a href={profile.footerPoweredByUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                     {profile.footerPoweredByUrl.replace(/^https?:\/\//, '')}
                   </a>
-                </>
-              )}
-            </div>
-          )}
+                </>)}
+            </div>)}
         </div>
       </footer>
-    </div>
-  );
+    </div>);
 };
-
 const AppContent: React.FC = () => {
-  const { isAuthenticated } = useApp();
-  const [publicInvoiceId, setPublicInvoiceId] = useState<string | null>(extractAndCleanInvoiceUrlParam);
-
-  useEffect(() => {
-    // Extra safety: clean any lingering invoice params from address bar on mount
-    extractAndCleanInvoiceUrlParam();
-  }, []);
-
-  if (!isAuthenticated && publicInvoiceId) {
-    return (
-      <div className="min-h-screen bg-slate-900/60 flex items-center justify-center p-2 sm:p-4">
-        <InvoicePrintModal
-          invoiceId={publicInvoiceId}
-          mode="invoice"
-          isPublicView={true}
-          onClose={() => {
-            extractAndCleanInvoiceUrlParam();
-            setPublicInvoiceId(null);
-          }}
-        />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Login />;
-  }
-
-  return <MainLayout />;
+    const { isAuthenticated } = useApp();
+    const [publicInvoiceId, setPublicInvoiceId] = useState<string | null>(extractAndCleanInvoiceUrlParam);
+    useEffect(() => {
+        // Extra safety: clean any lingering invoice params from address bar on mount
+        extractAndCleanInvoiceUrlParam();
+    }, []);
+    if (!isAuthenticated && publicInvoiceId) {
+        return (<div className="min-h-screen bg-slate-900/60 flex items-center justify-center p-2 sm:p-4">
+        <InvoicePrintModal invoiceId={publicInvoiceId} mode="invoice" isPublicView={true} onClose={() => {
+                extractAndCleanInvoiceUrlParam();
+                setPublicInvoiceId(null);
+            }}/>
+      </div>);
+    }
+    if (!isAuthenticated) {
+        return <Login />;
+    }
+    return <MainLayout />;
 };
-
 export default function App() {
-  return (
-    <ErrorBoundary>
+    return (<ErrorBoundary>
       <AppProvider>
         <AppContent />
       </AppProvider>
-    </ErrorBoundary>
-  );
+    </ErrorBoundary>);
 }
