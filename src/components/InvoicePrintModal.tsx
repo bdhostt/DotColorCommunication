@@ -26,9 +26,74 @@ interface InvoicePageData {
     isLastPage: boolean;
 }
 
-const getInvoicePages = (items: any[]): InvoicePageData[] => {
+const estimateInvoiceItemHeight = (item: any): number => {
+    let h = 27;
+    if (item.name && item.name.length > 45) {
+        h += Math.min(28, Math.floor((item.name.length - 45) / 35 + 1) * 14);
+    }
+    if (Boolean(item.totalSqft && item.width && item.height)) {
+        h += 16;
+    }
+    if (item.notes && item.notes.trim()) {
+        h += item.notes.trim().length > 45 ? 28 : 16;
+    }
+    return h;
+};
+
+const getPageCapacities = (invoice?: any, isPadMode?: boolean, padTopMarginMm?: number) => {
+    const totalUsableHeight = 1060;
+    const p1HeaderHeight = isPadMode 
+        ? Math.round((padTopMarginMm || 42) * 3.78) + 26 
+        : 118;
+    const customerBoxHeight = 115;
+    const subPageHeaderHeight = isPadMode
+        ? Math.round((padTopMarginMm || 42) * 3.78) + 26
+        : 105;
+    const tableHeaderHeight = 28;
+    const contFooterHeight = 32;
+
+    let totalsBoxHeight = 90;
+    if (invoice?.discount > 0) totalsBoxHeight += 14;
+    if (invoice?.vatAmount > 0) totalsBoxHeight += 14;
+    if (invoice?.splitPayments) totalsBoxHeight += 20;
+    let remarksHeight = 0;
+    if (invoice?.notes && invoice.notes.trim()) remarksHeight += 50;
+    if (invoice?.jobSpecs && invoice.jobSpecs.trim()) remarksHeight += 35;
+    totalsBoxHeight = Math.max(totalsBoxHeight, remarksHeight) + 8;
+
+    const lastPageFooterHeight = isPadMode ? 65 : 100;
+
+    const maxSinglePageTableHeight = Math.max(200, totalUsableHeight - (p1HeaderHeight + 10 + customerBoxHeight + 16 + tableHeaderHeight + totalsBoxHeight + lastPageFooterHeight + 15));
+    const maxMultiP1TableHeight = Math.max(300, totalUsableHeight - (p1HeaderHeight + 10 + customerBoxHeight + 16 + tableHeaderHeight + contFooterHeight + 15));
+    const maxMiddleTableHeight = Math.max(400, totalUsableHeight - (subPageHeaderHeight + 16 + tableHeaderHeight + contFooterHeight + 15));
+    const maxLastPageTableHeight = Math.max(200, totalUsableHeight - (subPageHeaderHeight + 16 + tableHeaderHeight + totalsBoxHeight + lastPageFooterHeight + 15));
+
+    return { maxSinglePageTableHeight, maxMultiP1TableHeight, maxMiddleTableHeight, maxLastPageTableHeight };
+};
+
+const getInvoicePages = (
+    items: any[],
+    invoice?: any,
+    isPadMode?: boolean,
+    padTopMarginMm?: number
+): InvoicePageData[] => {
     const safeItems = items || [];
-    if (safeItems.length <= 7) {
+    if (safeItems.length === 0) {
+        return [{
+            pageNumber: 1,
+            totalPages: 1,
+            items: [],
+            startIndex: 0,
+            isFirstPage: true,
+            isLastPage: true,
+        }];
+    }
+
+    const { maxSinglePageTableHeight, maxMultiP1TableHeight, maxMiddleTableHeight, maxLastPageTableHeight } =
+        getPageCapacities(invoice, isPadMode, padTopMarginMm);
+
+    const totalAllHeight = safeItems.reduce((acc, it) => acc + estimateInvoiceItemHeight(it), 0);
+    if (totalAllHeight <= maxSinglePageTableHeight) {
         return [{
             pageNumber: 1,
             totalPages: 1,
@@ -40,47 +105,46 @@ const getInvoicePages = (items: any[]): InvoicePageData[] => {
     }
 
     const pages: { items: any[]; startIndex: number }[] = [];
-    let p1Count = 10;
-    if (safeItems.length <= 10) {
-        p1Count = Math.max(4, safeItems.length - 3);
-    }
+    let currentIndex = 0;
+    const MIN_LAST_ITEMS = 2;
 
-    pages.push({
-        items: safeItems.slice(0, p1Count),
-        startIndex: 0,
-    });
-    let currentStartIndex = p1Count;
+    while (currentIndex < safeItems.length) {
+        const isP1 = pages.length === 0;
+        const remainingItems = safeItems.slice(currentIndex);
+        const remainingTotalHeight = remainingItems.reduce((acc, it) => acc + estimateInvoiceItemHeight(it), 0);
 
-    while (currentStartIndex < safeItems.length) {
-        const left = safeItems.length - currentStartIndex;
-        if (left <= 7) {
-            pages.push({
-                items: safeItems.slice(currentStartIndex, safeItems.length),
-                startIndex: currentStartIndex,
-            });
-            currentStartIndex = safeItems.length;
-        } else if (left <= 21) {
-            if (left <= 14) {
-                const take = Math.max(4, left - 4);
-                pages.push({
-                    items: safeItems.slice(currentStartIndex, currentStartIndex + take),
-                    startIndex: currentStartIndex,
-                });
-                currentStartIndex += take;
-            } else {
-                pages.push({
-                    items: safeItems.slice(currentStartIndex, currentStartIndex + 14),
-                    startIndex: currentStartIndex,
-                });
-                currentStartIndex += 14;
-            }
-        } else {
-            pages.push({
-                items: safeItems.slice(currentStartIndex, currentStartIndex + 14),
-                startIndex: currentStartIndex,
-            });
-            currentStartIndex += 14;
+        if (!isP1 && remainingTotalHeight <= maxLastPageTableHeight) {
+            pages.push({ items: remainingItems, startIndex: currentIndex });
+            break;
         }
+
+        const pageMaxHeight = isP1 ? maxMultiP1TableHeight : maxMiddleTableHeight;
+        let takeCount = 0;
+        let accumulatedHeight = 0;
+
+        for (let i = 0; i < remainingItems.length; i++) {
+            const itemH = estimateInvoiceItemHeight(remainingItems[i]);
+            if (accumulatedHeight + itemH <= pageMaxHeight) {
+                accumulatedHeight += itemH;
+                takeCount++;
+            } else {
+                break;
+            }
+        }
+
+        const itemsLeftAfterTake = remainingItems.length - takeCount;
+        if (itemsLeftAfterTake === 0 && takeCount > MIN_LAST_ITEMS) {
+            takeCount -= MIN_LAST_ITEMS;
+        } else if (itemsLeftAfterTake > 0 && itemsLeftAfterTake < MIN_LAST_ITEMS && takeCount > MIN_LAST_ITEMS) {
+            takeCount -= (MIN_LAST_ITEMS - itemsLeftAfterTake);
+        }
+
+        takeCount = Math.max(1, takeCount);
+        pages.push({
+            items: safeItems.slice(currentIndex, currentIndex + takeCount),
+            startIndex: currentIndex,
+        });
+        currentIndex += takeCount;
     }
 
     const totalPages = pages.length;
@@ -450,6 +514,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                       height: calc(297mm - 14mm) !important;
                       page-break-after: always !important;
                       break-after: page !important;
+                      page-break-inside: avoid !important;
+                      break-inside: avoid !important;
                       display: flex !important;
                       flex-direction: column !important;
                       justify-content: space-between !important;
@@ -710,6 +776,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                 height: calc(297mm - 14mm) !important;
                 page-break-after: always !important;
                 break-after: page !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
                 border: none !important;
                 box-shadow: none !important;
                 padding: 0 !important;
@@ -931,7 +999,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
         </div>
       </div>);
     }
-    const invoicePages = getInvoicePages(invoice.items);
+    const invoicePages = getInvoicePages(invoice.items, invoice, isPadMode, padTopMarginMm);
 
     return (<>
       {autoPrint && (<div className="fixed bottom-6 right-6 z-50 bg-slate-900/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 animate-in fade-in slide-in-from-bottom-3 pointer-events-none">
@@ -1000,6 +1068,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
               height: calc(297mm - 14mm) !important;
               page-break-after: always !important;
               break-after: page !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
               display: flex !important;
               flex-direction: column !important;
               justify-content: space-between !important;
@@ -1256,7 +1326,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                       <div className="space-y-2.5">
                         <DocumentHeader
                           badgeStyle={true}
-                          documentTitle={(invoice as any).isQuote ? 'BILL/Quotation' : 'BILL/Invoice'}
+                          documentTitle={(invoice as any).isQuote ? 'PRICE/Quotation' : 'BILL/Invoice'}
                           documentNo={invoice.invoiceNo}
                           documentDate={invoice.date}
                           referenceNo={invoice.referenceNo}
@@ -1267,10 +1337,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
 
                         {/* Bill To & Invoice Meta Box */}
                         <div className="bg-white p-4 rounded-xl border-2 border-black shadow-2xs grid grid-cols-2 gap-4 text-xs">
-                          {/* Left Column: BILL TO */}
+                          {/* Left Column: BILL TO / PRICE TO */}
                           <div className="space-y-1.5">
                             <span className="text-[11px] font-black uppercase text-black tracking-wider block mb-1">
-                              BILL TO:
+                              {(invoice as any).isQuote ? 'Quotation TO:' : 'BILL TO:'}
                             </span>
                             <div className="space-y-1 text-black">
                               <div className="flex items-baseline">
@@ -1338,23 +1408,17 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoiceId,
                         </div>
                       </div>
                     ) : (
-                      /* Subsequent Pages: Header */
-                      <div className="flex items-center justify-between pb-2.5 border-b-2 border-black text-black">
-                        <div className="flex items-center gap-2">
-                          <span className="font-black text-sm uppercase tracking-wide">
-                            {profile.name || 'DOT COLOR COMMUNICATION'}
-                          </span>
-                          <span className="text-[11px] font-bold text-slate-700">
-                            • {(invoice as any).isQuote ? 'BILL/Quotation' : 'BILL/Invoice'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs font-mono font-bold">
-                          <span>Invoice #{invoice.invoiceNo}</span>
-                          <span className="px-2 py-0.5 bg-black text-white text-[10px] rounded-sm font-sans font-black">
-                            Page {page.pageNumber} of {page.totalPages}
-                          </span>
-                        </div>
-                      </div>
+                      /* Subsequent Pages: Top-Right Company Logo with BILL/Invoice Pill Badge (matching Page 1 exactly) */
+                      <DocumentHeader
+                        badgeStyle={true}
+                        documentTitle={(invoice as any).isQuote ? 'PRICE/Quotation' : 'BILL/Invoice'}
+                        documentNo={invoice.invoiceNo}
+                        documentDate={invoice.date}
+                        referenceNo={invoice.referenceNo}
+                        invoiceId={invoice.id}
+                        isPadMode={isPadMode}
+                        padTopMarginMm={padTopMarginMm}
+                      />
                     )}
 
                     {/* Line Items Table Container */}

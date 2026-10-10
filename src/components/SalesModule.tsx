@@ -1450,7 +1450,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({ onOpenInvoiceModal, on
                   <label className="font-bold text-slate-700 block mb-1">
                     {'Client Name *'}
                   </label>
-                  <input type="text" required value={quoteCustomerName} onChange={(e) => setQuoteCustomerName(e.target.value)} placeholder="e.g. Tanvir Hossain" className="w-full px-3 py-2 border border-slate-200 rounded-xl"/>
+                  <input type="text" required value={quoteCustomerName} onChange={(e) => setQuoteCustomerName(e.target.value)} placeholder="e.g. Sajib khan" className="w-full px-3 py-2 border border-slate-200 rounded-xl"/>
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
@@ -1776,7 +1776,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({ onOpenInvoiceModal, on
                   <label className="font-bold text-slate-700 block mb-1">
                     {'Customer Name *'}
                   </label>
-                  <input type="text" required value={customerFormData.name} onChange={(e) => setCustomerFormData({ ...customerFormData, name: e.target.value })} placeholder={'e.g. Md. Abdur Rahman'} className="w-full px-3 py-2 border border-slate-200 rounded-xl"/>
+                  <input type="text" required value={customerFormData.name} onChange={(e) => setCustomerFormData({ ...customerFormData, name: e.target.value })} placeholder={'e.g. Md. Sajib Khan'} className="w-full px-3 py-2 border border-slate-200 rounded-xl"/>
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
@@ -1791,7 +1791,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({ onOpenInvoiceModal, on
                   <label className="font-bold text-slate-700 block mb-1">
                     {'Company/Business'}
                   </label>
-                  <input type="text" value={customerFormData.company} onChange={(e) => setCustomerFormData({ ...customerFormData, company: e.target.value })} placeholder={'e.g. Rahman Printers'} className="w-full px-3 py-2 border border-slate-200 rounded-xl"/>
+                  <input type="text" value={customerFormData.company} onChange={(e) => setCustomerFormData({ ...customerFormData, company: e.target.value })} placeholder={'e.g. Sajib Printers'} className="w-full px-3 py-2 border border-slate-200 rounded-xl"/>
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">

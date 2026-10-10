@@ -1043,7 +1043,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                   <label className="font-bold text-slate-700 block mb-1">
                     {'Client Name *'}
                   </label>
-                  <input type="text" required value={newCustName} onChange={(e) => setNewCustName(e.target.value)} placeholder="e.g. Ali Jowel / Tanvir Hossain" className="w-full px-3 py-2 border border-slate-200 rounded-xl"/>
+                  <input type="text" required value={newCustName} onChange={(e) => setNewCustName(e.target.value)} placeholder="e.g. Ali Jowel / Sajib Khan" className="w-full px-3 py-2 border border-slate-200 rounded-xl"/>
                 </div>
 
                 <div>

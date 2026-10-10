@@ -507,7 +507,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     },
     {
         id: 'cust-01',
-        name: 'Tanvir Hossain',
+        name: 'Sajib Khan',
         company: 'Apex Apparel & Textiles Ltd',
         phone: '01819-234567',
         email: 'tanvir.procurement@apexapparel.com',
