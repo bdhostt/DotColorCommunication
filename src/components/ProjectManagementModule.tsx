@@ -599,18 +599,19 @@ export const ProjectManagementModule: React.FC = () => {
                 acc[exp.category] = (acc[exp.category] || 0) + Number(exp.amount || 0);
                 return acc;
             }, {} as Record<string, number>);
-            return (<div key={project.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:border-slate-300 transition-all">
-                {/* Main Card Header Bar */}
-                <div className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50/50">
-                  <div className="space-y-1">
+            return (<div key={project.id} className={`bg-white rounded-2xl border transition-all duration-200 group ${isExpanded
+                    ? 'border-amber-300 shadow-md ring-1 ring-amber-400/20'
+                    : 'border-slate-200 shadow-2xs hover:border-slate-300 hover:shadow-sm'}`}>
+                {/* Main Card Header Bar (Compact ~50% Height) */}
+                <div onClick={() => setExpandedProjectId(isExpanded ? null : project.id)} className="p-3 sm:px-4 sm:py-2.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-50/40 hover:bg-slate-50/80 transition-colors cursor-pointer select-none">
+                  <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-xs font-bold text-slate-600 bg-slate-200/70 px-2 py-0.5 rounded-md">
-                        {project.code}
-                      </span>
-                      <span className="font-mono text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md" title={`Linked to Chart of Accounts Revenue Account #${projectRevAcc.code}`}>
-                        COA: [{projectRevAcc.code}] {projectRevAcc.name}
-                      </span>
-                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${project.status === 'Completed'
+                      <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-amber-800 transition-colors">
+                        {isBn && project.nameBn ? project.nameBn : project.name}
+                      </h2>
+
+                      {/* Status pill (always visible) */}
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${project.status === 'Completed'
                     ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
                     : project.status === 'In Progress'
                         ? 'bg-blue-100 text-blue-800 border-blue-200'
@@ -619,114 +620,87 @@ export const ProjectManagementModule: React.FC = () => {
                             : 'bg-amber-100 text-amber-800 border-amber-200'}`}>
                         {isBn && project.statusBn ? project.statusBn : project.status}
                       </span>
+
+                      {/* Mark 1 & 2: Project Code & COA Badges (Hidden first, shown on hover or click) */}
+                      <div className={`items-center gap-1.5 transition-all duration-200 ${isExpanded ? 'flex' : 'hidden group-hover:flex'}`}>
+                        <span className="font-mono text-[10px] font-bold text-slate-600 bg-slate-200/80 px-1.5 py-0.5 rounded-md shrink-0">
+                          {project.code}
+                        </span>
+                        <span className="font-mono text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md shrink-0" title={`Linked to Chart of Accounts Revenue Account #${projectRevAcc.code}`}>
+                          COA: [{projectRevAcc.code}] {projectRevAcc.name}
+                        </span>
+                      </div>
                     </div>
 
-                    <h2 className="text-base font-extrabold text-slate-900">
-                      {isBn && project.nameBn ? project.nameBn : project.name}
-                    </h2>
-
-                    <div className="flex items-center gap-4 text-xs text-slate-500 pt-1 flex-wrap">
-                      <span className="flex items-center gap-1 font-semibold">
+                    <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                      <span className="flex items-center gap-1 font-semibold text-slate-700">
                         <User className="w-3.5 h-3.5 text-slate-400"/>
                         {project.clientName}
                       </span>
-                      {project.clientPhone && (<span className="flex items-center gap-1">
-                          <Phone className="w-3.5 h-3.5 text-slate-400"/>
+                      {project.clientPhone && (<span className="flex items-center gap-1 font-mono text-[11px] text-slate-500">
+                          <Phone className="w-3 h-3 text-slate-400"/>
                           {project.clientPhone}
                         </span>)}
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400"/>
+                      <span className="flex items-center gap-1 text-[11px]">
+                        <Calendar className="w-3 h-3 text-slate-400"/>
                         {project.startDate} {project.endDate ? `➔ ${project.endDate}` : ''}
                       </span>
                     </div>
                   </div>
 
-                  {/* Profitability Numbers Bar */}
-                  <div className="flex items-center gap-4 sm:gap-6 bg-white p-3 rounded-xl border border-slate-200/80 self-start lg:self-center">
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">
-                        {'Sales Income'}
-                      </p>
-                      <p className="text-sm font-black text-slate-900">
-                        {profile.currencySymbol}
-                        {project.totalSales.toLocaleString()}
-                      </p>
+                  {/* Right Column: Profitability Numbers Bar + Actions */}
+                  <div className="flex items-center gap-3 sm:gap-4 shrink-0 justify-between lg:justify-end flex-wrap sm:flex-nowrap">
+                    {/* Profitability Numbers Bar (Compact & Sleek) */}
+                    <div className="flex items-center gap-3 sm:gap-4 bg-white px-3 py-1.5 rounded-xl border border-slate-200/90 shadow-2xs">
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-0.5">
+                          {'Sales Income'}
+                        </p>
+                        <p className="text-xs sm:text-sm font-black text-slate-900 leading-none">
+                          {profile.currencySymbol}
+                          {project.totalSales.toLocaleString()}
+                        </p>
+                      </div>
+
+                      <div className="h-6 w-px bg-slate-200"/>
+
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-0.5">
+                          {'Total Cost'}
+                        </p>
+                        <p className="text-xs sm:text-sm font-black text-rose-600 leading-none">
+                          {profile.currencySymbol}
+                          {project.totalExpenses.toLocaleString()}
+                        </p>
+                      </div>
+
+                      <div className="h-6 w-px bg-slate-200"/>
+
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-0.5">
+                          {'Net Profit'}
+                        </p>
+                        <p className={`text-xs sm:text-sm font-black leading-none ${project.netProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                          {profile.currencySymbol}
+                          {project.netProfit.toLocaleString()}
+                        </p>
+                      </div>
+
+                      <div className="hidden sm:block h-6 w-px bg-slate-200"/>
+
+                      <div className="hidden sm:block">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-0.5">
+                          {'Margin %'}
+                        </p>
+                        <p className="text-[11px] font-extrabold text-amber-600 leading-none">
+                          {project.profitMargin.toFixed(1)}%
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="h-8 w-px bg-slate-200"/>
-
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">
-                        {'Total Cost'}
-                      </p>
-                      <p className="text-sm font-black text-rose-600">
-                        {profile.currencySymbol}
-                        {project.totalExpenses.toLocaleString()}
-                      </p>
-                    </div>
-
-                    <div className="h-8 w-px bg-slate-200"/>
-
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">
-                        {'Net Profit'}
-                      </p>
-                      <p className={`text-sm font-black ${project.netProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                        {profile.currencySymbol}
-                        {project.netProfit.toLocaleString()}
-                      </p>
-                    </div>
-
-                    <div className="hidden sm:block h-8 w-px bg-slate-200"/>
-
-                    <div className="hidden sm:block">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">
-                        {'Margin %'}
-                      </p>
-                      <p className="text-xs font-extrabold text-amber-600">
-                        {project.profitMargin.toFixed(1)}%
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Category-wise Expense Quick Bar */}
-                <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between gap-3 text-xs flex-wrap">
-                  <div className="flex items-center gap-2 flex-wrap flex-1">
-                    <span className="font-bold text-slate-700 text-[11px] shrink-0">
-                      {'Expense Breakdown:'}
-                    </span>
-
-                    {/* Breakdown Live Search Input Box */}
-                    <div className="relative flex items-center shrink-0">
-                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 pointer-events-none"/>
-                      <input type="text" value={breakdownSearchTerm} onChange={(e) => setBreakdownSearchTerm(e.target.value)} placeholder={'🔍 Filter breakdown...'} className="pl-7 pr-6 py-1 text-[11px] bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 font-bold text-slate-800 w-32 sm:w-44 shadow-2xs"/>
-                      {breakdownSearchTerm && (<button type="button" onClick={() => setBreakdownSearchTerm('')} className="absolute right-2 text-[10px] font-bold text-slate-400 hover:text-slate-600">
-                          ✕
-                        </button>)}
-                    </div>
-
-                    {Object.keys(expenseCategoryBreakdown).length === 0 ? (<span className="text-[11px] text-slate-400 font-medium italic">
-                        {'No expenses recorded yet'}
-                      </span>) : (Object.entries(expenseCategoryBreakdown)
-                    .filter(([catName]) => !breakdownSearchTerm ||
-                    catName.toLowerCase().includes(breakdownSearchTerm.toLowerCase()))
-                    .map(([catName, amt]) => {
-                      const coa = getResolvedCOA(catName);
-                      return (<span key={catName} className="bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-700 flex items-center gap-1.5 shadow-2xs animate-in fade-in duration-100" title={`Mapped to COA Account [${coa.code}] ${coa.name}`}>
-                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"/>
-                             <span className="font-mono text-[10px] text-slate-400 font-bold">[{coa.code}]</span>
-                             <span>{catName}:</span>
-                             <span className="font-extrabold text-slate-900 font-mono">
-                               {profile.currencySymbol}{(amt as number).toLocaleString()}
-                             </span>
-                           </span>);
-                    }))}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button type="button" onClick={() => {
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <button type="button" onClick={() => {
                     setShowSalesModal(project.id);
                     setSalesForm({
                         invoiceNo: '',
@@ -738,11 +712,11 @@ export const ProjectManagementModule: React.FC = () => {
                             { id: `pay-${Date.now()}-1`, method: 'Cash', amount: '', note: '' },
                         ],
                     });
-                }} className="px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors cursor-pointer">
-                      + {'Add Sales'}
-                    </button>
+                }} className="px-2 py-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors cursor-pointer">
+                        + {'Add Sales'}
+                      </button>
 
-                    <button type="button" onClick={() => {
+                      <button type="button" onClick={() => {
                     setShowExpenseModal(project.id);
                     setExpenseDate(new Date().toISOString().split('T')[0]);
                     setExpenseGeneralNote('');
@@ -756,22 +730,62 @@ export const ProjectManagementModule: React.FC = () => {
                             isDropdownOpen: false,
                         },
                     ]);
-                }} className="px-2.5 py-1.5 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition-colors cursor-pointer">
-                      + {'Add Expense'}
-                    </button>
+                }} className="px-2 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition-colors cursor-pointer">
+                        + {'Add Expense'}
+                      </button>
 
-                    <button type="button" onClick={() => handleOpenEdit(project)} className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100" title="Edit Project">
-                      <Edit2 className="w-3.5 h-3.5"/>
-                    </button>
+                      <button type="button" onClick={() => handleOpenEdit(project)} className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer" title="Edit Project">
+                        <Edit2 className="w-3.5 h-3.5"/>
+                      </button>
 
-                    <button type="button" onClick={() => setProjectToDelete(project)} className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50" title="Delete Project">
-                      <Trash2 className="w-3.5 h-3.5"/>
-                    </button>
+                      <button type="button" onClick={() => setProjectToDelete(project)} className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer" title="Delete Project">
+                        <Trash2 className="w-3.5 h-3.5"/>
+                      </button>
 
-                    <button type="button" onClick={() => setExpandedProjectId(isExpanded ? null : project.id)} className="p-1.5 text-slate-600 hover:bg-slate-200 rounded-lg border border-slate-200">
-                      {isExpanded ? <ChevronUp className="w-4 h-4"/> : <ChevronDown className="w-4 h-4"/>}
-                    </button>
+                      <button type="button" onClick={() => setExpandedProjectId(isExpanded ? null : project.id)} className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-lg border border-slate-200 transition-colors cursor-pointer" title={isExpanded ? 'Collapse' : 'Expand full details'}>
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5"/> : <ChevronDown className="w-3.5 h-3.5"/>}
+                      </button>
+                    </div>
                   </div>
+                </div>
+
+                {/* Mark 3: Category-wise Expense Quick Bar (Hidden first, shown on hover or click) */}
+                <div className={`px-4 sm:px-5 py-2 border-t border-slate-100 bg-slate-50/40 text-xs transition-all duration-200 ${isExpanded ? 'flex' : 'hidden group-hover:flex'} items-center justify-between gap-3 flex-wrap animate-in fade-in duration-150`}>
+                  <div className="flex items-center gap-2 flex-wrap flex-1">
+                    <span className="font-bold text-slate-700 text-[11px] shrink-0">
+                      {'Expense Breakdown:'}
+                    </span>
+
+                    {/* Breakdown Live Search Input Box */}
+                    <div className="relative flex items-center shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 pointer-events-none"/>
+                      <input type="text" value={breakdownSearchTerm} onChange={(e) => setBreakdownSearchTerm(e.target.value)} placeholder={'Filter breakdown...'} className="pl-7 pr-6 py-1 text-[11px] bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 font-bold text-slate-800 w-32 sm:w-44 shadow-2xs"/>
+                      {breakdownSearchTerm && (<button type="button" onClick={() => setBreakdownSearchTerm('')} className="absolute right-2 text-[10px] font-bold text-slate-400 hover:text-slate-600 cursor-pointer">
+                          ✕
+                        </button>)}
+                    </div>
+
+                    {Object.keys(expenseCategoryBreakdown).length === 0 ? (<span className="text-[11px] text-slate-400 font-medium italic">
+                        {'No expenses recorded yet'}
+                      </span>) : (Object.entries(expenseCategoryBreakdown)
+                    .filter(([catName]) => !breakdownSearchTerm ||
+                    catName.toLowerCase().includes(breakdownSearchTerm.toLowerCase()))
+                    .map(([catName, amt]) => {
+                      const coa = getResolvedCOA(catName);
+                      return (<span key={catName} className="bg-white border border-slate-200 px-2 py-0.5 rounded-lg text-[11px] font-semibold text-slate-700 flex items-center gap-1.5 shadow-2xs" title={`Mapped to COA Account [${coa.code}] ${coa.name}`}>
+                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"/>
+                             <span className="font-mono text-[10px] text-slate-400 font-bold">[{coa.code}]</span>
+                             <span>{catName}:</span>
+                             <span className="font-extrabold text-slate-900 font-mono">
+                               {profile.currencySymbol}{(amt as number).toLocaleString()}
+                             </span>
+                           </span>);
+                    }))}
+                  </div>
+
+                  {!isExpanded && (<span className="text-[10px] text-slate-400 font-medium hidden sm:inline">
+                      {'Click to expand full ledger ➔'}
+                    </span>)}
                 </div>
 
                 {/* Expanded Itemized View */}
