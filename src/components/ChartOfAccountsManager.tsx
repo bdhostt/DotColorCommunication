@@ -4,7 +4,7 @@ import { ChartOfAccount } from '../types';
 import { BookOpen, Plus, Search, Filter, Edit2, Trash2, Lock, CheckCircle2, AlertCircle, X, FileText, Printer, Layers, ArrowUpDown, Download, Upload, } from 'lucide-react';
 import * as XLSX from 'xlsx';
 export const ChartOfAccountsManager: React.FC = () => {
-    const { chartOfAccounts, language, profile, addChartOfAccount, updateChartOfAccount, deleteChartOfAccount, checkPermission, } = useApp();
+    const { chartOfAccounts, transactions = [], accountBalances, suppliers = [], customers = [], language, profile, addChartOfAccount, updateChartOfAccount, deleteChartOfAccount, checkPermission, } = useApp();
     const [searchQuery, setSearchQuery] = useState('');
     const [filterClassification, setFilterClassification] = useState<string>('ALL');
     const [showAddModal, setShowAddModal] = useState(false);
@@ -22,6 +22,79 @@ export const ChartOfAccountsManager: React.FC = () => {
         description: '',
     });
     const canManageCOA = checkPermission('accounting.chart_of_accounts') || checkPermission('ACCOUNTING_MANAGE_COA') || true;
+
+    // Real-time dynamic Chart of Accounts synced with Ledger Transactions & Balances
+    const liveAccounts = useMemo(() => {
+        const totalTxIncome = (transactions || []).filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
+        const totalSupplierDue = (suppliers || []).reduce((s, sup) => s + (sup.dueAmount || sup.balancePayable || 0), 0);
+        const totalCustomerDue = (customers || []).reduce((s, c) => s + (c.dueAmount || 0), 0);
+
+        return chartOfAccounts.map(acc => {
+            const nameLower = (acc.name || '').toLowerCase();
+            let liveBal = acc.currentBalance;
+
+            if (acc.classification === 'Asset') {
+                if (nameLower.includes('cash') || acc.code === '1010') {
+                    liveBal = accountBalances?.cash ?? acc.currentBalance;
+                } else if (nameLower.includes('bank') || nameLower.includes('plc') || acc.code === '1020') {
+                    liveBal = accountBalances?.bank ?? acc.currentBalance;
+                } else if (nameLower.includes('bkash') || nameLower.includes('nagad') || acc.code === '1030') {
+                    liveBal = accountBalances?.mobile ?? acc.currentBalance;
+                } else if (nameLower.includes('receivable') || acc.code === '1050') {
+                    liveBal = totalCustomerDue > 0 ? totalCustomerDue : acc.currentBalance;
+                }
+            } else if (acc.classification === 'Liability') {
+                if (nameLower.includes('payable') || acc.code === '2010') {
+                    liveBal = totalSupplierDue > 0 ? totalSupplierDue : acc.currentBalance;
+                }
+            } else if (acc.classification === 'Revenue') {
+                if (acc.currentBalance === 0) {
+                    const matching = (transactions || [])
+                        .filter(t => t.type === 'INCOME' && (
+                            (t.category && nameLower.includes(t.category.toLowerCase())) ||
+                            (t.accountHead && nameLower.includes(t.accountHead.toLowerCase()))
+                        ))
+                        .reduce((s, t) => s + t.amount, 0);
+                    
+                    if (matching > 0) {
+                        liveBal = matching;
+                    } else if (acc.code === '4010') {
+                        const otherRev = chartOfAccounts
+                            .filter(a => a.classification === 'Revenue' && a.code !== '4010')
+                            .reduce((s, a) => s + (a.currentBalance || 0), 0);
+                        liveBal = Math.max(0, totalTxIncome - otherRev);
+                    }
+                }
+            } else if (acc.classification === 'Expense') {
+                if (acc.currentBalance === 0) {
+                    const matching = (transactions || [])
+                        .filter(t => t.type === 'EXPENSE' && (
+                            (t.category && nameLower.includes(t.category.toLowerCase())) ||
+                            (t.accountHead && nameLower.includes(t.accountHead.toLowerCase()))
+                        ))
+                        .reduce((s, t) => s + t.amount, 0);
+
+                    if (matching > 0) {
+                        liveBal = matching;
+                    } else if (acc.code === '5010') {
+                        const poExpenses = (transactions || [])
+                            .filter(t => t.type === 'EXPENSE' && (
+                                (t.category && (t.category.toLowerCase().includes('raw') || t.category.toLowerCase().includes('purchase') || t.category.toLowerCase().includes('po'))) ||
+                                (t.description && (t.description.toLowerCase().includes('purchase') || t.description.toLowerCase().includes('po')))
+                            ))
+                            .reduce((s, t) => s + t.amount, 0);
+                        liveBal = poExpenses;
+                    }
+                }
+            }
+
+            return {
+                ...acc,
+                currentBalance: liveBal,
+            };
+        });
+    }, [chartOfAccounts, transactions, accountBalances, suppliers, customers]);
+
     // Classification stats
     const stats = useMemo(() => {
         let totalAssets = 0;
@@ -29,7 +102,7 @@ export const ChartOfAccountsManager: React.FC = () => {
         let totalEquity = 0;
         let totalRevenue = 0;
         let totalExpenses = 0;
-        chartOfAccounts.forEach((acc) => {
+        liveAccounts.forEach((acc) => {
             if (acc.classification === 'Asset')
                 totalAssets += acc.currentBalance;
             else if (acc.classification === 'Liability')
@@ -41,10 +114,20 @@ export const ChartOfAccountsManager: React.FC = () => {
             else if (acc.classification === 'Expense')
                 totalExpenses += acc.currentBalance;
         });
-        return { totalAssets, totalLiabilities, totalEquity, totalRevenue, totalExpenses };
-    }, [chartOfAccounts]);
+
+        const txRevenue = (transactions || []).filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
+        const txExpense = (transactions || []).filter(t => t.type === 'EXPENSE').reduce((s, t) => s + t.amount, 0);
+
+        return { 
+            totalAssets, 
+            totalLiabilities, 
+            totalEquity, 
+            totalRevenue: Math.max(totalRevenue, txRevenue), 
+            totalExpenses: Math.max(totalExpenses, txExpense) 
+        };
+    }, [liveAccounts, transactions]);
     const filteredAccounts = useMemo(() => {
-        return chartOfAccounts.filter((acc) => {
+        return liveAccounts.filter((acc) => {
             if (filterClassification !== 'ALL' && acc.classification !== filterClassification) {
                 return false;
             }
@@ -56,7 +139,7 @@ export const ChartOfAccountsManager: React.FC = () => {
                 (acc.nameBn && acc.nameBn.includes(q)) ||
                 acc.accountGroup.toLowerCase().includes(q));
         });
-    }, [chartOfAccounts, filterClassification, searchQuery]);
+    }, [liveAccounts, filterClassification, searchQuery]);
     const generateNextCode = (cls: string, group: string): string => {
         // 1. Find max code within exact same Classification + Account Group
         const sameGroupAccounts = chartOfAccounts.filter((a) => a.classification === cls && a.accountGroup.toLowerCase() === group.toLowerCase());
@@ -116,7 +199,7 @@ export const ChartOfAccountsManager: React.FC = () => {
         setDeleteError(null);
     };
     const handleExportExcel = () => {
-        const data = chartOfAccounts.map(acc => ({
+        const data = liveAccounts.map(acc => ({
             Code: acc.code,
             'Name (EN)': acc.name,
             'Name (BN)': acc.nameBn || '',
@@ -124,6 +207,7 @@ export const ChartOfAccountsManager: React.FC = () => {
             'Account Group': acc.accountGroup,
             'Normal Balance': acc.normalBalance,
             'Opening Balance': acc.openingBalance,
+            'Current Balance': acc.currentBalance,
             Description: acc.description || ''
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);

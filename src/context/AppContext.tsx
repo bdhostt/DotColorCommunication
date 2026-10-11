@@ -127,6 +127,8 @@ interface AppContextType {
     journalEntries: JournalEntry[];
     addJournalEntry: (entry: Omit<JournalEntry, 'id' | 'entryNo'>) => JournalEntry;
     updateJournalEntry: (id: string, updates: Partial<JournalEntry>) => void;
+    generateJournalsFromTransactions: () => number;
+    restoreDefaultExpenseHeads: () => void;
     addTransaction: (tx: Omit<AccountingTransaction, 'id'>) => void;
     updateTransaction: (id: string, updates: Partial<AccountingTransaction>) => void;
     deleteTransaction: (id: string) => void;
@@ -293,7 +295,8 @@ export const AppProvider: React.FC<{
         return safeGetLocalStorage<ChartOfAccount[]>(`${STORAGE_KEY}_COA`, INITIAL_CHART_OF_ACCOUNTS);
     });
     const [expenseHeads, setExpenseHeads] = useState<ExpenseHead[]>(() => {
-        return safeGetLocalStorage<ExpenseHead[]>(`${STORAGE_KEY}_EXPENSE_HEADS`, INITIAL_EXPENSE_HEADS);
+        const saved = safeGetLocalStorage<ExpenseHead[]>(`${STORAGE_KEY}_EXPENSE_HEADS`, INITIAL_EXPENSE_HEADS);
+        return Array.isArray(saved) && saved.length > 0 ? saved : INITIAL_EXPENSE_HEADS;
     });
     const [productCategories, setProductCategories] = useState<ProductCategory[]>(() => {
         return safeGetLocalStorage<ProductCategory[]>(`${STORAGE_KEY}_CATEGORIES`, INITIAL_PRODUCT_CATEGORIES);
@@ -1999,6 +2002,84 @@ export const AppProvider: React.FC<{
     const updateJournalEntry = (id: string, updates: Partial<JournalEntry>) => {
         setJournalEntries((prev) => prev.map((je) => (je.id === id ? { ...je, ...updates } : je)));
     };
+    const restoreDefaultExpenseHeads = () => {
+        setExpenseHeads(INITIAL_EXPENSE_HEADS);
+        addAuditLog({
+            staffId: activeStaff?.id || 'sys',
+            staffName: activeStaff?.name || 'Admin',
+            staffRole: activeStaff?.role || 'Admin',
+            location: 'Office',
+            actionType: 'PROFILE_UPDATED',
+            entityType: 'Accounting',
+            details: 'Restored standard 12 Expense Heads linked to Chart of Accounts',
+            detailsBn: undefined,
+        });
+    };
+    const generateJournalsFromTransactions = (): number => {
+        const existingRefNos = new Set(journalEntries.map((j) => j.refNo).filter(Boolean));
+        const newEntries: JournalEntry[] = [];
+
+        const cashAcc = chartOfAccounts.find((a) => a.classification === 'Asset' && (a.name.toLowerCase().includes('cash') || a.code === '1010')) || chartOfAccounts[0];
+        const bankAcc = chartOfAccounts.find((a) => a.classification === 'Asset' && (a.name.toLowerCase().includes('bank') || a.name.toLowerCase().includes('plc') || a.code === '1020')) || cashAcc;
+        const mobileAcc = chartOfAccounts.find((a) => a.classification === 'Asset' && (a.name.toLowerCase().includes('bkash') || a.name.toLowerCase().includes('nagad') || a.code === '1030')) || cashAcc;
+        const salesAcc = chartOfAccounts.find((a) => a.classification === 'Revenue' && (a.code === '4010' || a.name.toLowerCase().includes('print') || a.name.toLowerCase().includes('sales'))) || chartOfAccounts.find((a) => a.classification === 'Revenue') || chartOfAccounts[0];
+        const cogsAcc = chartOfAccounts.find((a) => a.classification === 'Expense' && (a.code === '5010' || a.name.toLowerCase().includes('cost') || a.name.toLowerCase().includes('raw'))) || chartOfAccounts.find((a) => a.classification === 'Expense') || chartOfAccounts[0];
+
+        transactions.forEach((tx, idx) => {
+            if (tx.refNo && existingRefNos.has(tx.refNo)) return;
+
+            const acctName = (tx.paymentAccount || tx.account || '').toLowerCase();
+            let assetAcc = cashAcc;
+            if (acctName.includes('bkash') || acctName.includes('nagad') || acctName.includes('mobile')) {
+                assetAcc = mobileAcc;
+            } else if (acctName.includes('bank') || acctName.includes('card') || acctName.includes('city') || acctName.includes('brac') || acctName.includes('plc')) {
+                assetAcc = bankAcc;
+            }
+
+            const isIncome = tx.type === 'INCOME';
+            let opposingAcc = isIncome ? salesAcc : cogsAcc;
+
+            if (!isIncome && (tx.category || tx.description)) {
+                const searchStr = `${tx.category || ''} ${tx.description || ''}`.toLowerCase();
+                const matchedExp = chartOfAccounts.find((a) => a.classification === 'Expense' && a.name.toLowerCase().split(' ').some((word) => word.length > 3 && searchStr.includes(word)));
+                if (matchedExp) opposingAcc = matchedExp;
+            }
+
+            const debitAcc = isIncome ? assetAcc : opposingAcc;
+            const creditAcc = isIncome ? opposingAcc : assetAcc;
+
+            newEntries.push({
+                id: `jnl-gen-${Date.now()}-${idx}`,
+                entryNo: `JNL-${(tx.date || '2026').slice(0, 4)}-${Math.floor(1000 + Math.random() * 9000)}`,
+                date: tx.date || new Date().toISOString().slice(0, 10),
+                debitAccountId: debitAcc.id,
+                debitAccountName: debitAcc.name,
+                creditAccountId: creditAcc.id,
+                creditAccountName: creditAcc.name,
+                amount: tx.amount,
+                narration: tx.description || `${tx.type === 'INCOME' ? 'Income' : 'Expense'}: ${tx.category || ''}`,
+                source: 'LEDGER_SYNC',
+                createdBy: 'System (Ledger Auto-Sync)',
+                refNo: tx.refNo || `TX-${tx.id}`,
+            } as any);
+        });
+
+        if (newEntries.length > 0) {
+            setJournalEntries((prev) => [...newEntries, ...prev]);
+            addAuditLog({
+                staffId: activeStaff?.id || 'sys',
+                staffName: activeStaff?.name || 'Admin',
+                staffRole: activeStaff?.role || 'Admin',
+                location: 'Office',
+                actionType: 'JOURNAL_ENTRY_CREATED',
+                entityType: 'Accounting',
+                details: `Generated ${newEntries.length} double-entry Journal Vouchers from Financial Ledger`,
+                detailsBn: undefined,
+            });
+            return newEntries.length;
+        }
+        return 0;
+    };
     // Projects Management
     const recalculateProject = (p: Project): Project => {
         const totalSales = (p.salesItems || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
@@ -2509,9 +2590,9 @@ export const AppProvider: React.FC<{
                     setUserRoles(data.userRoles);
                 }
             }
-            if (data.chartOfAccounts)
+            if (data.chartOfAccounts && Array.isArray(data.chartOfAccounts) && data.chartOfAccounts.length > 0)
                 setChartOfAccounts(data.chartOfAccounts);
-            if (data.expenseHeads)
+            if (data.expenseHeads && Array.isArray(data.expenseHeads) && data.expenseHeads.length > 0)
                 setExpenseHeads(data.expenseHeads);
             if (data.productCategories)
                 setProductCategories(data.productCategories);
@@ -2662,32 +2743,70 @@ export const AppProvider: React.FC<{
         paymentMethods,
     ]);
     const accountBalances: AccountBalances = useMemo(() => {
-        // Dynamically calculate starting balances from the current Chart of Accounts opening balances
-        const cashAccs = (chartOfAccounts || []).filter(acc => acc.id === 'coa-1010' || acc.id === 'coa-1020');
-        const bankAccs = (chartOfAccounts || []).filter(acc => acc.id === 'coa-1030');
-        const mobileAccs = (chartOfAccounts || []).filter(acc => acc.id === 'coa-1040');
-        let cash = cashAccs.reduce((sum, acc) => sum + (acc.openingBalance || 0), 0);
-        let bank = bankAccs.reduce((sum, acc) => sum + (acc.openingBalance || 0), 0);
-        let mobile = mobileAccs.reduce((sum, acc) => sum + (acc.openingBalance || 0), 0);
+        // Smart classifier for accounts in Chart of Accounts
+        const isMobile = (name: string, code?: string) => {
+            const n = (name || '').toLowerCase();
+            return n.includes('bkash') || n.includes('nagad') || n.includes('rocket') || n.includes('wallet') || n.includes('mobile') || n.includes('mfs') || n.includes('বিকাশ') || n.includes('নগদ') || code === '1030' || code === '1040';
+        };
+        const isBank = (name: string, code?: string) => {
+            const n = (name || '').toLowerCase();
+            if (isMobile(name, code)) return false;
+            return n.includes('bank') || n.includes('plc') || n.includes('branch') || n.includes('ব্যাংক') || n.includes('city') || n.includes('brac') || n.includes('eastern') || n.includes('islami') || n.includes('dutch') || n.includes('dbbl') || code === '1020';
+        };
+        const isCash = (name: string, code?: string) => {
+            if (isMobile(name, code) || isBank(name, code)) return false;
+            const n = (name || '').toLowerCase();
+            return n.includes('cash') || n.includes('ক্যাশ') || n.includes('counter') || n.includes('drawer') || code === '1010';
+        };
+
+        const assetAccounts = (chartOfAccounts || []).filter(acc => acc.classification === 'Asset');
+        
+        let cash = 0;
+        let bank = 0;
+        let mobile = 0;
+
+        assetAccounts.forEach(acc => {
+            const balance = (acc.openingBalance !== undefined && acc.openingBalance !== null && acc.openingBalance > 0)
+                ? acc.openingBalance
+                : (acc.currentBalance || 0);
+
+            if (isMobile(acc.name, acc.code)) {
+                mobile += balance;
+            } else if (isBank(acc.name, acc.code)) {
+                bank += balance;
+            } else if (isCash(acc.name, acc.code)) {
+                cash += balance;
+            }
+        });
+
+        // Fallback for bank if not identified
+        if (bank === 0) {
+            const bankAcc = assetAccounts.find(a => a.code === '1020' || isBank(a.name, a.code));
+            if (bankAcc) {
+                bank = bankAcc.openingBalance || bankAcc.currentBalance || 0;
+            }
+        }
+
+        // Apply ledger transactions
         transactions.forEach((tx) => {
             const acct = (tx.paymentAccount || tx.account || '').toLowerCase();
             const delta = tx.type === 'INCOME' ? tx.amount : tx.type === 'EXPENSE' ? -tx.amount : 0;
-            if (acct.includes('bank') || acct.includes('brac')) {
-                bank += delta;
-            }
-            else if (acct.includes('bkash') || acct.includes('nagad') || acct.includes('mobile')) {
+            
+            if (acct.includes('bkash') || acct.includes('nagad') || acct.includes('rocket') || acct.includes('wallet') || acct.includes('mobile') || acct.includes('বিকাশ') || acct.includes('নগদ')) {
                 mobile += delta;
-            }
-            else {
+            } else if (acct.includes('bank') || acct.includes('brac') || acct.includes('city') || acct.includes('card') || acct.includes('cheque') || acct.includes('plc') || (profile.bankName && acct.includes(profile.bankName.toLowerCase()))) {
+                bank += delta;
+            } else {
                 cash += delta;
             }
         });
+
         return {
             cash: Math.max(0, cash),
             bank: Math.max(0, bank),
             mobile: Math.max(0, mobile),
         };
-    }, [transactions, chartOfAccounts]);
+    }, [transactions, chartOfAccounts, profile.bankName]);
     return (<AppContext.Provider value={{
             profile,
             products,
@@ -2770,6 +2889,8 @@ export const AppProvider: React.FC<{
             journalEntries,
             addJournalEntry,
             updateJournalEntry,
+            generateJournalsFromTransactions,
+            restoreDefaultExpenseHeads,
             addTransaction,
             updateTransaction,
             deleteTransaction,

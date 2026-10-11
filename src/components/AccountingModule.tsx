@@ -239,7 +239,7 @@ export const AccountingModule: React.FC = () => {
             {accountBalances.bank.toLocaleString()}
           </div>
           <span className="text-[11px] text-slate-500 block mt-1">
-            {profile.bankName || 'BRAC Bank PLC'} • {(profile.bankAccount ? profile.bankAccount.slice(-6) : '314001')}
+            {profile.bankName || 'City Bank PLC'} • {(profile.bankAccount ? profile.bankAccount.slice(-6) : '314001')}
           </span>
         </div>
 
@@ -504,7 +504,7 @@ export const AccountingModule: React.FC = () => {
                     <div className="font-bold text-slate-900">{tx.description}</div>
                     <div className="text-[10px] text-amber-700 font-medium">{tx.category}</div>
                   </td>
-                  <td className="py-3 px-4 font-medium text-slate-700">{tx.account}</td>
+                  <td className="py-3 px-4 font-medium text-slate-700">{tx.account || tx.paymentAccount || 'Cash in Hand'}</td>
                   <td className="py-3 px-4 text-center">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${tx.type === 'INCOME'
                     ? 'bg-emerald-100 text-emerald-800'

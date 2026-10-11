@@ -104,9 +104,9 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({ reportId, tr
         // Receipts (Inflows): Counter Cash Sales, Bank receipts, Due Collections
         const receiptsMap = new Map<string, number>();
         const paymentsMap = new Map<string, number>();
-        // Initial cash opening estimate dynamically from chart of accounts
-        const openingCash = (chartOfAccounts || []).filter(acc => acc.id === 'coa-1010' || acc.id === 'coa-1020').reduce((sum, acc) => sum + (acc.openingBalance || 0), 0);
-        const openingBank = (chartOfAccounts || []).filter(acc => acc.id === 'coa-1030' || acc.id === 'coa-1040').reduce((sum, acc) => sum + (acc.openingBalance || 0), 0);
+        // Initial cash and bank opening estimates dynamically from chart of accounts
+        const openingCash = (chartOfAccounts || []).filter(acc => acc.classification === 'Asset' && !(acc.name || '').toLowerCase().includes('bank') && !(acc.name || '').toLowerCase().includes('plc') && !(acc.name || '').toLowerCase().includes('bkash') && !(acc.name || '').toLowerCase().includes('nagad')).reduce((sum, acc) => sum + (acc.openingBalance || acc.currentBalance || 0), 0);
+        const openingBank = (chartOfAccounts || []).filter(acc => acc.classification === 'Asset' && ((acc.name || '').toLowerCase().includes('bank') || (acc.name || '').toLowerCase().includes('plc') || (acc.name || '').toLowerCase().includes('bkash') || (acc.name || '').toLowerCase().includes('nagad'))).reduce((sum, acc) => sum + (acc.openingBalance || acc.currentBalance || 0), 0);
         const totalOpening = openingCash + openingBank;
         (transactions || []).forEach((tx) => {
             if (!tx)
