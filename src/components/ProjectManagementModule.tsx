@@ -132,46 +132,80 @@ export const ProjectManagementModule: React.FC = () => {
             item.nameBn.toLowerCase().includes(term));
     };
 
+    const projectRevAcc = useMemo(() => {
+        return chartOfAccounts.find(a => a.classification === 'Revenue' && (a.code === '4051' || a.name.toLowerCase().includes('project') || a.code === '4060')) || { code: '4051', name: 'Project Sales Income', id: 'coa-4051' };
+    }, [chartOfAccounts]);
+
+    const projectExpAcc = useMemo(() => {
+        return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5100' || a.name.toLowerCase().includes('project'))) || { code: '5100', name: 'Project Expense', id: 'coa-5100' };
+    }, [chartOfAccounts]);
+
     const getResolvedCOA = (categoryName: string, note?: string) => {
         const query = `${categoryName || ''} ${note || ''}`.toLowerCase();
+        
+        // 1. Check if specific sub-accounts actually exist in chartOfAccounts
         if (query.includes('conveyance') || query.includes('transport') || query.includes('fuel') || query.includes('truck') || query.includes('courier') || query.includes('delivery')) {
-            return { code: '5080', name: 'Conveyance & Delivery', id: 'coa-5080' };
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5080' || a.name.toLowerCase().includes('conveyance')));
+            if (acc) return { code: acc.code, name: acc.name, id: acc.id };
         }
-        if (query.includes('labor') || query.includes('labour') || query.includes('wage') || query.includes('worker') || query.includes('technician') || query.includes('installation') || query.includes('setup') || query.includes('amin vai') || query.includes('serap')) {
-            return { code: '5070', name: 'Staff Wages & Site Labor', id: 'coa-5070' };
+        if (query.includes('labor') || query.includes('labour') || query.includes('wage') || query.includes('worker') || query.includes('technician') || query.includes('installation') || query.includes('setup') || query.includes('amin vai') || query.includes('fabrication')) {
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5070' || a.name.toLowerCase().includes('wages') || a.name.toLowerCase().includes('salaries')));
+            if (acc) return { code: acc.code, name: acc.name, id: acc.id };
         }
         if (query.includes('entertainment') || query.includes('refreshment') || query.includes('tea') || query.includes('snack') || query.includes('food') || query.includes('lunch') || query.includes('hospitality') || query.includes('hotel')) {
-            return { code: '5090', name: 'Client Hospitality & Refreshments', id: 'coa-5090' };
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5090' || a.name.toLowerCase().includes('hospitality') || a.name.toLowerCase().includes('refreshment')));
+            if (acc) return { code: acc.code, name: acc.name, id: acc.id };
         }
         if (query.includes('electricity') || query.includes('generator') || query.includes('diesel') || query.includes('power')) {
-            return { code: '5040', name: 'Electricity & Generator Power', id: 'coa-5040' };
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5040' || a.name.toLowerCase().includes('electricity')));
+            if (acc) return { code: acc.code, name: acc.name, id: acc.id };
         }
         if (query.includes('rent') || query.includes('lease') || query.includes('facility')) {
-            return { code: '5050', name: 'Factory Facility Rent', id: 'coa-5050' };
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5050' || a.name.toLowerCase().includes('rent')));
+            if (acc) return { code: acc.code, name: acc.name, id: acc.id };
         }
         if (query.includes('machine') || query.includes('servicing') || query.includes('equipment') || query.includes('crane') || query.includes('printer head')) {
-            return { code: '5030', name: 'Machine Servicing & Maintenance', id: 'coa-5030' };
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5030' || a.name.toLowerCase().includes('servicing')));
+            if (acc) return { code: acc.code, name: acc.name, id: acc.id };
         }
         if (query.includes('permit') || query.includes('tax') || query.includes('official fee') || query.includes('license')) {
-            return { code: '5120', name: 'Municipal Tax & Legal Permits', id: 'coa-5120' };
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5120' || a.name.toLowerCase().includes('tax') || a.name.toLowerCase().includes('permit')));
+            if (acc) return { code: acc.code, name: acc.name, id: acc.id };
         }
-        if (query.includes('marketing') || query.includes('ad') || query.includes('promotion') || query.includes('branding')) {
-            return { code: '5100', name: 'Digital Marketing & Promotions', id: 'coa-5100' };
+
+        // 2. Primary Project Expense Head: Dedicated Project Expense account (5100 or 'project')
+        const projExpAcc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5100' || a.name.toLowerCase().includes('project')));
+        if (projExpAcc) {
+            return { code: projExpAcc.code, name: projExpAcc.name, id: projExpAcc.id };
         }
-        return { code: '5010', name: 'COGS - Raw Materials & Supplies', id: 'coa-5010' };
+
+        const cogsAcc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5010' || a.name.toLowerCase().includes('raw') || a.name.toLowerCase().includes('cost')));
+        if (cogsAcc) {
+            return { code: cogsAcc.code, name: cogsAcc.name, id: cogsAcc.id };
+        }
+
+        return { code: '5100', name: 'Project Expense', id: 'coa-5100' };
     };
 
     const getResolvedPaymentCOA = (method: string) => {
         const m = (method || '').toLowerCase();
         if (m.includes('bank') || m.includes('brac') || m.includes('city') || m.includes('card')) {
-            return { code: '1030', name: 'BRAC Bank PLC' };
+            const acc = chartOfAccounts.find(a => a.classification === 'Asset' && (a.code === '1030' || a.code === '1020' || a.name.toLowerCase().includes('bank') || a.name.toLowerCase().includes('plc')));
+            if (acc) return { code: acc.code, name: acc.name };
+            return { code: '1020', name: 'Bank Account' };
         }
         if (m.includes('bkash') || m.includes('nagad') || m.includes('rocket') || m.includes('mfs')) {
+            const acc = chartOfAccounts.find(a => a.classification === 'Asset' && (a.code === '1040' || a.code === '1030' || a.name.toLowerCase().includes('bkash') || a.name.toLowerCase().includes('nagad') || a.name.toLowerCase().includes('wallet')));
+            if (acc) return { code: acc.code, name: acc.name };
             return { code: '1040', name: 'bKash & Nagad Wallet' };
         }
         if (m.includes('due') || m.includes('receivable')) {
+            const acc = chartOfAccounts.find(a => a.classification === 'Asset' && (a.code === '1050' || a.name.toLowerCase().includes('receivable')));
+            if (acc) return { code: acc.code, name: acc.name };
             return { code: '1050', name: 'Accounts Receivable' };
         }
+        const cashAcc = chartOfAccounts.find(a => a.classification === 'Asset' && (a.code === '1010' || a.name.toLowerCase().includes('cash')));
+        if (cashAcc) return { code: cashAcc.code, name: cashAcc.name };
         return { code: '1010', name: 'Cash in Hand (Counter)' };
     };
 
@@ -573,8 +607,8 @@ export const ProjectManagementModule: React.FC = () => {
                       <span className="font-mono text-xs font-bold text-slate-600 bg-slate-200/70 px-2 py-0.5 rounded-md">
                         {project.code}
                       </span>
-                      <span className="font-mono text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md" title="Linked to Chart of Accounts Revenue Account #4060">
-                        COA: 4060 Project Revenue
+                      <span className="font-mono text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md" title={`Linked to Chart of Accounts Revenue Account #${projectRevAcc.code}`}>
+                        COA: [{projectRevAcc.code}] {projectRevAcc.name}
                       </span>
                       <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${project.status === 'Completed'
                     ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
@@ -828,9 +862,17 @@ export const ProjectManagementModule: React.FC = () => {
                               <tbody className="divide-y divide-slate-100">
                                 {project.expenseItems.map((exp) => (<tr key={exp.id} className="hover:bg-slate-50">
                                     <td className="py-2">
-                                      <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                                      <div className="font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
                                         <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"/>
                                         <span>{exp.categoryBn || exp.category}</span>
+                                        {(() => {
+                                          const coa = getResolvedCOA(exp.category, exp.note);
+                                          return (
+                                            <span className="font-mono text-[9px] text-slate-500 font-bold bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded" title={`Linked to COA [${coa.code}] ${coa.name}`}>
+                                              [{coa.code}]
+                                            </span>
+                                          );
+                                        })()}
                                       </div>
                                       {exp.note && (<div className="text-[11px] text-slate-700 pl-3 font-medium bg-amber-50/60 py-0.5 px-1.5 rounded border-l-2 border-amber-400 my-0.5">
                                           📝 {exp.note}
@@ -1063,7 +1105,7 @@ export const ProjectManagementModule: React.FC = () => {
                             <span className="font-mono font-black text-slate-800">[{payCOA.code}] {payCOA.name}</span>
                             <span className="text-slate-300">|</span>
                             <span className="text-blue-700">COA Credit:</span>
-                            <span className="font-mono font-black text-slate-800">[4060] Project Contracting & Signage Revenue</span>
+                            <span className="font-mono font-black text-slate-800">[{projectRevAcc.code}] {projectRevAcc.name}</span>
                           </div>
                         );
                       })()}

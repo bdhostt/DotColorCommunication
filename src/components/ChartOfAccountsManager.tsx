@@ -31,6 +31,7 @@ export const ChartOfAccountsManager: React.FC = () => {
         const totalSupplierDue = (suppliers || []).reduce((s, sup) => s + (sup.dueAmount || sup.balancePayable || 0), 0);
         const totalCustomerDue = (customers || []).reduce((s, c) => s + (c.dueAmount || 0), 0);
         const totalProjectSales = (projects || []).reduce((s, p) => s + (p.totalSales || 0), 0);
+        const totalProjectExpenses = (projects || []).reduce((s, p) => s + (p.totalExpenses || 0), 0);
 
         return chartOfAccounts.map(acc => {
             const nameLower = (acc.name || '').toLowerCase();
@@ -51,7 +52,7 @@ export const ChartOfAccountsManager: React.FC = () => {
                     liveBal = totalSupplierDue > 0 ? totalSupplierDue : acc.currentBalance;
                 }
             } else if (acc.classification === 'Revenue') {
-                const isProjectRev = acc.code === '4060' || nameLower.includes('project');
+                const isProjectRev = acc.code === '4051' || acc.code === '4060' || nameLower.includes('project');
                 const matching = (transactions || [])
                     .filter(t => t.type === 'INCOME' && (
                         (t.category && nameLower.includes(t.category.toLowerCase())) ||
@@ -66,28 +67,35 @@ export const ChartOfAccountsManager: React.FC = () => {
                     liveBal = Math.max(acc.currentBalance, matching);
                 } else if (acc.code === '4010') {
                     const otherRev = chartOfAccounts
-                        .filter(a => a.classification === 'Revenue' && a.code !== '4010' && a.code !== '4060')
+                        .filter(a => a.classification === 'Revenue' && a.code !== '4010' && a.code !== '4051' && a.code !== '4060' && !a.name.toLowerCase().includes('project'))
                         .reduce((s, a) => s + (a.currentBalance || 0), 0);
                     liveBal = Math.max(0, totalTxIncome - otherRev);
                 }
             } else if (acc.classification === 'Expense') {
+                const isProjectExp = acc.code === '5100' || nameLower.includes('project');
                 const matching = (transactions || [])
                     .filter(t => t.type === 'EXPENSE' && (
                         (t.category && nameLower.includes(t.category.toLowerCase())) ||
-                        (t.accountHead && nameLower.includes(t.accountHead.toLowerCase()))
+                        (t.accountHead && nameLower.includes(t.accountHead.toLowerCase())) ||
+                        (isProjectExp && (t.category?.toLowerCase().includes('project') || t.refNo?.startsWith('PRJ-')))
                     ))
                     .reduce((s, t) => s + t.amount, 0);
 
-                if (matching > 0) {
-                    liveBal = Math.max(acc.currentBalance, matching);
+                if (isProjectExp) {
+                    liveBal = Math.max(acc.currentBalance, matching, totalProjectExpenses);
                 } else if (acc.code === '5010') {
                     const poExpenses = (transactions || [])
-                        .filter(t => t.type === 'EXPENSE' && (
+                        .filter(t => t.type === 'EXPENSE' && !t.refNo?.startsWith('PRJ-') && (
                             (t.category && (t.category.toLowerCase().includes('raw') || t.category.toLowerCase().includes('purchase') || t.category.toLowerCase().includes('po'))) ||
                             (t.description && (t.description.toLowerCase().includes('purchase') || t.description.toLowerCase().includes('po')))
                         ))
                         .reduce((s, t) => s + t.amount, 0);
-                    liveBal = Math.max(acc.currentBalance, poExpenses);
+                    const base5010 = (acc.currentBalance === totalProjectExpenses && totalProjectExpenses > 0)
+                        ? (acc.openingBalance || 0)
+                        : (acc.currentBalance > totalProjectExpenses ? acc.currentBalance - totalProjectExpenses : acc.currentBalance);
+                    liveBal = Math.max(base5010, poExpenses);
+                } else if (matching > 0) {
+                    liveBal = Math.max(acc.currentBalance, matching);
                 }
             }
 
@@ -374,30 +382,39 @@ export const ChartOfAccountsManager: React.FC = () => {
       </div>
 
       {/* Projects Integration Status Bar */}
-      <div className="bg-emerald-50/80 border border-emerald-200 p-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-2 text-emerald-900 font-bold">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>
-            Projects Dynamic Alignment Active: {(projects || []).length} Projects Synced • 
-            Revenue: {profile.currencySymbol}{(projects || []).reduce((s, p) => s + (p.totalSales || 0), 0).toLocaleString()} (Account #4060) | 
-            Expenses: {profile.currencySymbol}{(projects || []).reduce((s, p) => s + (p.totalExpenses || 0), 0).toLocaleString()}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (syncProjectsWithAccounting) {
-              const res = syncProjectsWithAccounting();
-              setSyncSuccessMsg(`Synced ${res.salesSynced} project sales & ${res.expensesSynced} expenses to Chart of Accounts (Tk ${res.totalAmount.toLocaleString()})`);
-              setTimeout(() => setSyncSuccessMsg(null), 4000);
-            }
-          }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
-        >
-          <Layers className="w-3.5 h-3.5" />
-          <span>Sync All Projects to COA</span>
-        </button>
-      </div>
+      {(() => {
+        const projectRevAcc = chartOfAccounts.find(a => a.classification === 'Revenue' && (a.code === '4051' || a.name.toLowerCase().includes('project') || a.code === '4060')) || { code: '4051', name: 'Project Sales Income' };
+        const projectExpAcc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5100' || a.name.toLowerCase().includes('project'))) || { code: '5100', name: 'Project Expense' };
+        const totalSales = (projects || []).reduce((s, p) => s + (p.totalSales || 0), 0);
+        const totalExpenses = (projects || []).reduce((s, p) => s + (p.totalExpenses || 0), 0);
+
+        return (
+          <div className="bg-emerald-50/80 border border-emerald-200 p-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 text-emerald-900 font-bold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                Projects Dynamic Alignment Active: {(projects || []).length} Projects Synced • 
+                Revenue: {profile.currencySymbol}{totalSales.toLocaleString()} ([{projectRevAcc.code}] {projectRevAcc.name}) | 
+                Expenses: {profile.currencySymbol}{totalExpenses.toLocaleString()} ([{projectExpAcc.code}] {projectExpAcc.name})
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (syncProjectsWithAccounting) {
+                  const res = syncProjectsWithAccounting();
+                  setSyncSuccessMsg(`Synced ${res.salesSynced} project sales & ${res.expensesSynced} expenses to Chart of Accounts (Tk ${res.totalAmount.toLocaleString()})`);
+                  setTimeout(() => setSyncSuccessMsg(null), 4000);
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Sync All Projects to COA</span>
+            </button>
+          </div>
+        );
+      })()}
 
       {syncSuccessMsg && (
         <div className="p-3 bg-emerald-100 border border-emerald-300 rounded-xl text-xs font-bold text-emerald-900 flex items-center justify-between animate-fade-in">

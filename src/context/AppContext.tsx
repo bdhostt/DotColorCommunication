@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import { CompanyProfile, ProductItem, Customer, Supplier, SalesInvoice, Quotation, PurchaseOrder, AccountingTransaction, StockMovement, Language, LocationType, AccountBalances, StaffMember, AuditLogEntry, ChartOfAccount, ExpenseHead, ProductCategory, UserRole, RolePermission, JournalEntry, Project, ProjectExpenseItem, ProjectSalesItem, PaymentMethodConfig, } from '../types';
 import { INITIAL_COMPANY_PROFILE, INITIAL_PRODUCTS, INITIAL_CUSTOMERS, INITIAL_SUPPLIERS, INITIAL_INVOICES, INITIAL_PURCHASE_ORDERS, INITIAL_TRANSACTIONS, INITIAL_QUOTATIONS, INITIAL_STOCK_MOVEMENTS, INITIAL_STAFF_MEMBERS, INITIAL_AUDIT_LOGS, } from '../data/initialData';
 import { INITIAL_CHART_OF_ACCOUNTS, INITIAL_EXPENSE_HEADS, INITIAL_PRODUCT_CATEGORIES, INITIAL_USER_ROLES, INITIAL_JOURNAL_ENTRIES, INITIAL_PROJECTS, ALL_SYSTEM_PERMISSIONS, INITIAL_PAYMENT_METHODS, } from '../data/accountingAndConfigData';
@@ -445,6 +445,88 @@ export const AppProvider: React.FC<{
         window.addEventListener('storage', handleStorageChange);
         return () => window.removeEventListener('storage', handleStorageChange);
     }, []);
+
+    // Automatic real-time dynamic reconciliation between Projects and Chart of Accounts
+    const hasAutoAlignedProjectsRef = useRef(false);
+    useEffect(() => {
+        if (hasAutoAlignedProjectsRef.current) return;
+        if (!projects || projects.length === 0 || !chartOfAccounts || chartOfAccounts.length === 0) return;
+
+        const revAcc = chartOfAccounts.find(a => a.classification === 'Revenue' && (a.code === '4051' || a.name.toLowerCase().includes('project') || a.code === '4060'));
+        const expAcc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5100' || a.name.toLowerCase().includes('project')));
+        const cogsAcc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5010' || a.name.toLowerCase().includes('raw') || a.name.toLowerCase().includes('cost')));
+
+        const totalPrjSales = projects.reduce((s, p) => s + (p.totalSales || 0), 0);
+        const totalPrjExpenses = projects.reduce((s, p) => s + (p.totalExpenses || 0), 0);
+
+        let coaNeedsUpdate = false;
+        const updatedCOA = chartOfAccounts.map(acc => {
+            // 1. Dedicated Project Expense Account (5100)
+            if (expAcc && acc.id === expAcc.id) {
+                if (acc.currentBalance < totalPrjExpenses) {
+                    coaNeedsUpdate = true;
+                    return { ...acc, currentBalance: totalPrjExpenses };
+                }
+            }
+            // 2. Cost of Goods Sold Account (5010) - recover if it mistakenly absorbed project expenses
+            if (cogsAcc && acc.id === cogsAcc.id) {
+                if (totalPrjExpenses > 0 && expAcc && acc.currentBalance >= totalPrjExpenses && expAcc.currentBalance < totalPrjExpenses) {
+                    coaNeedsUpdate = true;
+                    const correctedBal = Math.max(acc.openingBalance || 0, acc.currentBalance - totalPrjExpenses);
+                    return { ...acc, currentBalance: correctedBal };
+                }
+            }
+            // 3. Dedicated Project Revenue Account (4051)
+            if (revAcc && acc.id === revAcc.id) {
+                if (acc.currentBalance < totalPrjSales) {
+                    coaNeedsUpdate = true;
+                    return { ...acc, currentBalance: totalPrjSales };
+                }
+            }
+            return acc;
+        });
+
+        if (coaNeedsUpdate) {
+            setChartOfAccounts(updatedCOA);
+        }
+
+        // Repair project expense journal vouchers pointing to 5010 instead of 5100
+        if (expAcc) {
+            let journalsUpdated = false;
+            const updatedJournals = journalEntries.map(j => {
+                if (j.source === 'PROJECT_EXPENSE' && j.debitAccountId !== expAcc.id) {
+                    journalsUpdated = true;
+                    return { ...j, debitAccountId: expAcc.id, debitAccountName: expAcc.name };
+                }
+                if (j.source === 'PROJECT_SALES' && revAcc && j.creditAccountId !== revAcc.id) {
+                    journalsUpdated = true;
+                    return { ...j, creditAccountId: revAcc.id, creditAccountName: revAcc.name };
+                }
+                return j;
+            });
+            if (journalsUpdated) {
+                setJournalEntries(updatedJournals);
+            }
+
+            let txsUpdated = false;
+            const updatedTxs = transactions.map(t => {
+                if (t.type === 'EXPENSE' && t.refNo && projects.some(p => p.code === t.refNo) && t.accountHead !== expAcc.name) {
+                    txsUpdated = true;
+                    return { ...t, accountHead: expAcc.name };
+                }
+                if (t.type === 'INCOME' && revAcc && (t.category?.toLowerCase().includes('project') || (t.refNo && projects.some(p => p.code === t.refNo))) && t.accountHead !== revAcc.name) {
+                    txsUpdated = true;
+                    return { ...t, accountHead: revAcc.name };
+                }
+                return t;
+            });
+            if (txsUpdated) {
+                setTransactions(updatedTxs);
+            }
+        }
+
+        hasAutoAlignedProjectsRef.current = true;
+    }, [projects, chartOfAccounts]);
     const login = (staffId: string, passcode: string): {
         success: boolean;
         message: string;
@@ -2096,38 +2178,58 @@ export const AppProvider: React.FC<{
         return chartOfAccounts.find(a => a.classification === 'Asset' && (a.code === '1010' || a.name.toLowerCase().includes('cash'))) || chartOfAccounts[0];
     };
 
+    const resolveProjectExpenseAccount = () => {
+        return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5100' || a.name.toLowerCase().includes('project'))) ||
+               chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5010' || a.name.toLowerCase().includes('raw') || a.name.toLowerCase().includes('cost'))) ||
+               chartOfAccounts.find(a => a.classification === 'Expense') ||
+               chartOfAccounts[0];
+    };
+
     const resolveExpenseAccount = (categoryName: string, note?: string) => {
         const query = `${categoryName || ''} ${note || ''}`.toLowerCase();
+        
+        // 1. Check if specific sub-expense heads exist in chartOfAccounts
         if (query.includes('conveyance') || query.includes('transport') || query.includes('fuel') || query.includes('truck') || query.includes('courier') || query.includes('delivery')) {
-            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5080' || a.name.toLowerCase().includes('conveyance'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5080' || a.name.toLowerCase().includes('conveyance')));
+            if (acc) return acc;
         }
         if (query.includes('labor') || query.includes('labour') || query.includes('wage') || query.includes('worker') || query.includes('technician') || query.includes('installation') || query.includes('setup') || query.includes('amin vai') || query.includes('fabrication')) {
-            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5070' || a.name.toLowerCase().includes('wages') || a.name.toLowerCase().includes('salaries'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5070' || a.name.toLowerCase().includes('wages') || a.name.toLowerCase().includes('salaries')));
+            if (acc) return acc;
         }
         if (query.includes('entertainment') || query.includes('refreshment') || query.includes('tea') || query.includes('snack') || query.includes('food') || query.includes('lunch') || query.includes('hospitality') || query.includes('hotel')) {
-            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5090' || a.name.toLowerCase().includes('hospitality'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5090' || a.name.toLowerCase().includes('hospitality') || a.name.toLowerCase().includes('refreshment')));
+            if (acc) return acc;
         }
         if (query.includes('electricity') || query.includes('generator') || query.includes('diesel') || query.includes('power')) {
-            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5040' || a.name.toLowerCase().includes('electricity'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5040' || a.name.toLowerCase().includes('electricity')));
+            if (acc) return acc;
         }
         if (query.includes('rent') || query.includes('lease') || query.includes('facility')) {
-            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5050' || a.name.toLowerCase().includes('rent'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5050' || a.name.toLowerCase().includes('rent')));
+            if (acc) return acc;
         }
         if (query.includes('machine') || query.includes('servicing') || query.includes('equipment') || query.includes('crane') || query.includes('printer head')) {
-            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5030' || a.name.toLowerCase().includes('servicing'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5030' || a.name.toLowerCase().includes('servicing')));
+            if (acc) return acc;
         }
         if (query.includes('permit') || query.includes('tax') || query.includes('official fee') || query.includes('license')) {
-            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5120' || a.name.toLowerCase().includes('tax') || a.name.toLowerCase().includes('permit'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+            const acc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5120' || a.name.toLowerCase().includes('tax') || a.name.toLowerCase().includes('permit')));
+            if (acc) return acc;
         }
-        if (query.includes('marketing') || query.includes('ad') || query.includes('promotion') || query.includes('branding')) {
-            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5100' || a.name.toLowerCase().includes('marketing'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+
+        // 2. Dedicated Project Expense Head (5100 Project Expense)
+        const projExpAcc = resolveProjectExpenseAccount();
+        if (projExpAcc) {
+            return projExpAcc;
         }
+
         const cogsAcc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5010' || a.name.toLowerCase().includes('raw') || a.name.toLowerCase().includes('cost')));
         return cogsAcc || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
     };
 
     const resolveProjectRevenueAccount = () => {
-        return chartOfAccounts.find(a => a.classification === 'Revenue' && (a.code === '4060' || a.name.toLowerCase().includes('project'))) ||
+        return chartOfAccounts.find(a => a.classification === 'Revenue' && (a.code === '4051' || a.name.toLowerCase().includes('project') || a.code === '4060')) ||
                chartOfAccounts.find(a => a.classification === 'Revenue' && a.code === '4020') ||
                chartOfAccounts.find(a => a.classification === 'Revenue') ||
                chartOfAccounts[0];
@@ -2144,6 +2246,7 @@ export const AppProvider: React.FC<{
     const addProject = (proj: Omit<Project, 'id' | 'code' | 'totalSales' | 'totalExpenses' | 'netProfit' | 'profitMargin'>): Project => {
         const newId = `prj-${Date.now()}`;
         const code = `PRJ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        const revAcc = resolveProjectRevenueAccount();
         const baseProject: Project = {
             ...proj,
             id: newId,
@@ -2154,8 +2257,8 @@ export const AppProvider: React.FC<{
             totalExpenses: 0,
             netProfit: 0,
             profitMargin: 0,
-            chartOfAccountId: proj.chartOfAccountId || 'coa-4060',
-            projectAccountCode: proj.projectAccountCode || '4060',
+            chartOfAccountId: proj.chartOfAccountId || revAcc?.id || 'coa-4051',
+            projectAccountCode: proj.projectAccountCode || revAcc?.code || '4051',
         };
         const calculated = recalculateProject(baseProject);
         setProjects((prev) => [calculated, ...prev]);
@@ -2167,7 +2270,7 @@ export const AppProvider: React.FC<{
             actionType: 'PROJECT_CREATED',
             entityType: 'Projects',
             refNo: code,
-            details: `Created new project: ${calculated.name} for ${calculated.clientName} (COA Linked: 4060 Project Revenue)`,
+            details: `Created new project: ${calculated.name} for ${calculated.clientName} (COA Linked: [${revAcc?.code || '4051'}] ${revAcc?.name || 'Project Sales Income'})`,
             detailsBn: undefined,
             severity: 'info',
         });
@@ -2450,10 +2553,38 @@ export const AppProvider: React.FC<{
         let totalAmount = 0;
 
         const revAcc = resolveProjectRevenueAccount();
+        const expAcc = resolveProjectExpenseAccount();
         const cashAcc = resolvePaymentAssetAccount('Cash');
+        const cogsAcc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5010' || a.name.toLowerCase().includes('raw') || a.name.toLowerCase().includes('cost')));
+
+        const totalPrjSales = projects.reduce((s, p) => s + (p.totalSales || 0), 0);
+        const totalPrjExpenses = projects.reduce((s, p) => s + (p.totalExpenses || 0), 0);
+
         const newJournals: JournalEntry[] = [];
         const newTxs: AccountingTransaction[] = [];
 
+        // 1. Re-route any existing project expense journals/transactions pointing to wrong accounts (like 5010)
+        setJournalEntries(prev => prev.map(j => {
+            if (j.source === 'PROJECT_EXPENSE' && expAcc && j.debitAccountId !== expAcc.id) {
+                return { ...j, debitAccountId: expAcc.id, debitAccountName: expAcc.name };
+            }
+            if (j.source === 'PROJECT_SALES' && revAcc && j.creditAccountId !== revAcc.id) {
+                return { ...j, creditAccountId: revAcc.id, creditAccountName: revAcc.name };
+            }
+            return j;
+        }));
+
+        setTransactions(prev => prev.map(t => {
+            if (t.type === 'EXPENSE' && t.refNo && projects.some(p => p.code === t.refNo) && expAcc && t.accountHead !== expAcc.name) {
+                return { ...t, accountHead: expAcc.name };
+            }
+            if (t.type === 'INCOME' && revAcc && (t.category?.toLowerCase().includes('project') || (t.refNo && projects.some(p => p.code === t.refNo))) && t.accountHead !== revAcc.name) {
+                return { ...t, accountHead: revAcc.name };
+            }
+            return t;
+        }));
+
+        // 2. Identify and record any missing project sales and expense items
         projects.forEach(project => {
             (project.salesItems || []).forEach((sale) => {
                 const ref = sale.invoiceNo || project.code;
@@ -2514,7 +2645,7 @@ export const AppProvider: React.FC<{
             (project.expenseItems || []).forEach((exp, eidx) => {
                 const expAmt = Number(exp.amount) || 0;
                 if (expAmt <= 0) return;
-                const expAcc = resolveExpenseAccount(exp.category, exp.note);
+                const specificExpAcc = resolveExpenseAccount(exp.category, exp.note);
 
                 const alreadyHasJournal = journalEntries.some(j => j.refNo === project.code && j.narration.includes(exp.category) && j.amount === expAmt);
                 const alreadyHasTx = transactions.some(t => t.refNo === project.code && t.category === exp.category && t.amount === expAmt);
@@ -2525,8 +2656,8 @@ export const AppProvider: React.FC<{
                         entryNo: `JNL-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}${expensesSynced}`,
                         date: exp.date || new Date().toISOString().slice(0, 10),
                         refNo: project.code,
-                        debitAccountId: expAcc.id,
-                        debitAccountName: expAcc.name,
+                        debitAccountId: specificExpAcc.id,
+                        debitAccountName: specificExpAcc.name,
                         creditAccountId: cashAcc.id,
                         creditAccountName: cashAcc.name,
                         amount: expAmt,
@@ -2543,7 +2674,7 @@ export const AppProvider: React.FC<{
                         type: 'EXPENSE',
                         category: exp.category,
                         account: 'Cash in Hand',
-                        accountHead: expAcc.name,
+                        accountHead: specificExpAcc.name,
                         paymentMethod: 'Cash',
                         paymentAccount: 'Cash Counter / In-Hand',
                         refNo: project.code,
@@ -2567,35 +2698,40 @@ export const AppProvider: React.FC<{
             setTransactions(prev => ensureUniqueTransactions([...newTxs, ...prev]));
         }
 
-        if (newJournals.length > 0) {
-            setChartOfAccounts(prev => prev.map(acc => {
-                let balChange = 0;
-                newJournals.forEach(j => {
-                    if (acc.id === j.debitAccountId) {
-                        balChange += (acc.normalBalance === 'Debit' ? j.amount : -j.amount);
-                    }
-                    if (acc.id === j.creditAccountId) {
-                        balChange += (acc.normalBalance === 'Credit' ? j.amount : -j.amount);
-                    }
-                });
-                return balChange !== 0 ? { ...acc, currentBalance: acc.currentBalance + balChange } : acc;
-            }));
+        // 3. Align and ensure proper Chart of Accounts balances
+        setChartOfAccounts(prev => prev.map(acc => {
+            // Dedicated Project Expense (5100)
+            if (expAcc && acc.id === expAcc.id) {
+                return { ...acc, currentBalance: Math.max(acc.currentBalance, totalPrjExpenses) };
+            }
+            // 5010 COGS: reclaim incorrectly attributed project expenses
+            if (cogsAcc && acc.id === cogsAcc.id) {
+                if (totalPrjExpenses > 0 && acc.currentBalance >= totalPrjExpenses && (expAcc ? expAcc.currentBalance < totalPrjExpenses : true)) {
+                    const corrected = Math.max(acc.openingBalance || 0, acc.currentBalance - totalPrjExpenses);
+                    return { ...acc, currentBalance: corrected };
+                }
+            }
+            // Dedicated Project Revenue (4051)
+            if (revAcc && acc.id === revAcc.id) {
+                return { ...acc, currentBalance: Math.max(acc.currentBalance, totalPrjSales) };
+            }
+            return acc;
+        }));
 
-            addAuditLog({
-                staffId: activeStaff?.id || 'sys',
-                staffName: activeStaff?.name || 'System',
-                staffRole: activeStaff?.role || 'Admin',
-                location: 'Office',
-                actionType: 'JOURNAL_ENTRY_CREATED',
-                entityType: 'Accounting',
-                details: `Auto-synchronized ${salesSynced} sales and ${expensesSynced} expense items across all projects to Chart of Accounts (Total Tk ${totalAmount.toLocaleString()})`,
-                detailsBn: undefined,
-                amount: totalAmount,
-                severity: 'info',
-            });
-        }
+        addAuditLog({
+            staffId: activeStaff?.id || 'sys',
+            staffName: activeStaff?.name || 'System',
+            staffRole: activeStaff?.role || 'Admin',
+            location: 'Office',
+            actionType: 'COA_UPDATED',
+            entityType: 'Accounting',
+            details: `Dynamic sync: Revenue [${revAcc.code}] ${revAcc.name} (Tk ${totalPrjSales.toLocaleString()}), Expense [${expAcc.code}] ${expAcc.name} (Tk ${totalPrjExpenses.toLocaleString()})`,
+            detailsBn: undefined,
+            amount: totalPrjSales + totalPrjExpenses,
+            severity: 'info',
+        });
 
-        return { salesSynced, expensesSynced, totalAmount };
+        return { salesSynced, expensesSynced, totalAmount: totalPrjSales + totalPrjExpenses };
     };
     // Module Data Clean & Purge
     const cleanModuleData = (moduleKey: 'SALES' | 'QUOTATIONS' | 'PURCHASES' | 'INVENTORY_STOCK' | 'CUSTOM_PRODUCTS' | 'TRANSACTIONS' | 'JOURNALS' | 'AUDIT_LOGS' | 'PROJECTS' | 'ALL' | 'WIPE_ALL_EXCEPT_PRODUCTS') => {
