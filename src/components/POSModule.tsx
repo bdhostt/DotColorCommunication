@@ -452,49 +452,72 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
             setIsProcessingCheckout(false);
         }
     };
-    // Dynamic, unified POS category tabs derived from product inventory and categories
+    // Dynamic, unified POS category tabs derived from product inventory and categories (Only show categories with products)
     const categories = useMemo(() => {
         const catMap = new Map<string, { id: string; labelEn: string; count: number }>();
         const nonRawProducts = products.filter(p => !p.isRawMaterial);
 
-        // Core business services
-        const defaultCats = [
-            { id: 'DIGITAL PRINTING', labelEn: 'Digital Printing' },
-            { id: 'SIGN MAKING & LETTERING', labelEn: 'Signage & Letters' },
-            { id: 'BRANDED PROMOTIONAL GIFTS', labelEn: 'Branded Gifts' },
-            { id: 'PRINTING & PACKAGING', labelEn: 'Printing & Packaging' },
-            { id: 'GRAPHIC DESIGN', labelEn: 'Graphic Design' },
-            { id: 'EXHIBITION', labelEn: 'Exhibition' },
-            { id: 'EVENTS MANAGEMENT', labelEn: 'Events' },
-        ];
+        // Friendly label mapping for standard core services
+        const friendlyLabels: Record<string, string> = {
+            'DIGITAL PRINTING': 'Digital Printing',
+            'SIGN MAKING & LETTERING': 'Signage & Letters',
+            'BRANDED PROMOTIONAL GIFTS': 'Branded Gifts',
+            'PRINTING & PACKAGING': 'Printing & Packaging',
+            'GRAPHIC DESIGN': 'Graphic Design',
+            'EXHIBITION': 'Exhibition',
+            'EVENTS MANAGEMENT': 'Events',
+        };
 
-        defaultCats.forEach(c => {
-            const count = products.filter(p => matchProductCategory(p, c.id)).length;
-            catMap.set(c.id, { id: c.id, labelEn: c.labelEn, count });
+        // 1. Check standard service categories - only include if count > 0
+        Object.entries(friendlyLabels).forEach(([id, labelEn]) => {
+            const count = products.filter(p => matchProductCategory(p, id)).length;
+            if (count > 0) {
+                catMap.set(id, { id, labelEn, count });
+            }
         });
 
-        // Configured categories from inventory module
+        // 2. Configured categories from inventory module - only include if count > 0
         (productCategories || []).forEach(pc => {
             if (!catMap.has(pc.name) && !pc.isRawMaterialGroup) {
                 const count = products.filter(p => matchProductCategory(p, pc.name)).length;
-                catMap.set(pc.name, { id: pc.name, labelEn: pc.name, count });
+                if (count > 0) {
+                    catMap.set(pc.name, { id: pc.name, labelEn: pc.name, count });
+                }
             }
         });
 
-        // Any unique custom categories present in products
+        // 3. Any custom categories on products (e.g. from Excel/CSV import) - only include if count > 0
         products.forEach(p => {
             if (p.category && !p.isRawMaterial && !catMap.has(p.category)) {
                 const count = products.filter(prod => matchProductCategory(prod, p.category)).length;
-                catMap.set(p.category, { id: p.category, labelEn: p.category, count });
+                if (count > 0) {
+                    const label = friendlyLabels[p.category.toUpperCase()] || p.category;
+                    catMap.set(p.category, { id: p.category, labelEn: label, count });
+                }
             }
         });
 
-        return [
+        const activeList = Array.from(catMap.values()).filter(c => c.count > 0);
+
+        const list = [
             { id: 'ALL', labelEn: 'All Services', count: nonRawProducts.length },
-            ...Array.from(catMap.values()),
-            { id: 'RAW MATERIAL', labelEn: 'Raw Media & Stocks', count: products.filter(p => p.isRawMaterial).length },
+            ...activeList,
         ];
+
+        const rawCount = products.filter(p => p.isRawMaterial).length;
+        if (rawCount > 0) {
+            list.push({ id: 'RAW MATERIAL', labelEn: 'Raw Media & Stocks', count: rawCount });
+        }
+
+        return list;
     }, [products, productCategories]);
+
+    // If active category becomes empty or is deleted, fallback gracefully to ALL
+    useEffect(() => {
+        if (selectedCategory !== 'ALL' && !categories.some(c => c.id === selectedCategory)) {
+            setSelectedCategory('ALL');
+        }
+    }, [categories, selectedCategory]);
 
     return (<div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5">
       {/* POS Sales Overview with Daily Revenue Trends Bar Chart */}
