@@ -168,6 +168,42 @@ const ensureUniqueTransactions = (list: AccountingTransaction[]): AccountingTran
         return tx;
     });
 };
+export const sanitizeUserRoles = (list: UserRole[]): UserRole[] => {
+    if (!Array.isArray(list) || list.length === 0) {
+        return INITIAL_USER_ROLES;
+    }
+
+    const isSuper = (r: UserRole) =>
+        r.id === 'role-superadmin' ||
+        (Boolean(r.name) && (r.name.trim().toLowerCase() === 'super admin' || r.name.trim().toLowerCase() === 'superadmin'));
+
+    // Find candidate super admin to preserve fields if present, preferring the root one
+    const existingSuper = list.find(r => r.id === 'role-superadmin' && r.description?.trim()) ||
+                          list.find(r => r.id === 'role-superadmin') ||
+                          list.find(isSuper);
+
+    const canonicalSuperAdmin: UserRole = {
+        id: 'role-superadmin',
+        name: 'Super Admin',
+        nameBn: existingSuper?.nameBn || '',
+        description: existingSuper?.description?.trim() || 'Full root administrative access to all modules, financial ledgers, system settings and user controls.',
+        isSystem: true,
+        permissions: ALL_SYSTEM_PERMISSIONS.map((p) => p.code),
+    };
+
+    const seenIds = new Set<string>(['role-superadmin']);
+    const nonSuperRoles: UserRole[] = [];
+
+    for (const role of list) {
+        if (isSuper(role)) continue;
+        if (!seenIds.has(role.id)) {
+            seenIds.add(role.id);
+            nonSuperRoles.push(role);
+        }
+    }
+
+    return [canonicalSuperAdmin, ...nonSuperRoles];
+};
 export const AppProvider: React.FC<{
     children: React.ReactNode;
 }> = ({ children }) => {
@@ -290,7 +326,8 @@ export const AppProvider: React.FC<{
         return safeGetLocalStorage<StaffMember[]>(`${STORAGE_KEY}_STAFF`, INITIAL_STAFF_MEMBERS);
     });
     const [userRoles, setUserRoles] = useState<UserRole[]>(() => {
-        return safeGetLocalStorage<UserRole[]>(`${STORAGE_KEY}_ROLES`, INITIAL_USER_ROLES);
+        const list = safeGetLocalStorage<UserRole[]>(`${STORAGE_KEY}_ROLES`, INITIAL_USER_ROLES);
+        return sanitizeUserRoles(list);
     });
     const [chartOfAccounts, setChartOfAccounts] = useState<ChartOfAccount[]>(() => {
         return safeGetLocalStorage<ChartOfAccount[]>(`${STORAGE_KEY}_COA`, INITIAL_CHART_OF_ACCOUNTS);
@@ -437,7 +474,7 @@ export const AppProvider: React.FC<{
                 else if (e.key === `${STORAGE_KEY}_ROLES`) {
                     const parsed = JSON.parse(e.newValue);
                     if (Array.isArray(parsed) && parsed.length > 0) {
-                        setUserRoles(parsed);
+                        setUserRoles(sanitizeUserRoles(parsed));
                     }
                 }
             }
@@ -1937,12 +1974,18 @@ export const AppProvider: React.FC<{
     };
     // Roles & Permissions (RBAC)
     const addUserRole = (role: Omit<UserRole, 'id'>): UserRole => {
+        const trimmedName = role.name.trim();
+        if (trimmedName.toLowerCase() === 'super admin' || trimmedName.toLowerCase() === 'superadmin') {
+            const rootSuper = userRoles.find((r) => r.id === 'role-superadmin') || userRoles[0];
+            return rootSuper;
+        }
         const newRole: UserRole = {
             ...role,
+            name: trimmedName,
             id: `role-${Date.now()}`,
             isSystem: false,
         };
-        setUserRoles((prev) => [...prev, newRole]);
+        setUserRoles((prev) => sanitizeUserRoles([...prev, newRole]));
         addAuditLog({
             staffId: activeStaff.id,
             staffName: activeStaff.name,
@@ -1954,18 +1997,39 @@ export const AppProvider: React.FC<{
             detailsBn: undefined,
             severity: 'info',
         });
+        isCloudLoadedRef.current = true;
+        setTimeout(() => {
+            syncWithCloud();
+        }, 100);
         return newRole;
     };
     const updateUserRole = (id: string, updates: Partial<UserRole>) => {
         const role = userRoles.find((r) => r.id === id);
-        if (role &&
-            (role.name === 'Super Admin' ||
-                role.name.toLowerCase() === 'superadmin' ||
-                role.id === 'role-superadmin')) {
-            // Super Admin permanently retains all permissions
+        if (!role) return;
+
+        if (role.id === 'role-superadmin' ||
+            role.name.toLowerCase() === 'super admin' ||
+            role.name.toLowerCase() === 'superadmin') {
+            // Super Admin permanently retains all permissions and cannot be modified
             return;
         }
+
+        if (updates.name && (updates.name.trim().toLowerCase() === 'super admin' || updates.name.trim().toLowerCase() === 'superadmin')) {
+            alert('Cannot rename role to "Super Admin". Super Admin is unique.');
+            return;
+        }
+
         setUserRoles((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
+        // If role name changed, keep assigned staff members' role in sync
+        if (updates.name && updates.name !== role.name) {
+            setStaffMembers((prevStaff) => {
+                const nextStaff = prevStaff.map((s) => (s.customRoleId === id || s.role === role.name ? { ...s, role: updates.name as StaffRole } : s));
+                try {
+                    localStorage.setItem(`${STORAGE_KEY}_STAFF`, JSON.stringify(nextStaff));
+                } catch {}
+                return nextStaff;
+            });
+        }
         addAuditLog({
             staffId: activeStaff.id,
             staffName: activeStaff.name,
@@ -1973,10 +2037,14 @@ export const AppProvider: React.FC<{
             location: 'All',
             actionType: 'ROLE_UPDATED',
             entityType: 'Configuration',
-            details: `Updated role permissions for role ID ${id}`,
+            details: `Updated role permissions for role: ${updates.name || role.name}`,
             detailsBn: undefined,
             severity: 'info',
         });
+        isCloudLoadedRef.current = true;
+        setTimeout(() => {
+            syncWithCloud();
+        }, 100);
     };
     const deleteUserRole = (id: string): {
         success: boolean;
@@ -1985,18 +2053,63 @@ export const AppProvider: React.FC<{
         const role = userRoles.find((r) => r.id === id);
         if (!role)
             return { success: false, message: 'Role not found' };
-        if (role.isSystem ||
-            role.name === 'Super Admin' ||
-            role.name.toLowerCase() === 'superadmin' ||
-            role.id === 'role-superadmin' ||
-            role.name === 'Managing Director') {
-            return { success: false, message: 'Super Admin and core system root roles cannot be deleted.' };
+        if (role.id === 'role-superadmin' ||
+            role.name.toLowerCase() === 'super admin' ||
+            role.name.toLowerCase() === 'superadmin') {
+            return { success: false, message: 'Super Admin is the permanent system root role and cannot be deleted.' };
         }
-        const isAssigned = staffMembers.some((s) => s.customRoleId === id || s.role === role.name);
-        if (isAssigned) {
-            return { success: false, message: 'Cannot delete role: active staff members are currently assigned to this role.' };
-        }
+
+        const fallbackRole = userRoles.find((r) => r.id !== id && r.id === 'role-superadmin') || userRoles.find((r) => r.id !== id);
+        const assignedStaff = staffMembers.filter((s) => s.customRoleId === id || s.role === role.name);
+
         setUserRoles((prev) => prev.filter((r) => r.id !== id));
+
+        if (assignedStaff.length > 0 && fallbackRole) {
+            setStaffMembers((prev) => {
+                const updated = prev.map((staff) => {
+                    if (staff.customRoleId === id || staff.role === role.name) {
+                        return {
+                            ...staff,
+                            customRoleId: fallbackRole.id,
+                            role: fallbackRole.name as StaffRole,
+                            roleBn: fallbackRole.nameBn || '',
+                        };
+                    }
+                    return staff;
+                });
+                try {
+                    localStorage.setItem(`${STORAGE_KEY}_STAFF`, JSON.stringify(updated));
+                } catch {}
+                return updated;
+            });
+            setActiveStaff((prev) => {
+                if (prev && (prev.customRoleId === id || prev.role === role.name)) {
+                    return {
+                        ...prev,
+                        customRoleId: fallbackRole.id,
+                        role: fallbackRole.name as StaffRole,
+                        roleBn: fallbackRole.nameBn || '',
+                    };
+                }
+                return prev;
+            });
+        }
+
+        addAuditLog({
+            staffId: activeStaff.id,
+            staffName: activeStaff.name,
+            staffRole: activeStaff.role,
+            location: 'All',
+            actionType: 'ROLE_UPDATED',
+            entityType: 'Configuration',
+            details: `Deleted role: ${role.name}${assignedStaff.length > 0 ? ` (Reassigned ${assignedStaff.length} staff to ${fallbackRole?.name})` : ''}`,
+            detailsBn: undefined,
+            severity: 'warning',
+        });
+        isCloudLoadedRef.current = true;
+        setTimeout(() => {
+            syncWithCloud();
+        }, 100);
         return { success: true };
     };
     const checkPermission = (permissionCode: string): boolean => {
@@ -2004,10 +2117,7 @@ export const AppProvider: React.FC<{
             return false;
         const roleLower = (activeStaff.role || '').toLowerCase();
         const nameLower = (activeStaff.name || '').toLowerCase();
-        if (roleLower === 'managing director' ||
-            roleLower === 'super admin' ||
-            roleLower.includes('admin') ||
-            roleLower.includes('director') ||
+        if (roleLower === 'super admin' ||
             nameLower === 'super admin' ||
             nameLower.includes('super admin')) {
             return true;
@@ -3140,17 +3250,18 @@ export const AppProvider: React.FC<{
                 });
             }
             if (data.userRoles) {
-                if (isCloudSync && Array.isArray(data.userRoles)) {
+                const incomingSanitized = sanitizeUserRoles(data.userRoles);
+                if (isCloudSync && Array.isArray(incomingSanitized)) {
                     setUserRoles((prev) => {
                         const map = new Map<string, UserRole>();
-                        data.userRoles.forEach((r: UserRole) => map.set(r.id, r));
+                        incomingSanitized.forEach((r: UserRole) => map.set(r.id, r));
                         prev.forEach((r) => { if (!map.has(r.id))
                             map.set(r.id, r); });
-                        return Array.from(map.values());
+                        return sanitizeUserRoles(Array.from(map.values()));
                     });
                 }
                 else {
-                    setUserRoles(data.userRoles);
+                    setUserRoles(incomingSanitized);
                 }
             }
             if (data.chartOfAccounts && Array.isArray(data.chartOfAccounts) && data.chartOfAccounts.length > 0)

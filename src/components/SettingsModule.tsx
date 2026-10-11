@@ -436,11 +436,18 @@ export const SettingsModule: React.FC = () => {
     };
     const handleRoleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!roleFormData.name.trim())
+        const trimmedName = roleFormData.name.trim();
+        if (!trimmedName)
             return;
+
+        if (trimmedName.toLowerCase() === 'super admin' || trimmedName.toLowerCase() === 'superadmin') {
+            alert('Cannot create or rename role as "Super Admin". Super Admin is a unique permanent root role.');
+            return;
+        }
+
         if (editingRole) {
             updateUserRole(editingRole.id, {
-                name: roleFormData.name.trim(),
+                name: trimmedName,
                 nameBn: roleFormData.nameBn.trim(),
                 description: roleFormData.description.trim(),
                 permissions: roleFormData.permissions,
@@ -448,7 +455,7 @@ export const SettingsModule: React.FC = () => {
         }
         else {
             addUserRole({
-                name: roleFormData.name.trim(),
+                name: trimmedName,
                 nameBn: roleFormData.nameBn.trim(),
                 description: roleFormData.description.trim(),
                 permissions: roleFormData.permissions,
@@ -786,13 +793,20 @@ export const SettingsModule: React.FC = () => {
                             <button type="button" onClick={() => handleOpenEditRole(role)} className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer" title={'Edit Permissions'}>
                               <Edit2 className="w-4 h-4"/>
                             </button>
-                            {!role.isSystem && (<button type="button" onClick={() => {
-                                if (confirm(`Delete role '${role.name}'?`)) {
-                                    deleteUserRole(role.id);
+                            <button type="button" onClick={() => {
+                                const assignedCount = staffMembers.filter((s) => s.customRoleId === role.id || s.role === role.name).length;
+                                const promptMsg = assignedCount > 0
+                                  ? `Delete role '${role.name}'? ${assignedCount} assigned user(s) will be automatically reassigned to default role.`
+                                  : `Delete role '${role.name}'?`;
+                                if (confirm(promptMsg)) {
+                                    const res = deleteUserRole(role.id);
+                                    if (res && !res.success && res.message) {
+                                        alert(res.message);
+                                    }
                                 }
                             }} className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer" title={'Delete Role'}>
                                 <Trash2 className="w-4 h-4"/>
-                              </button>)}
+                              </button>
                           </>)}
                       </div>
                     </div>
