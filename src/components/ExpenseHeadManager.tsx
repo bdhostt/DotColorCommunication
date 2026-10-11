@@ -22,16 +22,65 @@ export const ExpenseHeadManager: React.FC = () => {
         description: '',
         isActive: true,
     });
-    const categories = [
-        'Factory Direct',
-        'Factory Indirect',
-        'Admin & Office',
-        'Marketing & Promotional',
-        'Sales & Distribution',
-        'Logistics & Fuel',
-        'Staff Welfare & Honorarium',
-        'Financial & Bank Charges',
-    ];
+
+    // Dynamic, unified expense categories matching all system and business heads
+    const categories = useMemo(() => {
+        const set = new Set<string>();
+        [
+            'Projects',
+            'Facility',
+            'Utilities',
+            'Payroll',
+            'Maintenance',
+            'Logistics',
+            'Marketing',
+            'Admin',
+            'Technology',
+            'Legal',
+            'Operations',
+        ].forEach((c) => set.add(c));
+        (expenseHeads || []).forEach((h) => {
+            if (h.category) set.add(h.category);
+        });
+        return Array.from(set);
+    }, [expenseHeads]);
+
+    const getHeadBudget = (h: ExpenseHead) => Number(h.monthlyBudgetLimit ?? h.budgetMonthly ?? 0);
+
+    const getLinkedCOA = (head: ExpenseHead) => {
+        if (head.linkedAccountId) {
+            const exact = chartOfAccounts.find(a => 
+                a.id === head.linkedAccountId || 
+                a.code === head.linkedAccountId || 
+                a.code === head.linkedAccountId.replace('coa-', '')
+            );
+            if (exact) return exact;
+        }
+        // Intelligent dynamic matching by Head Code or Category
+        if (head.code === 'EH-PRJ' || head.category?.toLowerCase() === 'projects' || head.name.toLowerCase().includes('project')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5100' || a.name.toLowerCase().includes('project')));
+        }
+        if (head.code === 'EH-RENT' || head.category?.toLowerCase() === 'facility' || head.name.toLowerCase().includes('rent')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5050' || a.name.toLowerCase().includes('rent')));
+        }
+        if (head.code === 'EH-ELEC' || head.category?.toLowerCase() === 'utilities' || head.name.toLowerCase().includes('electricity')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5040' || a.name.toLowerCase().includes('electricity')));
+        }
+        if (head.code === 'EH-MAINT' || head.category?.toLowerCase() === 'maintenance' || head.name.toLowerCase().includes('servicing')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5030' || a.name.toLowerCase().includes('servicing')));
+        }
+        if (head.code === 'EH-WAGE' || head.category?.toLowerCase() === 'payroll' || head.name.toLowerCase().includes('wage') || head.name.toLowerCase().includes('salary')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5070' || a.name.toLowerCase().includes('wages') || a.name.toLowerCase().includes('salaries')));
+        }
+        if (head.code === 'EH-TRANS' || head.category?.toLowerCase() === 'logistics' || head.name.toLowerCase().includes('conveyance')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5080' || a.name.toLowerCase().includes('conveyance')));
+        }
+        if (head.code === 'EH-CONS' || head.code === 'EH-PACK' || head.category?.toLowerCase() === 'operations') {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5010' || a.name.toLowerCase().includes('raw') || a.name.toLowerCase().includes('cost')));
+        }
+        return null;
+    };
+
     const filteredHeads = useMemo(() => {
         return expenseHeads.filter((head) => {
             if (filterCategory !== 'ALL' && head.category !== filterCategory) {
@@ -46,16 +95,26 @@ export const ExpenseHeadManager: React.FC = () => {
                 head.category.toLowerCase().includes(q));
         });
     }, [expenseHeads, filterCategory, searchQuery]);
+
     const totalMonthlyBudget = useMemo(() => {
-        return expenseHeads.reduce((sum, h) => sum + (h.monthlyBudgetLimit || 0), 0);
+        return expenseHeads.reduce((sum, h) => sum + getHeadBudget(h), 0);
     }, [expenseHeads]);
+
+    const actualLinkedCount = useMemo(() => {
+        return expenseHeads.filter((h) => getLinkedCOA(h) !== null).length;
+    }, [expenseHeads, chartOfAccounts]);
+
     const handleOpenAdd = () => {
-        const nextCode = `EXP-${Math.floor(100 + Math.random() * 900)}`;
+        const existingNums = expenseHeads
+            .map(h => parseInt(h.code.replace(/\D/g, ''), 10))
+            .filter(n => !isNaN(n));
+        const nextNum = existingNums.length > 0 ? Math.max(...existingNums) + 1 : expenseHeads.length + 1;
+        const nextCode = `EH-${nextNum.toString().padStart(2, '0')}`;
         setFormData({
             code: nextCode,
             name: '',
             nameBn: '',
-            category: 'Admin & Office',
+            category: 'Operations',
             monthlyBudgetLimit: 15000,
             linkedAccountId: chartOfAccounts.find((c) => c.classification === 'Expense')?.id || '',
             description: '',
@@ -65,14 +124,16 @@ export const ExpenseHeadManager: React.FC = () => {
         setShowAddModal(true);
         setDeleteError(null);
     };
+
     const handleOpenEdit = (head: ExpenseHead) => {
+        const linkedAcc = getLinkedCOA(head);
         setFormData({
             code: head.code,
             name: head.name,
             nameBn: head.nameBn || '',
             category: head.category,
-            monthlyBudgetLimit: head.monthlyBudgetLimit || 0,
-            linkedAccountId: head.linkedAccountId || '',
+            monthlyBudgetLimit: getHeadBudget(head),
+            linkedAccountId: linkedAcc?.id || head.linkedAccountId || '',
             description: head.description || '',
             isActive: head.isActive,
         });
@@ -80,17 +141,20 @@ export const ExpenseHeadManager: React.FC = () => {
         setShowAddModal(true);
         setDeleteError(null);
     };
+
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name.trim() || !formData.code.trim())
             return;
+        const budget = Number(formData.monthlyBudgetLimit) || 0;
         if (editingHead) {
             updateExpenseHead(editingHead.id, {
                 code: formData.code.trim(),
                 name: formData.name.trim(),
                 nameBn: formData.nameBn.trim(),
                 category: formData.category,
-                monthlyBudgetLimit: Number(formData.monthlyBudgetLimit) || 0,
+                budgetMonthly: budget,
+                monthlyBudgetLimit: budget,
                 linkedAccountId: formData.linkedAccountId || undefined,
                 description: formData.description.trim(),
                 isActive: formData.isActive,
@@ -102,7 +166,8 @@ export const ExpenseHeadManager: React.FC = () => {
                 name: formData.name.trim(),
                 nameBn: formData.nameBn.trim(),
                 category: formData.category,
-                monthlyBudgetLimit: Number(formData.monthlyBudgetLimit) || 0,
+                budgetMonthly: budget,
+                monthlyBudgetLimit: budget,
                 linkedAccountId: formData.linkedAccountId || undefined,
                 description: formData.description.trim(),
                 isActive: formData.isActive,
@@ -161,7 +226,7 @@ export const ExpenseHeadManager: React.FC = () => {
           <div className="text-xl font-black text-blue-600 mt-1">
             {new Set(expenseHeads.map((h) => h.category)).size} <span className="text-xs font-normal text-slate-400"></span>
           </div>
-          <span className="text-[11px] text-slate-400 block mt-1">Factory</span>
+          <span className="text-[11px] text-slate-400 block mt-1">Active Categories</span>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
@@ -169,9 +234,9 @@ export const ExpenseHeadManager: React.FC = () => {
             {'COA Linked'}
           </span>
           <div className="text-xl font-black text-emerald-600 mt-1">
-            {expenseHeads.filter((h) => h.linkedAccountId).length} / {expenseHeads.length}
+            {actualLinkedCount} / {expenseHeads.length}
           </div>
-          <span className="text-[11px] text-slate-400 block mt-1"></span>
+          <span className="text-[11px] text-slate-400 block mt-1">Accounts Mapped</span>
         </div>
       </div>
 
@@ -192,12 +257,10 @@ export const ExpenseHeadManager: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          {expenseHeads.length === 0 && (
-            <button type="button" onClick={restoreDefaultExpenseHeads} className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-2xs transition-all">
-              <RefreshCw className="w-3.5 h-3.5"/>
-              <span>{'Restore 12 Standard Heads'}</span>
-            </button>
-          )}
+          <button type="button" onClick={restoreDefaultExpenseHeads} title="Reset & Sync Standard 13 Expense Heads" className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 shadow-2xs transition-all">
+            <RefreshCw className="w-3.5 h-3.5"/>
+            <span>{'Reset Defaults'}</span>
+          </button>
 
           {canManageExpenses && (<button type="button" id="btn-add-expense-head" onClick={handleOpenAdd} className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-2xs transition-all w-full sm:w-auto justify-center">
               <Plus className="w-4 h-4"/>
@@ -236,12 +299,13 @@ export const ExpenseHeadManager: React.FC = () => {
                       </p>
                       <button type="button" onClick={restoreDefaultExpenseHeads} className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all">
                         <RefreshCw className="w-3.5 h-3.5"/>
-                        <span>{'Restore Standard 12 Expense Heads'}</span>
+                        <span>{'Restore Standard 13 Expense Heads'}</span>
                       </button>
                     </div>
                   </td>
                 </tr>) : (filteredHeads.map((head) => {
-            const linkedAccount = chartOfAccounts.find((a) => a.id === head.linkedAccountId);
+            const linkedAccount = getLinkedCOA(head);
+            const budgetLimit = getHeadBudget(head);
             return (<tr key={head.id} className={`hover:bg-slate-50/80 transition-colors ${!head.isActive ? 'bg-slate-50/40 text-slate-400' : ''}`}>
                       <td className="py-3.5 px-4 align-middle">
                         <span className="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
@@ -269,14 +333,14 @@ export const ExpenseHeadManager: React.FC = () => {
                               {linkedAccount.code}
                             </span>
                             <span className="font-medium text-slate-800">{linkedAccount.name}</span>
-                          </div>) : (<span className="text-[11px] text-slate-400 italic">
-                            {'Not linked'}
+                          </div>) : (<span className="inline-flex items-center gap-1 text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-medium">
+                            {head.linkedAccountId ? `COA #${head.linkedAccountId.replace('coa-', '')} Pending` : 'Not linked'}
                           </span>)}
                       </td>
 
                       <td className="py-3.5 px-4 text-right align-middle font-mono font-bold text-slate-900 text-[13px]">
-                        {(head.monthlyBudgetLimit ?? 0) > 0 ? (<span className="text-rose-600">
-                            {profile.currencySymbol}{(head.monthlyBudgetLimit ?? 0).toLocaleString()}
+                        {budgetLimit > 0 ? (<span className="text-rose-600">
+                            {profile.currencySymbol}{budgetLimit.toLocaleString()}
                           </span>) : (<span className="text-slate-400 text-xs font-normal">
                             {'Unlimited'}
                           </span>)}
@@ -416,7 +480,8 @@ export const ExpenseHeadManager: React.FC = () => {
 
       {/* View Expense Head Details Modal */}
       {viewingHead && (() => {
-            const linkedAccount = chartOfAccounts.find((a) => a.id === viewingHead.linkedAccountId);
+            const linkedAccount = getLinkedCOA(viewingHead);
+            const budgetLimit = getHeadBudget(viewingHead);
             return (<div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-fade-in">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -465,7 +530,7 @@ export const ExpenseHeadManager: React.FC = () => {
                   <div className="space-y-1">
                     <span className="text-slate-400 text-[10px] block uppercase font-bold tracking-wider">{'Monthly Budget Limit'}</span>
                     <p className="font-bold text-rose-600 font-mono text-sm">
-                      {profile.currencySymbol}{(viewingHead.monthlyBudgetLimit || 0).toLocaleString()}
+                      {profile.currencySymbol}{budgetLimit.toLocaleString()}
                     </p>
                   </div>
                 </div>
