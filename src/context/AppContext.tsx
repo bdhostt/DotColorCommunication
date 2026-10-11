@@ -306,7 +306,8 @@ export const AppProvider: React.FC<{
         return safeGetLocalStorage<JournalEntry[]>(`${STORAGE_KEY}_JOURNALS`, INITIAL_JOURNAL_ENTRIES);
     });
     const [projects, setProjects] = useState<Project[]>(() => {
-        return safeGetLocalStorage<Project[]>(`${STORAGE_KEY}_PROJECTS`, INITIAL_PROJECTS);
+        const list = safeGetLocalStorage<Project[]>(`${STORAGE_KEY}_PROJECTS`, INITIAL_PROJECTS);
+        return Array.isArray(list) && list.length > 0 ? list : INITIAL_PROJECTS;
     });
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethodConfig[]>(() => {
         return safeGetLocalStorage<PaymentMethodConfig[]>(`${STORAGE_KEY}_PAYMENT_METHODS`, INITIAL_PAYMENT_METHODS);
@@ -3160,8 +3161,22 @@ export const AppProvider: React.FC<{
                 setProductCategories(data.productCategories);
             if (data.journalEntries)
                 setJournalEntries(data.journalEntries);
-            if (data.projects)
-                setProjects(data.projects);
+            if (data.projects) {
+                if (isCloudSync && Array.isArray(data.projects)) {
+                    if (data.projects.length > 0) {
+                        setProjects((prev) => {
+                            const map = new Map<string, Project>();
+                            data.projects.forEach((p: Project) => map.set(p.id, p));
+                            prev.forEach((p) => {
+                                if (!map.has(p.id)) map.set(p.id, p);
+                            });
+                            return Array.from(map.values());
+                        });
+                    }
+                } else {
+                    setProjects(data.projects);
+                }
+            }
             if (data.paymentMethods && Array.isArray(data.paymentMethods) && data.paymentMethods.length > 0) {
                 if (isCloudSync) {
                     setPaymentMethods((prev) => {
@@ -3249,7 +3264,10 @@ export const AppProvider: React.FC<{
     const syncWithCloud = async () => {
         try {
             setCloudSyncStatus('syncing');
-            const payload = latestStateRef.current;
+            const payload = { ...latestStateRef.current };
+            if (!payload.projects || payload.projects.length === 0) {
+                payload.projects = INITIAL_PROJECTS;
+            }
             const res = await fetch('/api/state', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
