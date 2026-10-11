@@ -605,24 +605,31 @@ export const ProjectManagementModule: React.FC = () => {
                 {/* Main Card Header Bar (Compact ~50% Height) */}
                 <div onClick={() => setExpandedProjectId(isExpanded ? null : project.id)} className="p-3 sm:px-4 sm:py-2.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-50/40 hover:bg-slate-50/80 transition-colors cursor-pointer select-none">
                   <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-amber-800 transition-colors">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <h2
+                        className={`text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-amber-800 transition-colors min-w-0 ${
+                          isExpanded ? 'break-words' : 'truncate'
+                        }`}
+                        title={isBn && project.nameBn ? project.nameBn : project.name}
+                      >
                         {isBn && project.nameBn ? project.nameBn : project.name}
                       </h2>
 
                       {/* Status pill (always visible) */}
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${project.status === 'Completed'
-                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                    : project.status === 'In Progress'
-                        ? 'bg-blue-100 text-blue-800 border-blue-200'
-                        : project.status === 'On Hold'
-                            ? 'bg-rose-100 text-rose-800 border-rose-200'
-                            : 'bg-amber-100 text-amber-800 border-amber-200'}`}>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                        project.status === 'Completed'
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                          : project.status === 'In Progress'
+                            ? 'bg-blue-100 text-blue-800 border-blue-200'
+                            : project.status === 'On Hold'
+                              ? 'bg-rose-100 text-rose-800 border-rose-200'
+                              : 'bg-amber-100 text-amber-800 border-amber-200'
+                      }`}>
                         {isBn && project.statusBn ? project.statusBn : project.status}
                       </span>
 
                       {/* Mark 1 & 2: Project Code & COA Badges (Hidden first, shown on hover or click) */}
-                      <div className={`items-center gap-1.5 transition-all duration-200 ${isExpanded ? 'flex' : 'hidden group-hover:flex'}`}>
+                      <div className={`items-center gap-1.5 shrink-0 transition-all duration-200 ${isExpanded ? 'flex' : 'hidden group-hover:flex'}`}>
                         <span className="font-mono text-[10px] font-bold text-slate-600 bg-slate-200/80 px-1.5 py-0.5 rounded-md shrink-0">
                           {project.code}
                         </span>
@@ -632,16 +639,18 @@ export const ProjectManagementModule: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
-                      <span className="flex items-center gap-1 font-semibold text-slate-700">
+                    <div className="flex items-center gap-3 text-xs text-slate-500 min-w-0 truncate">
+                      <span className="flex items-center gap-1 font-semibold text-slate-700 shrink-0">
                         <User className="w-3.5 h-3.5 text-slate-400"/>
-                        {project.clientName}
+                        <span className="truncate max-w-[160px] sm:max-w-none">{project.clientName}</span>
                       </span>
-                      {project.clientPhone && (<span className="flex items-center gap-1 font-mono text-[11px] text-slate-500">
+                      {project.clientPhone && (
+                        <span className="flex items-center gap-1 font-mono text-[11px] text-slate-500 shrink-0">
                           <Phone className="w-3 h-3 text-slate-400"/>
                           {project.clientPhone}
-                        </span>)}
-                      <span className="flex items-center gap-1 text-[11px]">
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1 text-[11px] shrink-0">
                         <Calendar className="w-3 h-3 text-slate-400"/>
                         {project.startDate} {project.endDate ? `➔ ${project.endDate}` : ''}
                       </span>
