@@ -10,7 +10,7 @@ interface POSModuleProps {
     }) => void;
 }
 export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
-    const { products = [], customers = [], invoices = [], profile, language, activeLocation, paymentMethods = [], addInvoice, addCustomer, } = useApp();
+    const { products = [], customers = [], invoices = [], profile, language, activeLocation, paymentMethods = [], addInvoice, addCustomer, productCategories = [], } = useApp();
     const activePaymentMethods = useMemo(() => {
         const list = (paymentMethods || []).filter((p) => p.isEnabled);
         return list.length > 0 ? list : [{ id: 'pm-cash', name: 'Cash', nameBn: "Nagad Cash", type: 'cash' as const, isEnabled: true, isDefault: true }];
@@ -67,16 +67,37 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
     const [dimHeight, setDimHeight] = useState<number>(4);
     const [dimQty, setDimQty] = useState<number>(1);
     const [dimNotes, setDimNotes] = useState<string>('');
+    // Helper to intelligently match product category (case-insensitive & smart aliases)
+    const matchProductCategory = (p: ProductItem, catId: string): boolean => {
+        if (catId === 'ALL') return !p.isRawMaterial;
+        if (catId === 'RAW MATERIAL') return !!p.isRawMaterial;
+        if (p.isRawMaterial) return false;
+
+        const pCat = (p.category || '').toLowerCase().trim();
+        const target = (catId || '').toLowerCase().trim();
+
+        if (pCat === target) return true;
+
+        if (target === 'sign making & lettering' || target.includes('sign') || target.includes('letter')) {
+            return pCat.includes('sign') || pCat.includes('letter') || pCat === 'cat-sgn' || pCat === 'cat-02';
+        }
+        if (target === 'digital printing' || target.includes('digital') || target === 'print') {
+            return pCat.includes('digital') || pCat === 'cat-dp' || pCat === 'cat-01';
+        }
+        if (target === 'printing & packaging' || target.includes('packag')) {
+            return pCat.includes('packag') || pCat.includes('box') || pCat.includes('carton') || pCat.includes('bag') || pCat.includes('sticker') || pCat === 'cat-pkg' || pCat === 'cat-04';
+        }
+        if (target === 'branded promotional gifts' || target.includes('gift')) {
+            return pCat.includes('gift') || pCat === 'cat-gft' || pCat === 'cat-03';
+        }
+
+        return false;
+    };
+
     // Filter products
     const filteredProducts = useMemo(() => {
         return products.filter((p) => {
-            if (p.isRawMaterial && selectedCategory !== 'RAW MATERIAL')
-                return false;
-            const matchCat = selectedCategory === 'ALL'
-                ? true
-                : selectedCategory === 'RAW MATERIAL'
-                    ? p.isRawMaterial
-                    : p.category === selectedCategory;
+            const matchCat = matchProductCategory(p, selectedCategory);
             const q = (searchQuery || '').toLowerCase().trim();
             const matchSearch = !q ||
                 (p.name && p.name.toLowerCase().includes(q)) ||
@@ -431,17 +452,50 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
             setIsProcessingCheckout(false);
         }
     };
-    const categories = [
-        { id: 'ALL', labelEn: 'All Services', labelBn: "" },
-        { id: 'DIGITAL PRINTING', labelEn: 'Digital Printing', labelBn: "Print" },
-        { id: 'SIGN MAKING & LETTERING', labelEn: 'Signage & Letters', labelBn: "" },
-        { id: 'BRANDED PROMOTIONAL GIFTS', labelEn: 'Branded Gifts', labelBn: "" },
-        { id: 'PRINTING & PACKAGING', labelEn: 'Printing & Packaging', labelBn: "Print" },
-        { id: 'GRAPHIC DESIGN', labelEn: 'Graphic Design', labelBn: "" },
-        { id: 'EXHIBITION', labelEn: 'Exhibition', labelBn: "" },
-        { id: 'EVENTS MANAGEMENT', labelEn: 'Events', labelBn: "" },
-        { id: 'RAW MATERIAL', labelEn: 'Raw Media & Stocks', labelBn: "" },
-    ];
+    // Dynamic, unified POS category tabs derived from product inventory and categories
+    const categories = useMemo(() => {
+        const catMap = new Map<string, { id: string; labelEn: string; count: number }>();
+        const nonRawProducts = products.filter(p => !p.isRawMaterial);
+
+        // Core business services
+        const defaultCats = [
+            { id: 'DIGITAL PRINTING', labelEn: 'Digital Printing' },
+            { id: 'SIGN MAKING & LETTERING', labelEn: 'Signage & Letters' },
+            { id: 'BRANDED PROMOTIONAL GIFTS', labelEn: 'Branded Gifts' },
+            { id: 'PRINTING & PACKAGING', labelEn: 'Printing & Packaging' },
+            { id: 'GRAPHIC DESIGN', labelEn: 'Graphic Design' },
+            { id: 'EXHIBITION', labelEn: 'Exhibition' },
+            { id: 'EVENTS MANAGEMENT', labelEn: 'Events' },
+        ];
+
+        defaultCats.forEach(c => {
+            const count = products.filter(p => matchProductCategory(p, c.id)).length;
+            catMap.set(c.id, { id: c.id, labelEn: c.labelEn, count });
+        });
+
+        // Configured categories from inventory module
+        (productCategories || []).forEach(pc => {
+            if (!catMap.has(pc.name) && !pc.isRawMaterialGroup) {
+                const count = products.filter(p => matchProductCategory(p, pc.name)).length;
+                catMap.set(pc.name, { id: pc.name, labelEn: pc.name, count });
+            }
+        });
+
+        // Any unique custom categories present in products
+        products.forEach(p => {
+            if (p.category && !p.isRawMaterial && !catMap.has(p.category)) {
+                const count = products.filter(prod => matchProductCategory(prod, p.category)).length;
+                catMap.set(p.category, { id: p.category, labelEn: p.category, count });
+            }
+        });
+
+        return [
+            { id: 'ALL', labelEn: 'All Services', count: nonRawProducts.length },
+            ...Array.from(catMap.values()),
+            { id: 'RAW MATERIAL', labelEn: 'Raw Media & Stocks', count: products.filter(p => p.isRawMaterial).length },
+        ];
+    }, [products, productCategories]);
+
     return (<div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5">
       {/* POS Sales Overview with Daily Revenue Trends Bar Chart */}
       <POSSalesOverview invoices={invoices} profile={profile} currencySymbol={profile.currencySymbol} language={language}/>
@@ -465,10 +519,13 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
               {categories.map((cat) => {
             const active = selectedCategory === cat.id;
-            return (<button key={cat.id} type="button" onClick={() => setSelectedCategory(cat.id)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${active
+            return (<button key={cat.id} type="button" onClick={() => setSelectedCategory(cat.id)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${active
                     ? 'bg-amber-600 text-white shadow-2xs font-bold'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900'}`}>
-                    {cat.labelEn}
+                    <span>{cat.labelEn}</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${active ? 'bg-amber-700/60 text-white' : 'bg-slate-200/80 text-slate-600'}`}>
+                      {cat.count}
+                    </span>
                   </button>);
         })}
             </div>
