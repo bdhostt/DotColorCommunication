@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { ProductItem, UnitType, ServiceCategory } from '../types';
-import { Package, Boxes, ArrowRightLeft, AlertTriangle, Plus, Search, Filter, Layers, ArrowDownRight, ArrowUpRight, History, Factory, Building2, DollarSign, TrendingDown, Edit2, Trash2, UploadCloud, FileSpreadsheet, } from 'lucide-react';
+import { ProductItem, UnitType, ServiceCategory, ProductCategory } from '../types';
+import { Package, Boxes, ArrowRightLeft, AlertTriangle, Plus, Search, Filter, Layers, ArrowDownRight, ArrowUpRight, History, Factory, Building2, DollarSign, TrendingDown, Edit2, Trash2, UploadCloud, FileSpreadsheet, Tag, AlertCircle, } from 'lucide-react';
 import { BulkProductImportModal } from './BulkProductImportModal';
 import { ProductCategoryManager } from './ProductCategoryManager';
 export const InventoryModule: React.FC = () => {
-    const { products, stockMovements, productCategories, profile, language, activeLocation, addProduct, updateProduct, deleteProduct, adjustStock, } = useApp();
+    const { products, stockMovements, productCategories, profile, language, activeLocation, addProduct, updateProduct, deleteProduct, adjustStock, addProductCategory, updateProductCategory, } = useApp();
     const [activeTab, setActiveTab] = useState<'inventory' | 'categories' | 'history'>('inventory');
     const [filterType, setFilterType] = useState<'ALL' | 'RAW' | 'FINISHED' | 'LOW_STOCK'>('ALL');
     const [searchQuery, setSearchQuery] = useState('');
@@ -15,6 +15,17 @@ export const InventoryModule: React.FC = () => {
     const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
     const [adjustModalProduct, setAdjustModalProduct] = useState<ProductItem | null>(null);
     const [productToDelete, setProductToDelete] = useState<ProductItem | null>(null);
+    // Category quick add/edit modal states within Add/Edit Item modal
+    const [showCategoryQuickModal, setShowCategoryQuickModal] = useState(false);
+    const [categoryQuickEditTarget, setCategoryQuickEditTarget] = useState<ProductCategory | null>(null);
+    const [categoryFormData, setCategoryFormData] = useState({
+        code: '',
+        name: '',
+        nameBn: '',
+        description: '',
+        isRawMaterialGroup: false,
+    });
+    const [categoryFormError, setCategoryFormError] = useState<string | null>(null);
     // Form states for Product Add/Edit
     const [formData, setFormData] = useState({
         name: '',
@@ -62,13 +73,96 @@ export const InventoryModule: React.FC = () => {
         .filter((p) => p.isRawMaterial)
         .reduce((acc, p) => acc + (p.stockFactory + p.stockOffice) * p.costPrice, 0);
     const lowStockCount = products.filter((p) => !p.isRawMaterial && p.stockFactory + p.stockOffice <= p.minStockAlert).length;
+    const selectedCategoryObj = (productCategories || []).find((c) => c.name.toLowerCase() === (formData.category || '').toLowerCase());
+
+    const handleOpenAddCategoryFromItem = () => {
+        const nextCode = `CAT-${Math.floor(10 + Math.random() * 90)}`;
+        setCategoryFormData({
+            code: nextCode,
+            name: '',
+            nameBn: '',
+            description: '',
+            isRawMaterialGroup: Boolean(formData.isRawMaterial),
+        });
+        setCategoryQuickEditTarget(null);
+        setCategoryFormError(null);
+        setShowCategoryQuickModal(true);
+    };
+
+    const handleOpenEditCategoryFromItem = (cat?: ProductCategory) => {
+        const target = cat || selectedCategoryObj;
+        if (!target) return;
+        setCategoryFormData({
+            code: target.code,
+            name: target.name,
+            nameBn: target.nameBn || '',
+            description: target.description || '',
+            isRawMaterialGroup: Boolean(target.isRawMaterialGroup ?? target.isRawMaterial),
+        });
+        setCategoryQuickEditTarget(target);
+        setCategoryFormError(null);
+        setShowCategoryQuickModal(true);
+    };
+
+    const handleSaveCategoryQuick = (e: React.FormEvent) => {
+        e.preventDefault();
+        const trimmedName = categoryFormData.name.trim();
+        const trimmedCode = categoryFormData.code.trim();
+        if (!trimmedName || !trimmedCode) {
+            setCategoryFormError('Please enter both Category Name and Category Code');
+            return;
+        }
+
+        const isDuplicate = productCategories.some(
+            c => c.name.toLowerCase() === trimmedName.toLowerCase() && c.id !== categoryQuickEditTarget?.id
+        );
+        if (isDuplicate) {
+            setCategoryFormError(`A category with name "${trimmedName}" already exists.`);
+            return;
+        }
+
+        if (categoryQuickEditTarget) {
+            updateProductCategory(categoryQuickEditTarget.id, {
+                code: trimmedCode,
+                name: trimmedName,
+                nameBn: categoryFormData.nameBn.trim(),
+                description: categoryFormData.description.trim(),
+                isRawMaterialGroup: categoryFormData.isRawMaterialGroup,
+                isRawMaterial: categoryFormData.isRawMaterialGroup,
+            });
+            setFormData(prev => ({
+                ...prev,
+                category: trimmedName as any,
+                isRawMaterial: categoryFormData.isRawMaterialGroup,
+            }));
+        } else {
+            const newCat = addProductCategory({
+                code: trimmedCode,
+                name: trimmedName,
+                nameBn: categoryFormData.nameBn.trim(),
+                description: categoryFormData.description.trim(),
+                isRawMaterialGroup: categoryFormData.isRawMaterialGroup,
+                isRawMaterial: categoryFormData.isRawMaterialGroup,
+            });
+            setFormData(prev => ({
+                ...prev,
+                category: newCat.name as any,
+                isRawMaterial: categoryFormData.isRawMaterialGroup,
+            }));
+        }
+
+        setShowCategoryQuickModal(false);
+        setCategoryQuickEditTarget(null);
+    };
+
     const handleOpenAdd = () => {
         setEditingProduct(null);
+        const defaultCat = productCategories && productCategories.length > 0 ? productCategories[0] : null;
         setFormData({
             name: '',
             nameBn: '',
-            category: 'DIGITAL PRINTING',
-            isRawMaterial: false,
+            category: (defaultCat ? defaultCat.name : 'DIGITAL PRINTING') as any,
+            isRawMaterial: defaultCat ? Boolean(defaultCat.isRawMaterialGroup ?? defaultCat.isRawMaterial) : false,
             unit: 'pcs',
             unitPrice: 100,
             costPrice: 60,
@@ -542,32 +636,89 @@ export const InventoryModule: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    {'Category'}
-                  </label>
-                  <select value={formData.category} onChange={(e) => {
-                const selectedVal = e.target.value;
-                const matchedCat = productCategories?.find((c) => c.name === selectedVal);
-                setFormData({
-                    ...formData,
-                    category: selectedVal as any,
-                    isRawMaterial: matchedCat ? Boolean(matchedCat.isRawMaterial) : selectedVal === 'RAW MATERIAL',
-                });
-            }} className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium">
-                    {productCategories && productCategories.length > 0 ? (productCategories.map((c) => (<option key={c.id} value={c.name}>
-                          {c.name} {c.nameBn ? `(${c.nameBn})` : ''} {c.isRawMaterial ? "- []" : ''}
-                        </option>))) : (<>
-                        <option value="DIGITAL PRINTING">DIGITAL PRINTING</option>
-                        <option value="SIGN MAKING & LETTERING">SIGN MAKING & LETTERING</option>
-                        <option value="BRANDED PROMOTIONAL GIFTS">BRANDED PROMOTIONAL GIFTS</option>
-                        <option value="PRINTING & PACKAGING">PRINTING & PACKAGING</option>
-                        <option value="GRAPHIC DESIGN">GRAPHIC DESIGN</option>
-                        <option value="EXHIBITION">EXHIBITION</option>
-                        <option value="EVENTS MANAGEMENT">EVENTS MANAGEMENT</option>
-                        <option value="VENUE SOURCING">VENUE SOURCING</option>
-                        <option value="RAW MATERIAL">RAW MATERIAL</option>
-                      </>)}
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700 block">
+                      {'Category *'}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {selectedCategoryObj && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditCategoryFromItem(selectedCategoryObj)}
+                          className="text-[11px] text-amber-700 hover:text-amber-900 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                          title={`Edit "${selectedCategoryObj.name}"`}
+                        >
+                          <Edit2 className="w-3 h-3 text-amber-600" />
+                          <span>Edit</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleOpenAddCategoryFromItem}
+                        className="text-[11px] text-amber-600 hover:text-amber-800 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                        title="Create a new category"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>+ New Category</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={formData.category}
+                      onChange={(e) => {
+                        const selectedVal = e.target.value;
+                        const matchedCat = productCategories?.find((c) => c.name === selectedVal);
+                        setFormData({
+                          ...formData,
+                          category: selectedVal as any,
+                          isRawMaterial: matchedCat ? Boolean(matchedCat.isRawMaterialGroup ?? matchedCat.isRawMaterial) : selectedVal === 'RAW MATERIAL',
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-xs"
+                    >
+                      {productCategories && productCategories.length > 0 ? (
+                        productCategories.map((c) => (
+                          <option key={c.id} value={c.name}>
+                            {c.name} {c.nameBn ? `(${c.nameBn})` : ''} {c.isRawMaterialGroup || c.isRawMaterial ? ' [Raw Material]' : ''}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="DIGITAL PRINTING">DIGITAL PRINTING</option>
+                          <option value="SIGN MAKING & LETTERING">SIGN MAKING & LETTERING</option>
+                          <option value="BRANDED PROMOTIONAL GIFTS">BRANDED PROMOTIONAL GIFTS</option>
+                          <option value="PRINTING & PACKAGING">PRINTING & PACKAGING</option>
+                          <option value="GRAPHIC DESIGN">GRAPHIC DESIGN</option>
+                          <option value="EXHIBITION">EXHIBITION</option>
+                          <option value="EVENTS MANAGEMENT">EVENTS MANAGEMENT</option>
+                          <option value="VENUE SOURCING">VENUE SOURCING</option>
+                          <option value="RAW MATERIAL">RAW MATERIAL</option>
+                        </>
+                      )}
+                    </select>
+
+                    {selectedCategoryObj && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditCategoryFromItem(selectedCategoryObj)}
+                        className="p-2 border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl transition-colors cursor-pointer shrink-0"
+                        title={`Edit "${selectedCategoryObj.name}"`}
+                      >
+                        <Edit2 className="w-4 h-4 text-slate-600" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleOpenAddCategoryFromItem}
+                      className="px-2.5 py-2 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+                      title="Add new category"
+                    >
+                      <Plus className="w-4 h-4 text-amber-600" />
+                      <span className="hidden sm:inline">New</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -674,5 +825,148 @@ export const InventoryModule: React.FC = () => {
             </div>
           </div>
         </div>)}
+
+      {/* QUICK ADD / EDIT CATEGORY MODAL (CAN BE OPENED ON TOP OF ITEM MODAL) */}
+      {showCategoryQuickModal && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <form
+            onSubmit={handleSaveCategoryQuick}
+            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-fade-in"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Tag className="w-5 h-5 text-amber-600" />
+                <h3 className="font-bold text-slate-900 text-base">
+                  {categoryQuickEditTarget ? 'Edit Product Category' : 'Create New Product Category'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCategoryQuickModal(false);
+                  setCategoryQuickEditTarget(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {categoryFormError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-semibold text-rose-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{categoryFormError}</span>
+              </div>
+            )}
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {'Category Code *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={categoryFormData.code}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, code: e.target.value })}
+                    placeholder="e.g. CAT-PRINT"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono font-bold focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {'Category Type'}
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setCategoryFormData({ ...categoryFormData, isRawMaterialGroup: false })}
+                      className={`px-2 py-2 border rounded-xl text-center font-bold text-[11px] transition-all cursor-pointer ${
+                        !categoryFormData.isRawMaterialGroup
+                          ? 'bg-slate-950 border-slate-950 text-white shadow-2xs'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {'Finished / Service'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCategoryFormData({ ...categoryFormData, isRawMaterialGroup: true })}
+                      className={`px-2 py-2 border rounded-xl text-center font-bold text-[11px] transition-all cursor-pointer ${
+                        categoryFormData.isRawMaterialGroup
+                          ? 'bg-slate-950 border-slate-950 text-white shadow-2xs'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {'Raw Material'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  {'Category Name (EN) *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={categoryFormData.name}
+                  onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
+                  placeholder="e.g. BSRM Steel Ltd. / DIGITAL PRINTING"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold uppercase focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  {'Bengali Name'}
+                </label>
+                <input
+                  type="text"
+                  value={categoryFormData.nameBn}
+                  onChange={(e) => setCategoryFormData({ ...categoryFormData, nameBn: e.target.value })}
+                  placeholder="e.g. বিএসআরএম স্টিল লিমিটেড"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  {'Description / Scope'}
+                </label>
+                <textarea
+                  rows={2}
+                  value={categoryFormData.description}
+                  onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
+                  placeholder="Items or services covered under this category..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCategoryQuickModal(false);
+                  setCategoryQuickEditTarget(null);
+                }}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+              >
+                {'Cancel'}
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-2xs cursor-pointer"
+              >
+                {categoryQuickEditTarget ? 'Save Changes' : 'Create Category'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>);
 };

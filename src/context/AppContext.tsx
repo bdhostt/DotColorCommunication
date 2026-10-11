@@ -1614,8 +1614,11 @@ export const AppProvider: React.FC<{
     };
     // Product Categories
     const addProductCategory = (cat: Omit<ProductCategory, 'id'>): ProductCategory => {
+        const isRaw = Boolean(cat.isRawMaterialGroup || cat.isRawMaterial);
         const newCat: ProductCategory = {
             ...cat,
+            isRawMaterialGroup: isRaw,
+            isRawMaterial: isRaw,
             id: `cat-${Date.now()}`,
         };
         setProductCategories((prev) => [...prev, newCat]);
@@ -1634,7 +1637,17 @@ export const AppProvider: React.FC<{
         return newCat;
     };
     const updateProductCategory = (id: string, updates: Partial<ProductCategory>) => {
-        setProductCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
+        const oldCat = productCategories.find((c) => c.id === id);
+        const resolvedUpdates: Partial<ProductCategory> = {
+            ...updates,
+            ...(updates.isRawMaterialGroup !== undefined ? { isRawMaterial: updates.isRawMaterialGroup } : {}),
+            ...(updates.isRawMaterial !== undefined ? { isRawMaterialGroup: updates.isRawMaterial } : {}),
+        };
+        setProductCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...resolvedUpdates } : c)));
+        if (oldCat && resolvedUpdates.name && resolvedUpdates.name.trim() !== oldCat.name) {
+            const nextCatName = resolvedUpdates.name.trim();
+            setProducts((prev) => prev.map((p) => (p.category?.toLowerCase() === oldCat.name.toLowerCase() ? { ...p, category: nextCatName } : p)));
+        }
         addAuditLog({
             staffId: activeStaff.id,
             staffName: activeStaff.name,
