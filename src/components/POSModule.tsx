@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { ProductItem, InvoiceItem, Customer, PaymentMethod, ServiceCategory } from '../types';
 import { Search, ShoppingCart, Trash2, Plus, Minus, CheckCircle, CheckCircle2, Printer, UserPlus, Layers, Calculator, Tag, Clock, Building, DollarSign, AlertCircle, FileText, Smartphone, CreditCard, X, User, } from 'lucide-react';
 import { POSSalesOverview } from './POSSalesOverview';
+import { ProductCategoryManager } from './ProductCategoryManager';
 interface POSModuleProps {
     onOpenInvoiceModal: (invoiceId: string, mode?: 'invoice' | 'challan' | 'pos', options?: {
         autoPrint?: boolean;
@@ -18,6 +19,7 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
     const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
     const [searchQuery, setSearchQuery] = useState('');
     const [cart, setCart] = useState<InvoiceItem[]>([]);
+    const [showCategoryManagerModal, setShowCategoryManagerModal] = useState(false);
     // Checkout form state
     const [selectedCustomerId, setSelectedCustomerId] = useState<string>(() => {
         if (customers && customers.length > 0) {
@@ -67,31 +69,16 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
     const [dimHeight, setDimHeight] = useState<number>(4);
     const [dimQty, setDimQty] = useState<number>(1);
     const [dimNotes, setDimNotes] = useState<string>('');
-    // Helper to intelligently match product category (case-insensitive & smart aliases)
+    // Helper to match product category cleanly (case-insensitive exact match)
     const matchProductCategory = (p: ProductItem, catId: string): boolean => {
         if (catId === 'ALL') return !p.isRawMaterial;
         if (catId === 'RAW MATERIAL') return !!p.isRawMaterial;
         if (p.isRawMaterial) return false;
 
-        const pCat = (p.category || '').toLowerCase().trim();
-        const target = (catId || '').toLowerCase().trim();
+        const pCat = (p.category || '').trim().toLowerCase();
+        const target = (catId || '').trim().toLowerCase();
 
-        if (pCat === target) return true;
-
-        if (target === 'sign making & lettering' || target.includes('sign') || target.includes('letter')) {
-            return pCat.includes('sign') || pCat.includes('letter') || pCat === 'cat-sgn' || pCat === 'cat-02';
-        }
-        if (target === 'digital printing' || target.includes('digital') || target === 'print') {
-            return pCat.includes('digital') || pCat === 'cat-dp' || pCat === 'cat-01';
-        }
-        if (target === 'printing & packaging' || target.includes('packag')) {
-            return pCat.includes('packag') || pCat.includes('box') || pCat.includes('carton') || pCat.includes('bag') || pCat.includes('sticker') || pCat === 'cat-pkg' || pCat === 'cat-04';
-        }
-        if (target === 'branded promotional gifts' || target.includes('gift')) {
-            return pCat.includes('gift') || pCat === 'cat-gft' || pCat === 'cat-03';
-        }
-
-        return false;
+        return pCat === target;
     };
 
     // Filter products
@@ -452,47 +439,31 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
             setIsProcessingCheckout(false);
         }
     };
-    // Dynamic, unified POS category tabs derived from product inventory and categories (Only show categories with products)
+    // Dynamic POS categories strictly derived from real inventory product categories
     const categories = useMemo(() => {
         const catMap = new Map<string, { id: string; labelEn: string; count: number }>();
         const nonRawProducts = products.filter(p => !p.isRawMaterial);
 
-        // Friendly label mapping for standard core services
-        const friendlyLabels: Record<string, string> = {
-            'DIGITAL PRINTING': 'Digital Printing',
-            'SIGN MAKING & LETTERING': 'Signage & Letters',
-            'BRANDED PROMOTIONAL GIFTS': 'Branded Gifts',
-            'PRINTING & PACKAGING': 'Printing & Packaging',
-            'GRAPHIC DESIGN': 'Graphic Design',
-            'EXHIBITION': 'Exhibition',
-            'EVENTS MANAGEMENT': 'Events',
-        };
-
-        // 1. Check standard service categories - only include if count > 0
-        Object.entries(friendlyLabels).forEach(([id, labelEn]) => {
-            const count = products.filter(p => matchProductCategory(p, id)).length;
-            if (count > 0) {
-                catMap.set(id, { id, labelEn, count });
-            }
-        });
-
-        // 2. Configured categories from inventory module - only include if count > 0
+        // 1. Gather all categories from productCategories (the ones in Picture 2: Barcode Restaurant Group, BSRM, Park Id Card, etc.)
         (productCategories || []).forEach(pc => {
-            if (!catMap.has(pc.name) && !pc.isRawMaterialGroup) {
-                const count = products.filter(p => matchProductCategory(p, pc.name)).length;
+            if (!pc.isRawMaterialGroup) {
+                const count = nonRawProducts.filter(p => matchProductCategory(p, pc.name)).length;
                 if (count > 0) {
-                    catMap.set(pc.name, { id: pc.name, labelEn: pc.name, count });
+                    const labelEn = pc.nameBn ? `${pc.name} (${pc.nameBn})` : pc.name;
+                    catMap.set(pc.name.trim().toLowerCase(), { id: pc.name, labelEn, count });
                 }
             }
         });
 
-        // 3. Any custom categories on products (e.g. from Excel/CSV import) - only include if count > 0
-        products.forEach(p => {
-            if (p.category && !p.isRawMaterial && !catMap.has(p.category)) {
-                const count = products.filter(prod => matchProductCategory(prod, p.category)).length;
-                if (count > 0) {
-                    const label = friendlyLabels[p.category.toUpperCase()] || p.category;
-                    catMap.set(p.category, { id: p.category, labelEn: label, count });
+        // 2. Also check if products have any categories not in productCategories
+        nonRawProducts.forEach(p => {
+            if (p.category) {
+                const key = p.category.trim().toLowerCase();
+                if (!catMap.has(key)) {
+                    const count = nonRawProducts.filter(item => matchProductCategory(item, p.category)).length;
+                    if (count > 0) {
+                        catMap.set(key, { id: p.category, labelEn: p.category, count });
+                    }
                 }
             }
         });
@@ -528,21 +499,50 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
         {/* LEFT COLUMN: Catalog & Item Selection (7 Cols) */}
         <div className="lg:col-span-7 space-y-4">
           
-          {/* Search & Category Pills */}
+          {/* Search & Category Filter Bar */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"/>
-              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={'Search items by name, code or keyword (e.g. PVC, Mug, LED, Sign)...'} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all placeholder:text-slate-400"/>
-              {searchQuery && (<button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 font-bold">
-                  ✕
-                </button>)}
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              <div className="relative flex-1 w-full">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"/>
+                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={'Search items by name, code or keyword (e.g. PVC, Mug, LED, Sign)...'} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all placeholder:text-slate-400"/>
+                {searchQuery && (<button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 font-bold">
+                    ✕
+                  </button>)}
+              </div>
+
+              {/* Dynamic Category Dropdown (Like Picture 2) */}
+              <div className="w-full sm:w-auto flex items-center gap-2">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full sm:w-60 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+                  title="Filter by Category"
+                >
+                  <option value="ALL">All Categories ({products.filter(p => !p.isRawMaterial).length})</option>
+                  {categories.filter(c => c.id !== 'ALL').map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.labelEn} ({cat.count})
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryManagerModal(true)}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+                  title="Manage / Edit Product Categories"
+                >
+                  <Tag className="w-3.5 h-3.5 text-amber-600"/>
+                  <span className="hidden sm:inline">Categories</span>
+                </button>
+              </div>
             </div>
 
-            {/* Service Filter Tabs */}
+            {/* Service Filter Tabs (Clickable Pills) */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
               {categories.map((cat) => {
             const active = selectedCategory === cat.id;
-            return (<button key={cat.id} type="button" onClick={() => setSelectedCategory(cat.id)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${active
+            return (<button key={cat.id} type="button" onClick={() => setSelectedCategory(cat.id)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${active
                     ? 'bg-amber-600 text-white shadow-2xs font-bold'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900'}`}>
                     <span>{cat.labelEn}</span>
@@ -1161,5 +1161,29 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
             </div>
           </form>
         </div>)}
+
+      {/* Category Manager Modal (Editable & Dynamic) */}
+      {showCategoryManagerModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Tag className="w-5 h-5 text-amber-600"/>
+                <h3 className="font-bold text-slate-900 text-base">
+                  {'Manage & Edit Product Categories'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCategoryManagerModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <ProductCategoryManager />
+          </div>
+        </div>
+      )}
     </div>);
 };
