@@ -17,11 +17,12 @@ export interface ExpenseBreakdownRow {
     isDropdownOpen: boolean;
 }
 export const ProjectManagementModule: React.FC = () => {
-    const { projects, addProject, updateProject, deleteProject, addProjectSales, addProjectExpense, addProjectExpenses, deleteProjectSales, deleteProjectExpense, expenseHeads, language, profile, paymentMethods = [], } = useApp();
+    const { projects, addProject, updateProject, deleteProject, addProjectSales, addProjectExpense, addProjectExpenses, deleteProjectSales, deleteProjectExpense, syncProjectsWithAccounting, journalEntries = [], chartOfAccounts = [], expenseHeads = [], language, profile, paymentMethods = [], } = useApp();
     const isBn = language === 'bn';
     const [searchTerm, setSearchType] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+    const [syncNotice, setSyncNotice] = useState<string | null>(null);
     // Modals state
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showSalesModal, setShowSalesModal] = useState<string | null>(null); // projectId
@@ -130,6 +131,53 @@ export const ProjectManagementModule: React.FC = () => {
         return defaultExpenseCategoryList.filter((item) => item.nameEn.toLowerCase().includes(term) ||
             item.nameBn.toLowerCase().includes(term));
     };
+
+    const getResolvedCOA = (categoryName: string, note?: string) => {
+        const query = `${categoryName || ''} ${note || ''}`.toLowerCase();
+        if (query.includes('conveyance') || query.includes('transport') || query.includes('fuel') || query.includes('truck') || query.includes('courier') || query.includes('delivery')) {
+            return { code: '5080', name: 'Conveyance & Delivery', id: 'coa-5080' };
+        }
+        if (query.includes('labor') || query.includes('labour') || query.includes('wage') || query.includes('worker') || query.includes('technician') || query.includes('installation') || query.includes('setup') || query.includes('amin vai') || query.includes('serap')) {
+            return { code: '5070', name: 'Staff Wages & Site Labor', id: 'coa-5070' };
+        }
+        if (query.includes('entertainment') || query.includes('refreshment') || query.includes('tea') || query.includes('snack') || query.includes('food') || query.includes('lunch') || query.includes('hospitality') || query.includes('hotel')) {
+            return { code: '5090', name: 'Client Hospitality & Refreshments', id: 'coa-5090' };
+        }
+        if (query.includes('electricity') || query.includes('generator') || query.includes('diesel') || query.includes('power')) {
+            return { code: '5040', name: 'Electricity & Generator Power', id: 'coa-5040' };
+        }
+        if (query.includes('rent') || query.includes('lease') || query.includes('facility')) {
+            return { code: '5050', name: 'Factory Facility Rent', id: 'coa-5050' };
+        }
+        if (query.includes('machine') || query.includes('servicing') || query.includes('equipment') || query.includes('crane') || query.includes('printer head')) {
+            return { code: '5030', name: 'Machine Servicing & Maintenance', id: 'coa-5030' };
+        }
+        if (query.includes('permit') || query.includes('tax') || query.includes('official fee') || query.includes('license')) {
+            return { code: '5120', name: 'Municipal Tax & Legal Permits', id: 'coa-5120' };
+        }
+        if (query.includes('marketing') || query.includes('ad') || query.includes('promotion') || query.includes('branding')) {
+            return { code: '5100', name: 'Digital Marketing & Promotions', id: 'coa-5100' };
+        }
+        return { code: '5010', name: 'COGS - Raw Materials & Supplies', id: 'coa-5010' };
+    };
+
+    const getResolvedPaymentCOA = (method: string) => {
+        const m = (method || '').toLowerCase();
+        if (m.includes('bank') || m.includes('brac') || m.includes('city') || m.includes('card')) {
+            return { code: '1030', name: 'BRAC Bank PLC' };
+        }
+        if (m.includes('bkash') || m.includes('nagad') || m.includes('rocket') || m.includes('mfs')) {
+            return { code: '1040', name: 'bKash & Nagad Wallet' };
+        }
+        if (m.includes('due') || m.includes('receivable')) {
+            return { code: '1050', name: 'Accounts Receivable' };
+        }
+        return { code: '1010', name: 'Cash in Hand (Counter)' };
+    };
+
+    const activeProjectJournalsCount = useMemo(() => {
+        return (journalEntries || []).filter(j => j.source === 'PROJECT_SALES' || j.source === 'PROJECT_EXPENSE' || (j.refNo && j.refNo.startsWith('PRJ-'))).length;
+    }, [journalEntries]);
     // Filtered Projects
     const filteredProjects = useMemo(() => {
         return projects.filter((p) => {
@@ -304,6 +352,7 @@ export const ProjectManagementModule: React.FC = () => {
         const batchId = `exp-batch-${Date.now()}`;
         const itemsToSave: Omit<ProjectExpenseItem, 'id'>[] = validRows.map((r) => {
             const finalCategory = r.category.trim() || r.categorySearch.trim() || ('General Expense');
+            const coa = getResolvedCOA(finalCategory, r.note);
             return {
                 category: finalCategory,
                 categoryBn: finalCategory,
@@ -311,6 +360,8 @@ export const ProjectManagementModule: React.FC = () => {
                 date: expenseDate,
                 note: r.note.trim() || expenseGeneralNote.trim() || undefined,
                 breakdownBatchId: batchId,
+                linkedAccountId: coa.id,
+                linkedAccountCode: coa.code,
             };
         });
         addProjectExpenses(showExpenseModal, itemsToSave);
@@ -338,16 +389,26 @@ export const ProjectManagementModule: React.FC = () => {
           <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 border border-amber-200">
             <FolderKanban className="w-6 h-6"/>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-slate-900">
                 {'Projects'}
               </h1>
-              <span className="bg-emerald-100 text-emerald-800 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                {'Chart of Accounts Synced'}
-              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (syncProjectsWithAccounting) {
+                    const res = syncProjectsWithAccounting();
+                    setSyncNotice(`Synced ${res.salesSynced} sales & ${res.expensesSynced} expenses to Chart of Accounts (Tk ${res.totalAmount.toLocaleString()})!`);
+                    setTimeout(() => setSyncNotice(null), 5000);
+                  }
+                }}
+                className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[11px] font-extrabold px-3 py-1 rounded-full border border-emerald-300 flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                title="Click to dynamically synchronize all project vouchers with Chart of Accounts"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Chart of Accounts Synced {activeProjectJournalsCount > 0 ? `(${activeProjectJournalsCount} Vouchers Live)` : ''}</span>
+              </button>
             </div>
-          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -371,6 +432,16 @@ export const ProjectManagementModule: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {syncNotice && (
+        <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-bold text-emerald-900 flex items-center justify-between animate-fade-in shadow-2xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{syncNotice}</span>
+          </div>
+          <button type="button" onClick={() => setSyncNotice(null)} className="text-emerald-500 hover:text-emerald-800 font-bold">✕</button>
+        </div>
+      )}
 
       {/* Overview Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -502,6 +573,9 @@ export const ProjectManagementModule: React.FC = () => {
                       <span className="font-mono text-xs font-bold text-slate-600 bg-slate-200/70 px-2 py-0.5 rounded-md">
                         {project.code}
                       </span>
+                      <span className="font-mono text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md" title="Linked to Chart of Accounts Revenue Account #4060">
+                        COA: 4060 Project Revenue
+                      </span>
                       <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${project.status === 'Completed'
                     ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
                     : project.status === 'In Progress'
@@ -603,13 +677,17 @@ export const ProjectManagementModule: React.FC = () => {
                       </span>) : (Object.entries(expenseCategoryBreakdown)
                     .filter(([catName]) => !breakdownSearchTerm ||
                     catName.toLowerCase().includes(breakdownSearchTerm.toLowerCase()))
-                    .map(([catName, amt]) => (<span key={catName} className="bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-700 flex items-center gap-1.5 shadow-2xs animate-in fade-in duration-100">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"/>
-                            <span>{catName}:</span>
-                            <span className="font-extrabold text-slate-900 font-mono">
-                              {profile.currencySymbol}{(amt as number).toLocaleString()}
-                            </span>
-                          </span>)))}
+                    .map(([catName, amt]) => {
+                      const coa = getResolvedCOA(catName);
+                      return (<span key={catName} className="bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-700 flex items-center gap-1.5 shadow-2xs animate-in fade-in duration-100" title={`Mapped to COA Account [${coa.code}] ${coa.name}`}>
+                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"/>
+                             <span className="font-mono text-[10px] text-slate-400 font-bold">[{coa.code}]</span>
+                             <span>{catName}:</span>
+                             <span className="font-extrabold text-slate-900 font-mono">
+                               {profile.currencySymbol}{(amt as number).toLocaleString()}
+                             </span>
+                           </span>);
+                    }))}
                   </div>
 
                   {/* Actions */}
@@ -975,6 +1053,20 @@ export const ProjectManagementModule: React.FC = () => {
                         </label>
                         <input type="text" value={pRow.note} onChange={(e) => handleUpdatePaymentRow(pRow.id, { note: e.target.value })} placeholder={'e.g. Bank slip no / Trx ID / Cheque #...'} className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-[11px] bg-slate-50 focus:bg-white text-slate-800"/>
                       </div>
+
+                      {/* Real-time COA Alignment indicator */}
+                      {(() => {
+                        const payCOA = getResolvedPaymentCOA(pRow.method);
+                        return (
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200 flex-wrap">
+                            <span className="text-emerald-700">COA Debit:</span>
+                            <span className="font-mono font-black text-slate-800">[{payCOA.code}] {payCOA.name}</span>
+                            <span className="text-slate-300">|</span>
+                            <span className="text-blue-700">COA Credit:</span>
+                            <span className="font-mono font-black text-slate-800">[4060] Project Contracting & Signage Revenue</span>
+                          </div>
+                        );
+                      })()}
                     </div>))}
                 </div>
 
@@ -1157,6 +1249,20 @@ export const ProjectManagementModule: React.FC = () => {
                         </label>
                         <input type="text" value={eRow.note} onChange={(e) => handleUpdateExpenseRow(eRow.id, { note: e.target.value })} placeholder={'e.g. Conveyance details / 3 laborers wages / site setup note...'} className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-[11px] bg-white text-slate-800 placeholder-slate-400"/>
                       </div>
+
+                      {/* Real-time COA Alignment indicator */}
+                      {(() => {
+                        const coa = getResolvedCOA(eRow.categorySearch || eRow.category, eRow.note);
+                        return (
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200 flex-wrap">
+                            <span className="text-rose-700">COA Debit:</span>
+                            <span className="font-mono font-black text-slate-800">[{coa.code}] {coa.name}</span>
+                            <span className="text-slate-300">|</span>
+                            <span className="text-slate-500">Credit:</span>
+                            <span className="font-mono font-black text-slate-700">[1010] Cash in Hand</span>
+                          </div>
+                        );
+                      })()}
                     </div>);
             })}
 

@@ -419,7 +419,7 @@ export interface JournalEntry {
   creditAccountName: string;
   amount: number;
   narration: string;
-  source: 'SALES' | 'PURCHASE' | 'EXPENSE' | 'RECEIPT' | 'MANUAL';
+  source: 'SALES' | 'PURCHASE' | 'EXPENSE' | 'RECEIPT' | 'MANUAL' | 'PROJECT_SALES' | 'PROJECT_EXPENSE' | 'LEDGER_SYNC' | string;
   createdBy?: string;
 }
 
@@ -516,6 +516,7 @@ export interface ProjectExpenseItem {
   note?: string;
   linkedExpenseHeadId?: string;
   linkedAccountId?: string;
+  linkedAccountCode?: string;
   breakdownBatchId?: string;
 }
 
@@ -560,6 +561,7 @@ export interface Project {
   profitMargin: number;
   notes?: string;
   chartOfAccountId?: string;
+  projectAccountCode?: string;
 }
 
 export interface AuditLogEntry {

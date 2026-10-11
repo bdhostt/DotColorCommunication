@@ -656,6 +656,20 @@ export const INITIAL_CHART_OF_ACCOUNTS: ChartOfAccount[] = [
         isSystem: false,
         isActive: true,
     },
+    {
+        id: 'coa-4060',
+        code: '4060',
+        name: 'Project Contracting & Signage Revenue',
+        nameBn: 'প্রজেক্ট কন্ট্রাক্টিং ও সাইনেজ রেভিনিউ',
+        classification: 'Revenue',
+        accountGroup: 'Operating Revenue',
+        normalBalance: 'Credit',
+        openingBalance: 0,
+        currentBalance: 0,
+        description: 'Revenue from large-scale corporate projects, outdoor signboards, and event fabrications',
+        isSystem: true,
+        isActive: true,
+    },
     // 5000 - EXPENSES
     {
         id: 'coa-5010',
@@ -798,6 +812,20 @@ export const INITIAL_CHART_OF_ACCOUNTS: ChartOfAccount[] = [
         isActive: true,
     },
     {
+        id: 'coa-5120',
+        code: '5120',
+        name: 'Municipal Tax, Permits & Official Fees',
+        nameBn: 'পৌর কর, ট্রেড লাইসেন্স ও সরকারি ফি',
+        classification: 'Expense',
+        accountGroup: 'Operating Expenses',
+        normalBalance: 'Debit',
+        openingBalance: 0,
+        currentBalance: 0,
+        description: 'Municipal trade license, signage tax, city corporation fees, and legal permits',
+        isSystem: false,
+        isActive: true,
+    },
+    {
         id: 'coa-5130',
         code: '5130',
         name: 'Miscellaneous / Sundry Expenses',
@@ -919,7 +947,8 @@ export const INITIAL_PROJECTS: Project[] = [
         netProfit: 40000,
         profitMargin: 40.0,
         notes: 'Complete 3D signage fabrication project for Port City University. High margin job.',
-        chartOfAccountId: 'coa-5090',
+        chartOfAccountId: 'coa-4060',
+        projectAccountCode: '4060',
     },
     {
         id: 'prj-02',
@@ -983,7 +1012,8 @@ export const INITIAL_PROJECTS: Project[] = [
         netProfit: 62000,
         profitMargin: 28.18,
         notes: 'Major corporate exhibition project.',
-        chartOfAccountId: 'coa-5091',
+        chartOfAccountId: 'coa-4060',
+        projectAccountCode: '4060',
     },
 ];
 export const INITIAL_PAYMENT_METHODS: PaymentMethodConfig[] = [

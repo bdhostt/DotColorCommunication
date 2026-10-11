@@ -142,6 +142,7 @@ interface AppContextType {
     addProjectExpenses: (projectId: string, expenses: Omit<ProjectExpenseItem, 'id'>[]) => void;
     deleteProjectSales: (projectId: string, salesId: string) => void;
     deleteProjectExpense: (projectId: string, expenseId: string) => void;
+    syncProjectsWithAccounting: () => { salesSynced: number; expensesSynced: number; totalAmount: number };
     // Utilities & Module Data Cleanup
     cleanModuleData: (moduleKey: 'SALES' | 'QUOTATIONS' | 'PURCHASES' | 'INVENTORY_STOCK' | 'CUSTOM_PRODUCTS' | 'TRANSACTIONS' | 'JOURNALS' | 'AUDIT_LOGS' | 'PROJECTS' | 'ALL' | 'WIPE_ALL_EXCEPT_PRODUCTS') => void;
     resetToDefaultData: () => void;
@@ -2080,7 +2081,58 @@ export const AppProvider: React.FC<{
         }
         return 0;
     };
-    // Projects Management
+    // Projects Management & Chart of Accounts Dynamic Alignment
+    const resolvePaymentAssetAccount = (methodName?: string) => {
+        const m = (methodName || 'Cash').toLowerCase();
+        if (m.includes('bank') || m.includes('brac') || m.includes('city') || m.includes('card')) {
+            return chartOfAccounts.find(a => a.classification === 'Asset' && (a.code === '1030' || a.name.toLowerCase().includes('bank'))) || chartOfAccounts.find(a => a.classification === 'Asset') || chartOfAccounts[0];
+        }
+        if (m.includes('bkash') || m.includes('nagad') || m.includes('rocket') || m.includes('mfs') || m.includes('wallet')) {
+            return chartOfAccounts.find(a => a.classification === 'Asset' && (a.code === '1040' || a.name.toLowerCase().includes('bkash'))) || chartOfAccounts.find(a => a.classification === 'Asset') || chartOfAccounts[0];
+        }
+        if (m.includes('due') || m.includes('receivable')) {
+            return chartOfAccounts.find(a => a.classification === 'Asset' && (a.code === '1050' || a.name.toLowerCase().includes('receivable'))) || chartOfAccounts.find(a => a.classification === 'Asset') || chartOfAccounts[0];
+        }
+        return chartOfAccounts.find(a => a.classification === 'Asset' && (a.code === '1010' || a.name.toLowerCase().includes('cash'))) || chartOfAccounts[0];
+    };
+
+    const resolveExpenseAccount = (categoryName: string, note?: string) => {
+        const query = `${categoryName || ''} ${note || ''}`.toLowerCase();
+        if (query.includes('conveyance') || query.includes('transport') || query.includes('fuel') || query.includes('truck') || query.includes('courier') || query.includes('delivery')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5080' || a.name.toLowerCase().includes('conveyance'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+        }
+        if (query.includes('labor') || query.includes('labour') || query.includes('wage') || query.includes('worker') || query.includes('technician') || query.includes('installation') || query.includes('setup') || query.includes('amin vai') || query.includes('fabrication')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5070' || a.name.toLowerCase().includes('wages') || a.name.toLowerCase().includes('salaries'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+        }
+        if (query.includes('entertainment') || query.includes('refreshment') || query.includes('tea') || query.includes('snack') || query.includes('food') || query.includes('lunch') || query.includes('hospitality') || query.includes('hotel')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5090' || a.name.toLowerCase().includes('hospitality'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+        }
+        if (query.includes('electricity') || query.includes('generator') || query.includes('diesel') || query.includes('power')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5040' || a.name.toLowerCase().includes('electricity'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+        }
+        if (query.includes('rent') || query.includes('lease') || query.includes('facility')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5050' || a.name.toLowerCase().includes('rent'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+        }
+        if (query.includes('machine') || query.includes('servicing') || query.includes('equipment') || query.includes('crane') || query.includes('printer head')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5030' || a.name.toLowerCase().includes('servicing'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+        }
+        if (query.includes('permit') || query.includes('tax') || query.includes('official fee') || query.includes('license')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5120' || a.name.toLowerCase().includes('tax') || a.name.toLowerCase().includes('permit'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+        }
+        if (query.includes('marketing') || query.includes('ad') || query.includes('promotion') || query.includes('branding')) {
+            return chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5100' || a.name.toLowerCase().includes('marketing'))) || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+        }
+        const cogsAcc = chartOfAccounts.find(a => a.classification === 'Expense' && (a.code === '5010' || a.name.toLowerCase().includes('raw') || a.name.toLowerCase().includes('cost')));
+        return cogsAcc || chartOfAccounts.find(a => a.classification === 'Expense') || chartOfAccounts[0];
+    };
+
+    const resolveProjectRevenueAccount = () => {
+        return chartOfAccounts.find(a => a.classification === 'Revenue' && (a.code === '4060' || a.name.toLowerCase().includes('project'))) ||
+               chartOfAccounts.find(a => a.classification === 'Revenue' && a.code === '4020') ||
+               chartOfAccounts.find(a => a.classification === 'Revenue') ||
+               chartOfAccounts[0];
+    };
+
     const recalculateProject = (p: Project): Project => {
         const totalSales = (p.salesItems || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
         const totalExpenses = (p.expenseItems || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
@@ -2088,6 +2140,7 @@ export const AppProvider: React.FC<{
         const profitMargin = totalSales > 0 ? Number(((netProfit / totalSales) * 100).toFixed(2)) : 0;
         return { ...p, totalSales, totalExpenses, netProfit, profitMargin };
     };
+
     const addProject = (proj: Omit<Project, 'id' | 'code' | 'totalSales' | 'totalExpenses' | 'netProfit' | 'profitMargin'>): Project => {
         const newId = `prj-${Date.now()}`;
         const code = `PRJ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -2101,6 +2154,8 @@ export const AppProvider: React.FC<{
             totalExpenses: 0,
             netProfit: 0,
             profitMargin: 0,
+            chartOfAccountId: proj.chartOfAccountId || 'coa-4060',
+            projectAccountCode: proj.projectAccountCode || '4060',
         };
         const calculated = recalculateProject(baseProject);
         setProjects((prev) => [calculated, ...prev]);
@@ -2112,12 +2167,13 @@ export const AppProvider: React.FC<{
             actionType: 'PROJECT_CREATED',
             entityType: 'Projects',
             refNo: code,
-            details: `Created new project: ${calculated.name} for ${calculated.clientName}`,
+            details: `Created new project: ${calculated.name} for ${calculated.clientName} (COA Linked: 4060 Project Revenue)`,
             detailsBn: undefined,
             severity: 'info',
         });
         return calculated;
     };
+
     const updateProject = (id: string, updates: Partial<Project>) => {
         setProjects((prev) => prev.map((p) => {
             if (p.id === id) {
@@ -2127,11 +2183,101 @@ export const AppProvider: React.FC<{
             return p;
         }));
     };
+
     const deleteProject = (id: string) => {
+        const target = projects.find(p => p.id === id);
+        if (target) {
+            setJournalEntries(prev => prev.filter(j => j.refNo !== target.code));
+            setTransactions(prev => prev.filter(t => t.refNo !== target.code));
+        }
         setProjects((prev) => prev.filter((p) => p.id !== id));
     };
+
     const addProjectSales = (projectId: string, sales: Omit<ProjectSalesItem, 'id'>) => {
-        const newItem: ProjectSalesItem = { ...sales, id: `ps-${Date.now()}` };
+        const newItemId = `ps-${Date.now()}`;
+        const targetProj = projects.find(p => p.id === projectId);
+        const code = targetProj?.code || 'PRJ';
+        const projName = targetProj?.name || 'Project';
+        const clientName = targetProj?.clientName || sales.clientName || 'Client';
+
+        const validBreakdowns = (sales.paymentBreakdown && sales.paymentBreakdown.length > 0)
+            ? sales.paymentBreakdown
+            : [{ id: `pb-${Date.now()}`, method: sales.paymentMethod || 'Cash', amount: sales.amount, note: sales.note }];
+
+        const revAcc = resolveProjectRevenueAccount();
+        const newJournals: JournalEntry[] = [];
+        const newTxs: AccountingTransaction[] = [];
+
+        validBreakdowns.forEach((pb, pidx) => {
+            const pbAmount = Number(pb.amount) || 0;
+            if (pbAmount <= 0) return;
+
+            const assetAcc = resolvePaymentAssetAccount(pb.method);
+            const refNo = sales.invoiceNo || `${code}-${sales.date || new Date().toISOString().slice(0, 10)}`;
+
+            newJournals.push({
+                id: `jnl-ps-${Date.now()}-${pidx}`,
+                entryNo: `JNL-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}${pidx}`,
+                date: sales.date || new Date().toISOString().slice(0, 10),
+                refNo: refNo,
+                debitAccountId: assetAcc.id,
+                debitAccountName: assetAcc.name,
+                creditAccountId: revAcc.id,
+                creditAccountName: revAcc.name,
+                amount: pbAmount,
+                narration: `Project Sales Income: [${code}] ${projName} - ${sales.description || 'Project Billing'} (${pb.method}${pb.note ? `: ${pb.note}` : ''})`,
+                source: 'PROJECT_SALES',
+                createdBy: activeStaff?.name || 'Managing Director',
+            });
+
+            const isBank = pb.method.toLowerCase().includes('bank') || pb.method.toLowerCase().includes('brac') || pb.method.toLowerCase().includes('card');
+            const isMobile = pb.method.toLowerCase().includes('bkash') || pb.method.toLowerCase().includes('nagad') || pb.method.toLowerCase().includes('rocket');
+            const isDue = pb.method.toLowerCase().includes('due') || pb.method.toLowerCase().includes('receivable');
+
+            newTxs.push({
+                id: generateUniqueId('tx-prj-sale'),
+                date: sales.date || new Date().toISOString().slice(0, 10),
+                type: 'INCOME',
+                category: 'Project Revenue',
+                account: isBank ? 'BRAC Bank' : isMobile ? 'bKash / Nagad' : 'Cash in Hand',
+                accountHead: revAcc.name,
+                paymentMethod: pb.method,
+                paymentAccount: isDue ? 'Accounts Receivable' : pb.method,
+                refNo: refNo,
+                customerOrSupplier: clientName,
+                description: `Project Income: [${code}] ${projName} - ${sales.description || 'Billing'} (${pb.method})`,
+                amount: pbAmount,
+            });
+        });
+
+        if (newJournals.length > 0) {
+            setJournalEntries(prev => [...newJournals, ...prev]);
+        }
+        if (newTxs.length > 0) {
+            setTransactions(prev => ensureUniqueTransactions([...newTxs, ...prev]));
+        }
+
+        if (newJournals.length > 0) {
+            setChartOfAccounts(prev => prev.map(acc => {
+                let balChange = 0;
+                newJournals.forEach(j => {
+                    if (acc.id === j.debitAccountId) {
+                        balChange += (acc.normalBalance === 'Debit' ? j.amount : -j.amount);
+                    }
+                    if (acc.id === j.creditAccountId) {
+                        balChange += (acc.normalBalance === 'Credit' ? j.amount : -j.amount);
+                    }
+                });
+                return balChange !== 0 ? { ...acc, currentBalance: acc.currentBalance + balChange } : acc;
+            }));
+        }
+
+        const newItem: ProjectSalesItem = {
+            ...sales,
+            id: newItemId,
+            linkedAccountId: revAcc.id,
+        };
+
         setProjects((prev) => prev.map((p) => {
             if (p.id === projectId) {
                 const updatedSales = [...p.salesItems, newItem];
@@ -2139,25 +2285,103 @@ export const AppProvider: React.FC<{
             }
             return p;
         }));
+
+        addAuditLog({
+            staffId: activeStaff?.id || 'staff-admin',
+            staffName: activeStaff?.name || 'Staff',
+            staffRole: activeStaff?.role || 'Managing Director',
+            location: 'Office',
+            actionType: 'PROJECT_SALES_ADDED',
+            entityType: 'Projects',
+            refNo: sales.invoiceNo || code,
+            details: `Recorded Project Sales Income Tk ${sales.amount.toLocaleString()} for [${code}] ${projName} (Synced to COA [${revAcc.code}] ${revAcc.name})`,
+            detailsBn: undefined,
+            amount: sales.amount,
+            severity: 'success',
+        });
     };
+
     const addProjectExpense = (projectId: string, expense: Omit<ProjectExpenseItem, 'id'>) => {
-        const newItem: ProjectExpenseItem = { ...expense, id: `pe-${Date.now()}` };
-        setProjects((prev) => prev.map((p) => {
-            if (p.id === projectId) {
-                const updatedExpenses = [...p.expenseItems, newItem];
-                return recalculateProject({ ...p, expenseItems: updatedExpenses });
-            }
-            return p;
-        }));
+        addProjectExpenses(projectId, [expense]);
     };
+
     const addProjectExpenses = (projectId: string, expenses: Omit<ProjectExpenseItem, 'id'>[]) => {
-        if (!expenses || expenses.length === 0)
-            return;
+        if (!expenses || expenses.length === 0) return;
+        const targetProj = projects.find(p => p.id === projectId);
+        const code = targetProj?.code || 'PRJ';
+        const projName = targetProj?.name || 'Project';
         const timestamp = Date.now();
-        const newItems: ProjectExpenseItem[] = expenses.map((exp, idx) => ({
-            ...exp,
-            id: `pe-${timestamp}-${idx}`,
-        }));
+
+        const defaultCashAcc = resolvePaymentAssetAccount('Cash');
+        const newJournals: JournalEntry[] = [];
+        const newTxs: AccountingTransaction[] = [];
+
+        const newItems: ProjectExpenseItem[] = expenses.map((exp, idx) => {
+            const expAcc = resolveExpenseAccount(exp.category, exp.note);
+            const expAmount = Number(exp.amount) || 0;
+
+            if (expAmount > 0) {
+                newJournals.push({
+                    id: `jnl-pe-${timestamp}-${idx}`,
+                    entryNo: `JNL-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}${idx}`,
+                    date: exp.date || new Date().toISOString().slice(0, 10),
+                    refNo: code,
+                    debitAccountId: expAcc.id,
+                    debitAccountName: expAcc.name,
+                    creditAccountId: defaultCashAcc.id,
+                    creditAccountName: defaultCashAcc.name,
+                    amount: expAmount,
+                    narration: `Project Expense: [${code}] ${projName} - ${exp.category}${exp.note ? `: ${exp.note}` : ''}`,
+                    source: 'PROJECT_EXPENSE',
+                    createdBy: activeStaff?.name || 'Managing Director',
+                });
+
+                newTxs.push({
+                    id: generateUniqueId('tx-prj-exp'),
+                    date: exp.date || new Date().toISOString().slice(0, 10),
+                    type: 'EXPENSE',
+                    category: exp.category,
+                    account: 'Cash in Hand',
+                    accountHead: expAcc.name,
+                    paymentMethod: 'Cash',
+                    paymentAccount: 'Cash Counter / In-Hand',
+                    refNo: code,
+                    customerOrSupplier: targetProj?.clientName || 'Vendor/Labor',
+                    description: `Project Cost: [${code}] ${projName} - ${exp.category}${exp.note ? ` (${exp.note})` : ''}`,
+                    amount: expAmount,
+                });
+            }
+
+            return {
+                ...exp,
+                id: `pe-${timestamp}-${idx}`,
+                linkedAccountId: expAcc.id,
+                linkedAccountCode: expAcc.code,
+            };
+        });
+
+        if (newJournals.length > 0) {
+            setJournalEntries(prev => [...newJournals, ...prev]);
+        }
+        if (newTxs.length > 0) {
+            setTransactions(prev => ensureUniqueTransactions([...newTxs, ...prev]));
+        }
+
+        if (newJournals.length > 0) {
+            setChartOfAccounts(prev => prev.map(acc => {
+                let balChange = 0;
+                newJournals.forEach(j => {
+                    if (acc.id === j.debitAccountId) {
+                        balChange += (acc.normalBalance === 'Debit' ? j.amount : -j.amount);
+                    }
+                    if (acc.id === j.creditAccountId) {
+                        balChange += (acc.normalBalance === 'Credit' ? j.amount : -j.amount);
+                    }
+                });
+                return balChange !== 0 ? { ...acc, currentBalance: acc.currentBalance + balChange } : acc;
+            }));
+        }
+
         setProjects((prev) => prev.map((p) => {
             if (p.id === projectId) {
                 const updatedExpenses = [...p.expenseItems, ...newItems];
@@ -2165,8 +2389,33 @@ export const AppProvider: React.FC<{
             }
             return p;
         }));
+
+        const totalAddedAmt = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+        addAuditLog({
+            staffId: activeStaff?.id || 'staff-admin',
+            staffName: activeStaff?.name || 'Staff',
+            staffRole: activeStaff?.role || 'Managing Director',
+            location: 'Office',
+            actionType: 'PROJECT_EXPENSE_ADDED',
+            entityType: 'Projects',
+            refNo: code,
+            details: `Recorded ${expenses.length} project expense items totaling Tk ${totalAddedAmt.toLocaleString()} for [${code}] ${projName} (Synced to COA)`,
+            detailsBn: undefined,
+            amount: totalAddedAmt,
+            severity: 'info',
+        });
     };
+
     const deleteProjectSales = (projectId: string, salesId: string) => {
+        const targetProj = projects.find(p => p.id === projectId);
+        const itemToDelete = targetProj?.salesItems.find(s => s.id === salesId);
+        const refNo = itemToDelete?.invoiceNo || targetProj?.code;
+
+        if (refNo) {
+            setJournalEntries(prev => prev.filter(j => !(j.source === 'PROJECT_SALES' && j.refNo === refNo && (itemToDelete ? j.narration.includes(itemToDelete.description) : true))));
+            setTransactions(prev => prev.filter(t => !(t.type === 'INCOME' && t.refNo === refNo && (itemToDelete ? t.description.includes(itemToDelete.description) : true))));
+        }
+
         setProjects((prev) => prev.map((p) => {
             if (p.id === projectId) {
                 const updatedSales = p.salesItems.filter((item) => item.id !== salesId);
@@ -2175,7 +2424,17 @@ export const AppProvider: React.FC<{
             return p;
         }));
     };
+
     const deleteProjectExpense = (projectId: string, expenseId: string) => {
+        const targetProj = projects.find(p => p.id === projectId);
+        const itemToDelete = targetProj?.expenseItems.find(e => e.id === expenseId);
+        const code = targetProj?.code;
+
+        if (code && itemToDelete) {
+            setJournalEntries(prev => prev.filter(j => !(j.source === 'PROJECT_EXPENSE' && j.refNo === code && j.narration.includes(itemToDelete.category))));
+            setTransactions(prev => prev.filter(t => !(t.type === 'EXPENSE' && t.refNo === code && t.category === itemToDelete.category)));
+        }
+
         setProjects((prev) => prev.map((p) => {
             if (p.id === projectId) {
                 const updatedExpenses = p.expenseItems.filter((item) => item.id !== expenseId);
@@ -2183,6 +2442,160 @@ export const AppProvider: React.FC<{
             }
             return p;
         }));
+    };
+
+    const syncProjectsWithAccounting = (): { salesSynced: number; expensesSynced: number; totalAmount: number } => {
+        let salesSynced = 0;
+        let expensesSynced = 0;
+        let totalAmount = 0;
+
+        const revAcc = resolveProjectRevenueAccount();
+        const cashAcc = resolvePaymentAssetAccount('Cash');
+        const newJournals: JournalEntry[] = [];
+        const newTxs: AccountingTransaction[] = [];
+
+        projects.forEach(project => {
+            (project.salesItems || []).forEach((sale) => {
+                const ref = sale.invoiceNo || project.code;
+                const alreadyHasJournal = journalEntries.some(j => (j.refNo === ref && j.narration.includes(sale.description)) || j.id.includes(sale.id));
+                const alreadyHasTx = transactions.some(t => t.refNo === ref && t.description.includes(sale.description));
+
+                if (!alreadyHasJournal || !alreadyHasTx) {
+                    const validBreakdowns = (sale.paymentBreakdown && sale.paymentBreakdown.length > 0)
+                        ? sale.paymentBreakdown
+                        : [{ id: `pb-${sale.id}`, method: sale.paymentMethod || 'Cash', amount: sale.amount, note: sale.note }];
+
+                    validBreakdowns.forEach((pb, pidx) => {
+                        const pbAmt = Number(pb.amount) || 0;
+                        if (pbAmt <= 0) return;
+                        const assetAcc = resolvePaymentAssetAccount(pb.method);
+
+                        if (!alreadyHasJournal) {
+                            newJournals.push({
+                                id: `jnl-ps-sync-${sale.id}-${pidx}`,
+                                entryNo: `JNL-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}${salesSynced}`,
+                                date: sale.date || new Date().toISOString().slice(0, 10),
+                                refNo: ref,
+                                debitAccountId: assetAcc.id,
+                                debitAccountName: assetAcc.name,
+                                creditAccountId: revAcc.id,
+                                creditAccountName: revAcc.name,
+                                amount: pbAmt,
+                                narration: `Project Sales Income: [${project.code}] ${project.name} - ${sale.description} (${pb.method})`,
+                                source: 'PROJECT_SALES',
+                                createdBy: activeStaff?.name || 'System Auto-Sync',
+                            });
+                        }
+
+                        if (!alreadyHasTx) {
+                            const isBank = pb.method.toLowerCase().includes('bank') || pb.method.toLowerCase().includes('brac');
+                            const isMobile = pb.method.toLowerCase().includes('bkash') || pb.method.toLowerCase().includes('nagad');
+                            newTxs.push({
+                                id: generateUniqueId('tx-prj-sync-sale'),
+                                date: sale.date || new Date().toISOString().slice(0, 10),
+                                type: 'INCOME',
+                                category: 'Project Revenue',
+                                account: isBank ? 'BRAC Bank' : isMobile ? 'bKash / Nagad' : 'Cash in Hand',
+                                accountHead: revAcc.name,
+                                paymentMethod: pb.method,
+                                paymentAccount: pb.method,
+                                refNo: ref,
+                                customerOrSupplier: project.clientName,
+                                description: `Project Income: [${project.code}] ${project.name} - ${sale.description} (${pb.method})`,
+                                amount: pbAmt,
+                            });
+                        }
+                        salesSynced++;
+                        totalAmount += pbAmt;
+                    });
+                }
+            });
+
+            (project.expenseItems || []).forEach((exp, eidx) => {
+                const expAmt = Number(exp.amount) || 0;
+                if (expAmt <= 0) return;
+                const expAcc = resolveExpenseAccount(exp.category, exp.note);
+
+                const alreadyHasJournal = journalEntries.some(j => j.refNo === project.code && j.narration.includes(exp.category) && j.amount === expAmt);
+                const alreadyHasTx = transactions.some(t => t.refNo === project.code && t.category === exp.category && t.amount === expAmt);
+
+                if (!alreadyHasJournal) {
+                    newJournals.push({
+                        id: `jnl-pe-sync-${exp.id}-${eidx}`,
+                        entryNo: `JNL-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}${expensesSynced}`,
+                        date: exp.date || new Date().toISOString().slice(0, 10),
+                        refNo: project.code,
+                        debitAccountId: expAcc.id,
+                        debitAccountName: expAcc.name,
+                        creditAccountId: cashAcc.id,
+                        creditAccountName: cashAcc.name,
+                        amount: expAmt,
+                        narration: `Project Expense: [${project.code}] ${project.name} - ${exp.category}${exp.note ? `: ${exp.note}` : ''}`,
+                        source: 'PROJECT_EXPENSE',
+                        createdBy: activeStaff?.name || 'System Auto-Sync',
+                    });
+                }
+
+                if (!alreadyHasTx) {
+                    newTxs.push({
+                        id: generateUniqueId('tx-prj-sync-exp'),
+                        date: exp.date || new Date().toISOString().slice(0, 10),
+                        type: 'EXPENSE',
+                        category: exp.category,
+                        account: 'Cash in Hand',
+                        accountHead: expAcc.name,
+                        paymentMethod: 'Cash',
+                        paymentAccount: 'Cash Counter / In-Hand',
+                        refNo: project.code,
+                        customerOrSupplier: project.clientName || 'Vendor/Labor',
+                        description: `Project Cost: [${project.code}] ${project.name} - ${exp.category}${exp.note ? ` (${exp.note})` : ''}`,
+                        amount: expAmt,
+                    });
+                }
+
+                if (!alreadyHasJournal || !alreadyHasTx) {
+                    expensesSynced++;
+                    totalAmount += expAmt;
+                }
+            });
+        });
+
+        if (newJournals.length > 0) {
+            setJournalEntries(prev => [...newJournals, ...prev]);
+        }
+        if (newTxs.length > 0) {
+            setTransactions(prev => ensureUniqueTransactions([...newTxs, ...prev]));
+        }
+
+        if (newJournals.length > 0) {
+            setChartOfAccounts(prev => prev.map(acc => {
+                let balChange = 0;
+                newJournals.forEach(j => {
+                    if (acc.id === j.debitAccountId) {
+                        balChange += (acc.normalBalance === 'Debit' ? j.amount : -j.amount);
+                    }
+                    if (acc.id === j.creditAccountId) {
+                        balChange += (acc.normalBalance === 'Credit' ? j.amount : -j.amount);
+                    }
+                });
+                return balChange !== 0 ? { ...acc, currentBalance: acc.currentBalance + balChange } : acc;
+            }));
+
+            addAuditLog({
+                staffId: activeStaff?.id || 'sys',
+                staffName: activeStaff?.name || 'System',
+                staffRole: activeStaff?.role || 'Admin',
+                location: 'Office',
+                actionType: 'JOURNAL_ENTRY_CREATED',
+                entityType: 'Accounting',
+                details: `Auto-synchronized ${salesSynced} sales and ${expensesSynced} expense items across all projects to Chart of Accounts (Total Tk ${totalAmount.toLocaleString()})`,
+                detailsBn: undefined,
+                amount: totalAmount,
+                severity: 'info',
+            });
+        }
+
+        return { salesSynced, expensesSynced, totalAmount };
     };
     // Module Data Clean & Purge
     const cleanModuleData = (moduleKey: 'SALES' | 'QUOTATIONS' | 'PURCHASES' | 'INVENTORY_STOCK' | 'CUSTOM_PRODUCTS' | 'TRANSACTIONS' | 'JOURNALS' | 'AUDIT_LOGS' | 'PROJECTS' | 'ALL' | 'WIPE_ALL_EXCEPT_PRODUCTS') => {
@@ -2903,6 +3316,7 @@ export const AppProvider: React.FC<{
             addProjectExpenses,
             deleteProjectSales,
             deleteProjectExpense,
+            syncProjectsWithAccounting,
             cleanModuleData,
             resetToDefaultData,
             exportDatabase,
