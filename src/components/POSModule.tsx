@@ -679,8 +679,8 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                             </div>
                             <div className="text-[11px] text-slate-500 font-mono mt-0.5">{c.phone}</div>
                           </div>
-                          {c.dueAmount > 0 && (<span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-md flex-shrink-0">
-                              {'Due'}: Tk{c.dueAmount.toLocaleString()}
+                          {(Number(c.dueAmount) || 0) > 0 && (<span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-md flex-shrink-0">
+                              {'Due'}: Tk{(Number(c.dueAmount) || 0).toLocaleString()}
                             </span>)}
                         </button>))) : (<div className="p-3 text-center space-y-2">
                         <p className="text-xs text-slate-500">
@@ -723,9 +723,9 @@ export const POSModule: React.FC<POSModuleProps> = ({ onOpenInvoiceModal }) => {
                   <span className="font-bold text-slate-800 truncate block">{selectedCustomer.name}</span>
                   <span className="text-[10px] text-slate-500 font-mono">{selectedCustomer.phone} {selectedCustomer.address ? `• ${selectedCustomer.address}` : ''}</span>
                 </div>
-                {selectedCustomer.dueAmount > 0 && (<span className="text-rose-600 font-bold flex-shrink-0">
+                {(Number(selectedCustomer.dueAmount) || 0) > 0 && (<span className="text-rose-600 font-bold flex-shrink-0">
                     {'Past Due:'} {profile.currencySymbol}
-                    {selectedCustomer.dueAmount.toLocaleString()}
+                    {(Number(selectedCustomer.dueAmount) || 0).toLocaleString()}
                   </span>)}
               </div>)}
           </div>

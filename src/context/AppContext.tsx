@@ -270,7 +270,13 @@ export const AppProvider: React.FC<{
         return safeGetLocalStorage<ProductItem[]>(`${STORAGE_KEY}_PRODUCTS`, INITIAL_PRODUCTS);
     });
     const [customers, setCustomers] = useState<Customer[]>(() => {
-        return safeGetLocalStorage<Customer[]>(`${STORAGE_KEY}_CUSTOMERS`, INITIAL_CUSTOMERS);
+        const list = safeGetLocalStorage<Customer[]>(`${STORAGE_KEY}_CUSTOMERS`, INITIAL_CUSTOMERS);
+        return (list || []).map((c: any) => ({
+            ...c,
+            totalPurchased: Number(c.totalPurchased) || 0,
+            dueAmount: Number(c.dueAmount) || 0,
+            advanceBalance: Number(c.advanceBalance) || 0,
+        }));
     });
     const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
         const list = safeGetLocalStorage<Supplier[]>(`${STORAGE_KEY}_SUPPLIERS`, INITIAL_SUPPLIERS);
@@ -418,6 +424,38 @@ export const AppProvider: React.FC<{
     useEffect(() => {
         localStorage.setItem(`${STORAGE_KEY}_CATEGORIES`, JSON.stringify(productCategories));
     }, [productCategories]);
+    // Automatically ensure all categories referenced by products exist in productCategories
+    useEffect(() => {
+        if (!products || products.length === 0) return;
+        setProductCategories((prevCategories) => {
+            const currentList = prevCategories || [];
+            const existingNames = new Set(currentList.map((c) => c.name.trim().toLowerCase()));
+            const missingCats: ProductCategory[] = [];
+
+            products.forEach((p) => {
+                const catName = (p.category || '').trim();
+                if (catName && !existingNames.has(catName.toLowerCase())) {
+                    existingNames.add(catName.toLowerCase());
+                    const matchedInit = INITIAL_PRODUCT_CATEGORIES.find(
+                        (ic) => ic.name.trim().toLowerCase() === catName.toLowerCase()
+                    );
+                    missingCats.push(
+                        matchedInit || {
+                            id: `cat-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                            code: `CAT-${catName.slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}`,
+                            name: catName,
+                            nameBn: '',
+                            description: '',
+                            isRawMaterialGroup: Boolean(p.isRawMaterial),
+                        }
+                    );
+                }
+            });
+
+            if (missingCats.length === 0) return prevCategories;
+            return [...currentList, ...missingCats];
+        });
+    }, [products]);
     useEffect(() => {
         localStorage.setItem(`${STORAGE_KEY}_JOURNALS`, JSON.stringify(journalEntries));
     }, [journalEntries]);
@@ -3104,17 +3142,25 @@ export const AppProvider: React.FC<{
                 }
             }
             if (data.customers) {
+                const sanitizeCust = (c: any): Customer => ({
+                    ...c,
+                    totalPurchased: Number(c.totalPurchased) || 0,
+                    dueAmount: Number(c.dueAmount) || 0,
+                    advanceBalance: Number(c.advanceBalance) || 0,
+                });
                 if (isCloudSync && Array.isArray(data.customers)) {
                     setCustomers((prev) => {
                         const map = new Map<string, Customer>();
-                        data.customers.forEach((c: Customer) => map.set(c.id, c));
-                        prev.forEach((c) => { if (!map.has(c.id))
-                            map.set(c.id, c); });
+                        data.customers.forEach((c: Customer) => map.set(c.id, sanitizeCust(c)));
+                        prev.forEach((c) => {
+                            if (!map.has(c.id))
+                                map.set(c.id, sanitizeCust(c));
+                        });
                         return Array.from(map.values());
                     });
                 }
                 else {
-                    setCustomers(data.customers);
+                    setCustomers(Array.isArray(data.customers) ? data.customers.map(sanitizeCust) : []);
                 }
             }
             if (data.suppliers) {
@@ -3268,8 +3314,20 @@ export const AppProvider: React.FC<{
                 setChartOfAccounts(data.chartOfAccounts);
             if (data.expenseHeads && Array.isArray(data.expenseHeads) && data.expenseHeads.length > 0)
                 setExpenseHeads(data.expenseHeads);
-            if (data.productCategories)
-                setProductCategories(data.productCategories);
+            if (data.productCategories && Array.isArray(data.productCategories)) {
+                setProductCategories((prev) => {
+                    const map = new Map<string, ProductCategory>();
+                    data.productCategories.forEach((c: ProductCategory) => {
+                        if (c?.name) map.set(c.name.trim().toLowerCase(), c);
+                    });
+                    (prev || []).forEach((c) => {
+                        if (c?.name && !map.has(c.name.trim().toLowerCase())) {
+                            map.set(c.name.trim().toLowerCase(), c);
+                        }
+                    });
+                    return Array.from(map.values());
+                });
+            }
             if (data.journalEntries)
                 setJournalEntries(data.journalEntries);
             if (data.projects) {

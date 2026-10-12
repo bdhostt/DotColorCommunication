@@ -679,11 +679,18 @@ export const InventoryModule: React.FC = () => {
                       className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-xs"
                     >
                       {productCategories && productCategories.length > 0 ? (
-                        productCategories.map((c) => (
-                          <option key={c.id} value={c.name}>
-                            {c.name} {c.nameBn ? `(${c.nameBn})` : ''} {c.isRawMaterialGroup || c.isRawMaterial ? ' [Raw Material]' : ''}
-                          </option>
-                        ))
+                        <>
+                          {formData.category && !productCategories.some((c) => c.name.toLowerCase() === (formData.category || '').toLowerCase()) && (
+                            <option value={formData.category}>
+                              {formData.category}
+                            </option>
+                          )}
+                          {productCategories.map((c) => (
+                            <option key={c.id} value={c.name}>
+                              {c.name} {c.nameBn ? `(${c.nameBn})` : ''} {c.isRawMaterialGroup || c.isRawMaterial ? ' [Raw Material]' : ''}
+                            </option>
+                          ))}
+                        </>
                       ) : (
                         <>
                           <option value="DIGITAL PRINTING">DIGITAL PRINTING</option>

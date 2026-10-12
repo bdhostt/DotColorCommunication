@@ -344,8 +344,8 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
                                     </div>
                                     <div className="text-[11px] text-slate-500 font-mono mt-0.5">{c.phone}</div>
                                   </div>
-                                  {c.dueAmount > 0 && (<span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded flex-shrink-0">
-                                      {'Due'}: Tk{c.dueAmount.toLocaleString()}
+                                  {(Number(c.dueAmount) || 0) > 0 && (<span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded flex-shrink-0">
+                                      {'Due'}: Tk{(Number(c.dueAmount) || 0).toLocaleString()}
                                     </span>)}
                                 </button>))) : (<div className="p-3 text-center space-y-2">
                                 <p className="text-xs text-slate-500">
@@ -413,8 +413,8 @@ export const CreateSalesInvoiceModal: React.FC<CreateSalesInvoiceModalProps> = (
                               <input type="text" value={existingCustAddress} onChange={(e) => setExistingCustAddress(e.target.value)} placeholder="e.g. Baizid Bostami I/A, Chattogram, Bangladesh" className="w-full px-2.5 py-1 bg-white border border-amber-300 rounded-lg text-xs font-medium focus:ring-1 focus:ring-amber-500"/>
                             </div>
                           </div>
-                          {sel.dueAmount > 0 && (<span className="font-extrabold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                              {'Past Due'}: Tk{sel.dueAmount.toLocaleString()}
+                          {(Number(sel.dueAmount) || 0) > 0 && (<span className="font-extrabold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                              {'Past Due'}: Tk{(Number(sel.dueAmount) || 0).toLocaleString()}
                             </span>)}
                         </>);
                 })()}

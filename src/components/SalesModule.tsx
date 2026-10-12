@@ -281,7 +281,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({ onOpenInvoiceModal, on
         if (!customerSearchQuery.trim())
             return customers;
         const q = customerSearchQuery.toLowerCase().trim();
-        return customers.filter((c) => c.name.toLowerCase().includes(q) ||
+        return customers.filter((c) => (c.name || '').toLowerCase().includes(q) ||
             (c.phone && c.phone.includes(q)) ||
             (c.company && c.company.toLowerCase().includes(q)) ||
             (c.address && c.address.toLowerCase().includes(q)));
@@ -291,7 +291,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({ onOpenInvoiceModal, on
         if (!quoteCustomerSearch.trim())
             return customers;
         const q = quoteCustomerSearch.toLowerCase().trim();
-        return customers.filter((c) => c.name.toLowerCase().includes(q) ||
+        return customers.filter((c) => (c.name || '').toLowerCase().includes(q) ||
             (c.phone && c.phone.includes(q)) ||
             (c.company && c.company.toLowerCase().includes(q)));
     }, [customers, quoteCustomerSearch]);
@@ -1005,12 +1005,12 @@ export const SalesModule: React.FC<SalesModuleProps> = ({ onOpenInvoiceModal, on
                       <td className="py-3 px-4 text-slate-500">{c.address || 'Chattogram'}</td>
                       <td className="py-3 px-4 text-right font-bold text-slate-900">
                         {profile.currencySymbol}
-                        {c.totalPurchased.toLocaleString()}
+                        {(Number(c.totalPurchased) || 0).toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <span className={`font-black ${c.dueAmount > 0 ? 'text-rose-600 text-sm' : 'text-slate-400'}`}>
+                        <span className={`font-black ${(Number(c.dueAmount) || 0) > 0 ? 'text-rose-600 text-sm' : 'text-slate-400'}`}>
                           {profile.currencySymbol}
-                          {c.dueAmount.toLocaleString()}
+                          {(Number(c.dueAmount) || 0).toLocaleString()}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">
